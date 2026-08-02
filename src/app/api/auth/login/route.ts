@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { upsertUser, createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { createSession, findUserByEmail, verifyPassword, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -12,22 +12,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: { code: "invalid_json", message: "Invalid JSON body" } }, { status: 400 });
   }
 
-  const payload = (body ?? {}) as { email?: unknown; name?: unknown };
+  const payload = (body ?? {}) as { email?: unknown; password?: unknown };
   const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
-  const name = typeof payload.name === "string" ? payload.name.trim().slice(0, 80) : "";
+  const password = typeof payload.password === "string" ? payload.password : "";
 
   if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: { code: "validation", message: "A valid email is required" } }, { status: 400 });
   }
-  // Reserved namespace for auto-provisioned guest identities (see /api/auth/guest).
-  if (email.endsWith("@guest.desmake.local")) {
-    return NextResponse.json({ error: { code: "validation", message: "That email domain is reserved" } }, { status: 400 });
+  if (!password || password.length < 6 || password.length > 128) {
+    return NextResponse.json({ error: { code: "validation", message: "Password must be 6–128 characters" } }, { status: 400 });
   }
 
-  const user = upsertUser(email, name);
-  const token = createSession(user);
+  // Real credential check against the persisted account — no magic emails.
+  const user = findUserByEmail(email);
+  if (!user || !verifyPassword(password, user.passwordHash)) {
+    return NextResponse.json(
+      { error: { code: "unauthorized", message: "Incorrect email or password" } },
+      { status: 401 },
+    );
+  }
 
-  const res = NextResponse.json({ user });
+  const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+  const token = createSession(sessionUser);
+
+  const res = NextResponse.json({ user: sessionUser });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return res;
 }

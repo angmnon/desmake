@@ -37,7 +37,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   let status: string;
   let progress: number;
 
-  if (elapsed < 800) {
+  // Real AI jobs: the async worker mutates the job in place. Until outputs or an
+  // error arrive, report queued/running so the Studio UI keeps polling.
+  if (job.ai) {
+    if (job.status === "failed") {
+      status = "failed";
+      progress = job.progress;
+    } else if (job.outputs) {
+      status = "succeeded";
+      progress = 100;
+    } else {
+      status = "queued";
+      progress = Math.min(92, 5 + Math.floor(elapsed / 1200));
+    }
+  } else if (elapsed < 800) {
     status = "queued";
     progress = Math.min(15, Math.floor(elapsed / 60));
   } else if (elapsed < 3200) {
@@ -52,7 +65,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   job.progress = progress;
 
   let outputs: GenOutput[] | null = job.outputs ?? null;
-  if (status === "succeeded" && !outputs) {
+  // Deterministic (demo) fallback: synthesize outputs once the elapsed threshold passes.
+  if (status === "succeeded" && !outputs && !job.ai) {
     const palette = STYLE_PRESETS[job.style] || STYLE_PRESETS.minimal;
     const count = job.count || 4;
     const dims = ASPECT_DIMENSIONS[job.aspect] ?? ASPECT_DIMENSIONS["1:1"];

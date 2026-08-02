@@ -8,7 +8,7 @@ import { STYLE_PRESETS as SERVER_PALETTES } from "@/lib/presets";
 import { ensureSession } from "@/lib/client-session";
 
 type GenState = "idle" | "queued" | "running" | "succeeded" | "failed";
-type GenResult = { seed: string; palette: [string, string, string]; shape: number };
+type GenResult = { seed: string; palette: [string, string, string]; shape: number; imageUrl?: string };
 
 const STYLE_PRESETS = [
   { id: "minimal", name: "Minimal", palette: ["#0c0c0d", "#f7f6f3", "#f1efea"] as [string, string, string], shape: 0 },
@@ -26,7 +26,7 @@ const ASPECT_RATIOS = [
   { id: "16:9", label: "Wide", w: 16, h: 9 },
 ];
 
-type ApiOutput = { seed?: string; palette?: [string, string, string]; shape?: number };
+type ApiOutput = { seed?: string; palette?: [string, string, string]; shape?: number; imageUrl?: string };
 type PollResponse = {
   status?: string;
   progress?: number;
@@ -117,6 +117,7 @@ export default function StudioPage() {
             seed: o.seed || `${data.prompt ?? "design"}-${jobId}-${i}`,
             palette: o.palette || palette,
             shape: typeof o.shape === "number" ? o.shape : i % 6,
+            imageUrl: o.imageUrl,
           }));
           setResults((r) => [...newResults, ...r]);
           setState("succeeded");
@@ -208,6 +209,7 @@ export default function StudioPage() {
           shape: r.shape,
           prompt: prompt.trim(),
           title: prompt.trim().slice(0, 80),
+          imageUrl: r.imageUrl,
         }),
       });
       if (!res.ok) {
@@ -398,7 +400,12 @@ export default function StudioPage() {
                     {results.slice(0, 4).map((r, i) => (
                       <div key={i} className="card card-hover" style={{ position: "relative", padding: 0, overflow: "hidden" }}>
                         <div style={{ aspectRatio: aspect.replace(":", "/") }}>
-                          <Artwork seed={r.seed} palette={r.palette} shape={r.shape} rounded={false} className="!rounded-none" />
+                          {r.imageUrl ? (
+                            // Real AI-generated image
+                            <img src={r.imageUrl} alt={prompt.slice(0, 60)} className="w-full h-full object-cover" style={{ width: "100%", height: "100%" }} />
+                          ) : (
+                            <Artwork seed={r.seed} palette={r.palette} shape={r.shape} rounded={false} className="!rounded-none" />
+                          )}
                         </div>
                         <div className="absolute inset-x-0 bottom-0 p-3" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)", display: "flex", gap: 8, justifyContent: "flex-end" }}>
                           <button

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { jobsStore, newId, type GenJob } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 import { STYLE_PRESETS } from "@/lib/presets";
+import { generateWithOpenAI, OPENAI_IMAGE_ENABLED } from "@/lib/ai";
 
 // No edge runtime — jobs and sessions live in the shared `globalThis` store (R2/C1).
 
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
   const safeAspect = (ASPECTS as readonly string[]).includes(aspect) ? aspect : "1:1";
 
   const id = newId("gen");
+  const ai = OPENAI_IMAGE_ENABLED;
   const job: GenJob = {
     id,
     user_id: user.id,
@@ -49,8 +51,35 @@ export async function POST(request: NextRequest) {
     started_at: Date.now(),
     outputs: null,
     error: null,
+    ai,
+    demo: !ai,
   };
   jobsStore().set(id, job);
+
+  // Real AI generation against an OpenAI-compatible provider when a key is set.
+  // The job object is mutated in place asynchronously; the poll endpoint reads it.
+  if (ai) {
+    void (async () => {
+      try {
+        const images = await generateWithOpenAI(prompt.trim(), n);
+        const palette = STYLE_PRESETS[safeStyle] || STYLE_PRESETS.minimal;
+        job.outputs = images.map((img, i) => ({
+          seed: img.seed,
+          width: 1024,
+          height: 1024,
+          palette,
+          shape: i % 6,
+          imageUrl: img.url,
+        }));
+        job.status = "succeeded";
+        job.progress = 100;
+      } catch (err) {
+        job.error = err instanceof Error ? err.message : "AI generation failed";
+        job.status = "failed";
+        console.error("[generate] AI provider error:", job.error);
+      }
+    })();
+  }
 
   // No fake "credits_charged" / GPU claims. This endpoint produces a deterministic
   // client-rendered preview; it does not invoke an external model.

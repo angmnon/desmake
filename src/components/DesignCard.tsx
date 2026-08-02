@@ -16,7 +16,11 @@ export function DesignCard({ design }: { design: Design }) {
     <Link href={`/listing/${design.slug}`} className="block group">
       <div className="card card-hover">
         <div className="art-canvas" style={{ aspectRatio: "1", position: "relative" }}>
-          <Artwork seed={design.seed} palette={design.palette} shape={design.shape} rounded={false} className="!rounded-none" />
+          {design.imageUrl ? (
+            <img src={design.imageUrl} alt={design.title} className="w-full h-full object-cover" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />
+          ) : (
+            <Artwork seed={design.seed} palette={design.palette} shape={design.shape} rounded={false} className="!rounded-none" />
+          )}
           <div className="absolute top-3 left-3 flex gap-2">
             {design.isNew && <span className="badge" style={{ background: "#fff", color: "#0c0c0d", fontSize: "0.625rem", padding: "3px 9px" }}>NEW</span>}
             {design.aiGenerated && (

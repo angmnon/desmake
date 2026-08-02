@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { unitPriceCents, computeTotals, variantsFor } from "@/lib/data";
 import { findListingById } from "@/lib/catalog";
-import { ordersStore, newId } from "@/lib/stores";
+import { ordersStore, newId, persistOrder } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 
 // NOTE: no `export const runtime = "edge"`. These handlers read the in-memory session
@@ -130,7 +130,15 @@ export async function POST(request: NextRequest) {
   const order = {
     order_id: newId("ord"),
     user_id: user.id,
-    status: "paid",
+    // Real checkout lifecycle: an order is created *pending payment* and only
+    // becomes "paid" after /api/payments/confirm (or a gateway callback once a
+    // provider is wired in). No more auto-paid demo orders.
+    status: "pending",
+    payment: {
+      ref: newId("pay"),
+      method: null as string | null,
+      paid_at: null as string | null,
+    },
     items: lineItems,
     customer: {
       email: typeof customerRaw.email === "string" && customerRaw.email ? customerRaw.email.slice(0, 254) : user.email,
@@ -149,7 +157,7 @@ export async function POST(request: NextRequest) {
       currency: "USD",
     },
     manufacturing: {
-      status: "routing",
+      status: "pending",
       facility_id: null as string | null,
       tracking: null as string | null,
       lead_time_days: 7,
@@ -160,19 +168,19 @@ export async function POST(request: NextRequest) {
     updated_at: new Date(now).toISOString(),
     _created_ts: now,
     history: [
-      { status: "paid", note: "Payment confirmed", ts: new Date(now).toISOString() },
-      { status: "routing", note: "Matching to nearest manufacturer", ts: new Date(now).toISOString() },
+      { status: "pending", note: "Order created — awaiting payment", ts: new Date(now).toISOString() },
     ],
   };
 
   ordersStore().set(order.order_id, order);
+  void persistOrder(order).catch(() => {});
 
   return NextResponse.json(
     {
       order_id: order.order_id,
+      payment_ref: order.payment.ref,
       status: order.status,
       total: totals.totalCents,
-      manufacturing: order.manufacturing,
       created_at: order.created_at,
     },
     { status: 201 },
@@ -190,7 +198,8 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => (b._created_ts || 0) - (a._created_ts || 0))
     .map((o) => ({
       order_id: o.order_id,
-      status: o.manufacturing?.status ?? o.status,
+      status: o.status === "pending" ? "pending" : (o.manufacturing?.status ?? o.status),
+      payment_ref: o.payment?.ref ?? null,
       total_cents: o.pricing?.total_cents ?? 0,
       items: o.items,
       created_at: o.created_at,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { designsStore, newId, type PublishedDesign } from "@/lib/stores";
+import { designsStore, newId, persistDesign, type PublishedDesign } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 import { ADAPTERS, DESIGNS, CATEGORIES } from "@/lib/data";
 
@@ -108,9 +108,11 @@ export async function POST(request: NextRequest) {
     aiGenerated: true,
     prompt,
     created_at: new Date().toISOString(),
+    imageUrl: typeof body.imageUrl === "string" && body.imageUrl ? body.imageUrl.slice(0, 6000) : undefined,
   };
 
   store.set(slug, design);
+  void persistDesign(design).catch(() => {});
 
   return NextResponse.json(
     { slug: design.slug, id: design.id, title: design.title, price_cents: design.priceCents },

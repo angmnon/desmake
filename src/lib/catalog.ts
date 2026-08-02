@@ -30,6 +30,7 @@ export function publishedToDesign(p: PublishedDesign): Design {
     created: p.created_at,
     palette: p.palette,
     shape: p.shape,
+    imageUrl: p.imageUrl,
   };
 }
 

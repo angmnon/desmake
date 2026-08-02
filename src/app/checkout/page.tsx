@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart";
 import { Artwork } from "@/components/Artwork";
-import { CheckCircle2, ArrowRight, Shield } from "lucide-react";
+import { ArrowRight, Shield } from "lucide-react";
 import { ensureSession } from "@/lib/client-session";
 import { money, computeTotals, adapterName } from "@/lib/data";
 
@@ -14,8 +14,7 @@ const STEPS = ["Info", "Review"] as const;
 export default function CheckoutPage() {
   const cart = useCart();
   const router = useRouter();
-  const [step, setStep] = useState<"info" | "review" | "processing" | "done">("info");
-  const [order, setOrder] = useState<{ id: string; totalCents: number } | null>(null);
+  const [step, setStep] = useState<"info" | "review" | "processing">("info");
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     email: "",
@@ -33,10 +32,10 @@ export default function CheckoutPage() {
   const { shippingCents: shipping, taxCents: tax, totalCents: total } = totals;
 
   useEffect(() => {
-    if (cart.items.length === 0 && step !== "done") {
+    if (cart.items.length === 0) {
       router.replace("/cart");
     }
-  }, [cart.items.length, step, router]);
+  }, [cart.items.length, router]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,12 +46,16 @@ export default function CheckoutPage() {
     setStep("processing");
     setError(null);
     try {
-      // C6: ensure a session (writes require auth).
-      const authed = await ensureSession(form.email || undefined);
-      if (!authed) throw new Error("Could not sign you in. Please try again.");
+      // C6: order creation requires a logged-in account.
+      const authed = await ensureSession();
+      if (!authed) {
+        router.push("/auth?next=/checkout");
+        return;
+      }
 
-      // C1: actually place the order against the API. The server derives the
-      // authoritative price — the client never sends money amounts.
+      // C1: create the order against the API. The server derives the authoritative
+      // price — the client never sends money amounts. The order is created
+      // PENDING payment and the buyer is sent to the payment page.
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,36 +82,14 @@ export default function CheckoutPage() {
         throw new Error([err.error?.message || "Order could not be placed", detail].filter(Boolean).join(" — "));
       }
       const data = (await res.json()) as { order_id: string; total: number };
-      setOrder({ id: data.order_id, totalCents: data.total });
       cart.clear();
-      setStep("done");
+      // Off to the payment page — the order is pending until payment is confirmed.
+      router.push(`/checkout/pay?order=${data.order_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setStep("review");
     }
   };
-
-  if (step === "done" && order) {
-    return (
-      <section className="section">
-        <div className="container-narrow center" style={{ padding: "clamp(64px,8vw,112px) 24px" }}>
-          <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--color-signal)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", color: "#fff" }}>
-            <CheckCircle2 size={36} strokeWidth={1.8} />
-          </div>
-          <h1 className="h1 balance mono center">Order confirmed.</h1>
-          <p className="lead muted" style={{ maxWidth: 420, margin: "14px auto 28px" }}>
-            Your order was created and is now being routed to the nearest manufacturer. You can track its progress any time from your orders page.
-          </p>
-          <div className="card" style={{ padding: 20, maxWidth: 420, margin: "0 auto 28px", textAlign: "left" }}>
-            <div className="row-between tiny mono mb-2"><span style={{ color: "var(--color-tx-3)" }}>Order ID</span><span>{order.id}</span></div>
-            <div className="row-between tiny mono mb-2"><span style={{ color: "var(--color-tx-3)" }}>Status</span><span style={{ color: "var(--color-signal)" }}>Routing to manufacturer</span></div>
-            <div className="row-between tiny mono"><span style={{ color: "var(--color-tx-3)" }}>Total</span><span>{money(order.totalCents)}</span></div>
-          </div>
-          <Link href={`/orders/${order.id}`} className="btn btn-lg">Track your order <ArrowRight size={18} strokeWidth={1.8} /></Link>
-        </div>
-      </section>
-    );
-  }
 
   if (cart.items.length === 0) {
     return (
@@ -179,10 +160,10 @@ export default function CheckoutPage() {
               <div className="card" style={{ padding: 24 }}>
                 <div className="row-between mb-4">
                   <h3 className="h4">Review & place order</h3>
-                  <span className="tag mono"><Shield size={11} /> Demo checkout</span>
+                  <span className="tag mono"><Shield size={11} /> Secure checkout</span>
                 </div>
                 <p className="small muted" style={{ marginBottom: 16 }}>
-                  We&apos;ll create your order on the server and route it to manufacturing. No real payment is processed in this preview.
+                  Your order is created now and you&apos;ll continue to a payment step. The total is computed server-side — you are never asked to enter a price.
                 </p>
                 <div className="stack gap-3">
                   {cart.items.map((it, i) => (

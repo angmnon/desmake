@@ -65,24 +65,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: { code: "not_found", message: "Order not found" } }, { status: 404 });
   }
 
-  // Advance state based on age (real persisted order only).
+  // Advance state based on age (real persisted order only) — but never before the
+  // order has been PAID. A pending order stays pending until /api/payments/confirm.
   const age = Date.now() - (order._created_ts || idCreatedTs(order.order_id));
-  const status = currentStatus(age);
-  if (status !== order.manufacturing.status) {
-    order.manufacturing.status = status;
-    if (["in_production", "quality_check", "shipped", "delivered"].includes(status)) {
-      order.manufacturing.facility_id = order.manufacturing.facility_id || "fac_us-west-03";
+  if (order.status !== "pending") {
+    const status = currentStatus(age);
+    if (status !== order.manufacturing.status) {
+      order.manufacturing.status = status;
+      if (["in_production", "quality_check", "shipped", "delivered"].includes(status)) {
+        order.manufacturing.facility_id = order.manufacturing.facility_id || "fac_us-west-03";
+      }
+      if (["shipped", "delivered"].includes(status)) {
+        order.manufacturing.tracking = order.manufacturing.tracking || "1Z999AA10123456784";
+      }
+      order.updated_at = new Date().toISOString();
+      order.history = buildHistory(age);
     }
-    if (["shipped", "delivered"].includes(status)) {
-      order.manufacturing.tracking = order.manufacturing.tracking || "1Z999AA10123456784";
-    }
-    order.updated_at = new Date().toISOString();
-    order.history = buildHistory(age);
   }
 
   return NextResponse.json({
     order_id: order.order_id,
     status: order.status,
+    payment: order.payment,
     items: order.items,
     customer: order.customer,
     shipping: order.shipping,

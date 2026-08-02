@@ -136,7 +136,11 @@ function ListingView({ design }: { design: Design }) {
           <div className="rv in">
             <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 22 }}>
               <div style={{ aspectRatio: "1", position: "relative" }}>
-                <Artwork seed={design.seed} palette={design.palette} shape={design.shape} rounded={false} className="!rounded-none" />
+                {design.imageUrl ? (
+                  <img src={design.imageUrl} alt={design.title} className="w-full h-full object-cover" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />
+                ) : (
+                  <Artwork seed={design.seed} palette={design.palette} shape={design.shape} rounded={false} className="!rounded-none" />
+                )}
                 <div className="absolute top-4 left-4 flex gap-2">
                   {design.aiGenerated && (
                     <span className="badge" style={{ background: "rgba(12,12,13,0.75)", color: "#fff", backdropFilter: "blur(8px)" }}>

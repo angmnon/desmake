@@ -28,6 +28,7 @@ function AuthForm() {
   const [mode, setMode] = useState<AuthMode>(params.get("mode") === "register" ? "register" : "signin");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,12 +39,12 @@ function AuthForm() {
     setLoading(true);
     setError(null);
     try {
-      // Email is the identity: a brand-new email creates the account (register),
-      // an existing email signs it back in (sign in) — one endpoint, upsert semantics.
-      const res = await fetch("/api/auth/login", {
+      // Real accounts: registration creates a password account (new endpoint),
+      // sign-in verifies the password against the persisted record.
+      const res = await fetch(isRegister ? "/api/auth/register" : "/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name }),
+        body: JSON.stringify(isRegister ? { email, password, name } : { email, password }),
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
@@ -78,7 +79,7 @@ function AuthForm() {
         <p className="lead muted" style={{ margin: "12px auto 24px", maxWidth: 340 }}>
           {isRegister
             ? "Create an account to publish designs to the marketplace, track orders, and get paid when your work sells."
-            : "This is a demo marketplace. Enter your email — it&apos;s used to scope your orders and generations."}
+            : "Sign in with the email and password you registered with to manage your orders and designs."}
         </p>
 
         {/* Mode switch: Sign in / Create account */}
@@ -101,11 +102,17 @@ function AuthForm() {
             <label className="label small" htmlFor="auth-email">Email</label>
             <input id="auth-email" required type="email" maxLength={254} className="input mt-1" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={{ borderRadius: 10 }} />
           </div>
+          {isRegister && (
+            <div style={{ marginBottom: 14 }}>
+              <label className="label small" htmlFor="auth-name">Name <span className="faint">(required)</span></label>
+              <input id="auth-name" required maxLength={120} className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex Design" style={{ borderRadius: 10 }} />
+            </div>
+          )}
           <div style={{ marginBottom: 18 }}>
-            <label className="label small" htmlFor="auth-name">
-              Name {isRegister ? <span className="faint">(required)</span> : <span className="faint">(optional)</span>}
+            <label className="label small" htmlFor="auth-password">
+              Password {isRegister && <span className="faint">(min 6 chars)</span>}
             </label>
-            <input id="auth-name" required={isRegister} maxLength={120} className="input mt-1" value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex Design" style={{ borderRadius: 10 }} />
+            <input id="auth-password" required type="password" minLength={6} maxLength={128} autoComplete={isRegister ? "new-password" : "current-password"} className="input mt-1" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isRegister ? "Create a password" : "Your password"} style={{ borderRadius: 10 }} />
           </div>
           {error && <div className="tiny" role="alert" style={{ color: "var(--color-signal)", marginBottom: 12 }}>{error}</div>}
           <button type="submit" className="btn btn-lg full center" disabled={loading}>

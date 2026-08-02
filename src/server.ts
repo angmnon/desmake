@@ -1,6 +1,9 @@
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
+import { ensureSchema } from '@/lib/db';
+import { hydrateUsersAndSessions } from '@/lib/session';
+import { hydrateOrdersAndDesigns } from '@/lib/stores';
 
 // Production mode is enabled when NODE_ENV=production (set by `next build`
 // and by scripts/start.sh). COZE_PROJECT_ENV=PROD is kept for backwards
@@ -15,7 +18,23 @@ const handle = app.getRequestHandler();
 
 app
   .prepare()
-  .then(() => {
+  .then(async () => {
+    // D1 persistence: ensure tables exist, then reload users/sessions/orders/
+    // designs into memory so data survives container rebuilds. Best-effort —
+    // a D1 outage must not block boot.
+    try {
+      if (process.env.D1_DATABASE_ID && process.env.D1_CF_API_TOKEN) {
+        await ensureSchema();
+        await hydrateUsersAndSessions();
+        await hydrateOrdersAndDesigns();
+        console.log('[db] D1 persistence ready');
+      } else {
+        console.warn('[db] D1 not configured — running with in-memory stores');
+      }
+    } catch (e) {
+      console.error('[db] boot persistence step failed:', e instanceof Error ? e.message : e);
+    }
+
     const server = createServer(async (req, res) => {
       try {
         const parsedUrl = parse(req.url!, true);
