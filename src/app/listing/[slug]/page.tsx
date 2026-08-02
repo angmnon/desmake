@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
 import { Heart, ShoppingBag, Star, ChevronRight, Sparkles, BadgeCheck, Truck, ShieldCheck, RotateCcw } from "lucide-react";
 import type { Design } from "@/lib/data";
-import { adapterById, designBySlug, designsByCreator, DESIGNS, money, unitPriceCents, variantsFor, creatorByHandle } from "@/lib/data";
+import { adapterById, designBySlug, designsByCreator, money, unitPriceCents, variantsFor, creatorByHandle } from "@/lib/data";
 import { Artwork } from "@/components/Artwork";
 import { DesignCard } from "@/components/DesignCard";
 import { useCart } from "@/lib/cart";
@@ -93,7 +93,10 @@ function ListingView({ design }: { design: Design }) {
   // Shared with the API: null means "this adapter/variant combo is not sellable".
   const unit = unitPriceCents(design, activeAdapter, currentVariant);
   const related = designsByCreator(design.creator).filter((d) => d.id !== design.id).slice(0, 4);
-  const moreFrom = related.length > 0 ? related : DESIGNS.slice(0, 4);
+  // A Studio-published creator is an email-derived handle with no profile page
+  // (/creators is SSG for the seeded catalog). Don't fall back to unrelated
+  // designs under "More from this creator", and don't render a dead link.
+  const moreFrom = related;
 
   const cart = useCart();
   const canBuy = unit !== null && adapter !== undefined;
@@ -172,20 +175,36 @@ function ListingView({ design }: { design: Design }) {
             <h1 className="h1" style={{ marginBottom: 12 }}>{design.title}</h1>
 
             <div className="row gap-3 mb-5">
-              <Link href={`/creators/${creator.handle}`} className="row gap-2 hover:opacity-80" style={{ padding: "4px 0" }}>
-                <div
-                  style={{
-                    width: 32, height: 32, borderRadius: "50%",
-                    background: `linear-gradient(135deg, ${design.palette[0]}, ${design.palette[2]})`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#fff", fontWeight: 600, fontSize: 12,
-                  }}
-                >
-                  {creator.name.slice(0, 2).toUpperCase()}
+              {creatorData ? (
+                <Link href={`/creators/${creator.handle}`} className="row gap-2 hover:opacity-80" style={{ padding: "4px 0" }}>
+                  <div
+                    style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${design.palette[0]}, ${design.palette[2]})`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#fff", fontWeight: 600, fontSize: 12,
+                    }}
+                  >
+                    {creator.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="small font-medium">{creator.name}</span>
+                  {creator.verified && <BadgeCheck size={15} style={{ color: "var(--color-cobalt)" }} />}
+                </Link>
+              ) : (
+                <div className="row gap-2" style={{ padding: "4px 0" }}>
+                  <div
+                    style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${design.palette[0]}, ${design.palette[2]})`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#fff", fontWeight: 600, fontSize: 12,
+                    }}
+                  >
+                    {creator.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="small font-medium">{creator.name}</span>
                 </div>
-                <span className="small font-medium">{creator.name}</span>
-                {creator.verified && <BadgeCheck size={15} style={{ color: "var(--color-cobalt)" }} />}
-              </Link>
+              )}
               <span className="mono small" style={{ color: "var(--color-tx-3)" }}>·</span>
               <span className="small row gap-1" style={{ color: "var(--color-tx-2)" }}>
                 <Star size={13} fill="var(--color-amber)" stroke="none" />
@@ -315,7 +334,9 @@ function ListingView({ design }: { design: Design }) {
           <div className="container-wide">
             <div className="sec-head">
               <h2 className="h2">More from this creator</h2>
-              <Link href={`/creators/${creator.handle}`} className="link-u small">View all <ChevronRight size={14} /></Link>
+              {creatorData && (
+                <Link href={`/creators/${creator.handle}`} className="link-u small">View all <ChevronRight size={14} /></Link>
+              )}
             </div>
             <div className="grid g-4">
               {moreFrom.map((d) => <DesignCard key={d.id} design={d} />)}
