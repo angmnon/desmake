@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
 
 /**
@@ -20,7 +20,6 @@ function safeNext(raw: string | null): string {
 }
 
 function AuthForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
   const [email, setEmail] = useState("");
@@ -44,12 +43,18 @@ function AuthForm() {
       }
       // R2/Hx: never call router.refresh() right after router.replace() — the
       // refresh re-renders the CURRENT route and can swallow the pending
-      // navigation, leaving the user stuck on /auth with the button frozen on
-      // "Signing in…" even though the login succeeded (reproducible on live).
-      // The account page fetches its own session client-side, so refresh() is
-      // redundant here. Reset loading, then navigate.
+      // navigation. More importantly, a client-side replace() here does NOT
+      // work at all after a fresh login: while signed out, Next prefetches
+      // /account (every Link target) and the proxy 307s it to /auth; that
+      // redirect is cached in the router, so replace() after login bounces
+      // straight back to /auth and the user appears stuck on the sign-in page
+      // (button frozen) even though the login API returned 200.
+      //
+      // Fix: hard navigation. It carries the freshly-set session cookie to the
+      // proxy guard, which then lets /account through. The account page fetches
+      // its own session client-side, so no refresh() is needed either.
       setLoading(false);
-      router.replace(next);
+      window.location.assign(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
       setLoading(false);
