@@ -84,7 +84,10 @@ export function SiteHeader() {
             <Link href="/explore" className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[rgba(12,12,13,0.05)] transition-colors" aria-label="Wishlist">
               <Heart size={18} strokeWidth={1.8} />
             </Link>
-            <Link href="/auth" className="btn btn-sm ml-2" style={{ padding: "9px 18px", fontSize: "0.875rem" }}>
+            <Link href="/auth?mode=register" className="btn btn-sm btn-outline" style={{ padding: "9px 16px", fontSize: "0.875rem" }}>
+              Create account
+            </Link>
+            <Link href="/auth" className="btn btn-sm" style={{ padding: "9px 18px", fontSize: "0.875rem" }}>
               Sign in
             </Link>
           </div>
@@ -110,7 +113,8 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="flex gap-3 mt-6">
-              <Link href="/auth" className="btn flex-1" onClick={() => setMobileOpen(false)}>Sign in</Link>
+              <Link href="/auth?mode=register" className="btn flex-1" onClick={() => setMobileOpen(false)}>Create account</Link>
+              <Link href="/auth" className="btn btn-outline" onClick={() => setMobileOpen(false)}>Sign in</Link>
               <Link href="/cart" className="btn btn-outline" onClick={() => setMobileOpen(false)}>
                 <ShoppingBag size={18} /> Cart
               </Link>
