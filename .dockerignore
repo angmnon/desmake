@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+.git
+.backup-r2
+.coze
+*.log
+.wrangler
+.wrangler.toml
+.dev.vars

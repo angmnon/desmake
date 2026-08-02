@@ -1,0 +1,20 @@
+name = "desmake"
+account_id = "ceb1001d1ab2a3f36b40aa34ca3b6db5"
+main = "worker.mjs"
+compatibility_date = "2026-07-26"
+
+# Cloudflare Containers: runs the existing custom Next.js Node server unchanged.
+# A single, fixed container instance ("desmake") hosts the whole site so the
+# in-memory session/order store (globalThis) is shared across all requests.
+[[containers]]
+class_name = "DesmakeContainer"
+image = "./Dockerfile"
+max_instances = 3
+
+[[durable_objects.bindings]]
+name = "DESMAKE"
+class_name = "DesmakeContainer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DesmakeContainer"]
