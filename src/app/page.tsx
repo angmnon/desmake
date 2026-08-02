@@ -212,7 +212,7 @@ export default function HomePage() {
 
       {/* ══════════ FEATURED ══════════ */}
       <section className="section">
-        <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,.85fr)", gap: "clamp(24px,4vw,56px)", alignItems: "center" }}>
+        <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,.85fr)", gap: "clamp(24px,4vw,56px)", alignItems: "start" }}>
           <div className="rv" style={{ position: "relative" }}>
             <div className="card" style={{ borderRadius: 22, overflow: "hidden", padding: 0 }}>
               <div style={{ aspectRatio: "4/3" }}>
