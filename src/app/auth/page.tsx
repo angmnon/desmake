@@ -42,8 +42,14 @@ function AuthForm() {
         const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
         throw new Error(err.error?.message || "Sign in failed");
       }
+      // R2/Hx: never call router.refresh() right after router.replace() — the
+      // refresh re-renders the CURRENT route and can swallow the pending
+      // navigation, leaving the user stuck on /auth with the button frozen on
+      // "Signing in…" even though the login succeeded (reproducible on live).
+      // The account page fetches its own session client-side, so refresh() is
+      // redundant here. Reset loading, then navigate.
+      setLoading(false);
       router.replace(next);
-      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed");
       setLoading(false);
