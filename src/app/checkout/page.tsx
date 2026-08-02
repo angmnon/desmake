@@ -32,10 +32,14 @@ export default function CheckoutPage() {
   const { shippingCents: shipping, taxCents: tax, totalCents: total } = totals;
 
   useEffect(() => {
-    if (cart.items.length === 0) {
+    // Only bounce empty-cart visitors away during the normal flow. While an order
+    // is being placed (processing) the cart is cleared on purpose right before
+    // navigating to the payment page — that must NOT trigger a redirect back to
+    // /cart (it would race the /checkout/pay navigation).
+    if (cart.items.length === 0 && step !== "processing") {
       router.replace("/cart");
     }
-  }, [cart.items.length, router]);
+  }, [cart.items.length, step, router]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
