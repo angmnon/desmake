@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <!-- D mark: sharp outer square with curved inner = Design + Manufacturing node -->
+  <rect x="2" y="2" width="36" height="36" rx="7" fill="#0c0c0d"/>
+  <path d="M11 9h11.5c6.35 0 11.5 5.15 11.5 11.5S28.85 32 22.5 32H11V9z" fill="#f7f6f3"/>
+  <path d="M18 17h5.5c2.49 0 4.5 2.01 4.5 4.5S25.99 26 23.5 26H18V17z" fill="#0c0c0d"/>
+  <circle cx="32" cy="10" r="3" fill="#ff4d18"/>
+</svg>
