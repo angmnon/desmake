@@ -38,7 +38,7 @@ export default function HomePage() {
       <section className="relative grain overflow-hidden" style={{ paddingTop: "clamp(48px, 7vw, 96px)", paddingBottom: "clamp(40px, 5vw, 72px)" }}>
         <div className="spot" style={{ width: 480, height: 480, background: "rgba(255,77,24,0.14)", top: -160, right: -60 }} />
         <div className="spot" style={{ width: 420, height: 420, background: "rgba(34,68,255,0.1)", bottom: -180, left: -120 }} />
-        <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.06fr) minmax(0, 0.94fr)", gap: "clamp(32px,5vw,72px)", alignItems: "center" }}>
+        <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.06fr) minmax(0, 0.94fr)", gap: "clamp(32px,5vw,72px)", alignItems: "start" }}>
           <div className="rv in">
             <div className="row gap-3 wrap" style={{ marginBottom: 26 }}>
               <span className="badge badge-outline">AI Native Design Marketplace</span>
@@ -295,7 +295,7 @@ export default function HomePage() {
       <section className="section section-ink grain agent-band" style={{ position: "relative", overflow: "hidden" }}>
         <div className="spot" style={{ width: 500, height: 500, background: "rgba(255,77,24,0.18)", top: -200, right: -100 }} />
         <div className="spot" style={{ width: 420, height: 420, background: "rgba(107,61,245,0.15)", bottom: -200, left: -100 }} />
-        <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.05fr)", gap: "clamp(28px,4vw,64px)", alignItems: "center", position: "relative", zIndex: 2 }}>
+        <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.05fr)", gap: "clamp(28px,4vw,64px)", alignItems: "start", position: "relative", zIndex: 2 }}>
           <div>
             <div className="eyebrow eyebrow-dot">Agent Hub</div>
             <h2 className="h1" style={{ marginTop: 16, color: "#f7f6f3" }}>

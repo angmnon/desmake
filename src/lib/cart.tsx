@@ -28,14 +28,18 @@ type CartCtx = {
 const Ctx = createContext<CartCtx | null>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-
-  useEffect(() => {
+  const [items, setItems] = useState<CartItem[]>(() => {
+    // Synchronous initialiser so the first render already has persisted items.
+    // Prevents /checkout from incorrectly redirecting to /cart when the cart
+    // is non-empty (the old useEffect-only load created a one-frame race).
+    if (typeof window === "undefined") return [];
     try {
       const saved = localStorage.getItem("dm_cart");
-      if (saved) setItems(JSON.parse(saved));
-    } catch {}
-  }, []);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     try {
