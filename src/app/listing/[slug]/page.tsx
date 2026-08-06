@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
 import { Heart, ShoppingBag, Star, ChevronRight, Sparkles, BadgeCheck, Truck, ShieldCheck, RotateCcw } from "lucide-react";
 import type { Design } from "@/lib/data";
-import { adapterById, designBySlug, designsByCreator, money, unitPriceCents, variantsFor, creatorByHandle } from "@/lib/data";
+import { adapterById, designBySlug, designsByCreator, money, unitPriceForSku, variantsForSku, adapterDefaultSku, adapterIdForSku, creatorByHandle, SKU_BY_ID, type SelectedProduct } from "@/lib/data";
 import { Artwork } from "@/components/Artwork";
 import { DesignCard } from "@/components/DesignCard";
 import { useCart } from "@/lib/cart";
@@ -17,6 +17,9 @@ type ApiListing = {
     creator?: { handle: string };
     adapters?: Array<{ id: string; retail_cents: number }>;
     seed: string; palette: [string, string, string]; shape: number;
+    image_url?: string; description?: string; source?: string;
+    royalty_rate?: number;
+    selected_products?: Array<{ sku: string; variant: string | null }>;
   };
 };
 
@@ -52,7 +55,10 @@ export default function ListingPage() {
           likes: 0, views: 0, sales: 0, rating: 0, reviews: 0,
           aiGenerated: Boolean(d.ai_generated), isNew: true,
           tags: d.tags ?? [], created: d.created ?? new Date().toISOString(),
-          palette: d.palette, shape: d.shape,
+          palette: d.palette, shape: d.shape, imageUrl: d.image_url, description: d.description,
+          source: d.source === "ai" || d.source === "upload" ? d.source : undefined,
+          royaltyRate: d.royalty_rate,
+          selectedProducts: (d.selected_products ?? []).map((p) => ({ sku: p.sku, variant: p.variant ?? undefined })),
         });
       })
       .catch(() => { if (!cancelled) setMissing(true); });
@@ -72,10 +78,21 @@ export default function ListingPage() {
 }
 
 function ListingView({ design }: { design: Design }) {
-  const [activeAdapter, setActiveAdapter] = useState(design.adapters[0] ?? "");
+  // M3: 优先用发布时勾选的具体商品（SKU）；旧数据回退到 adapters 推导的 family 默认 SKU。
+  const products: SelectedProduct[] =
+    design.selectedProducts && design.selectedProducts.length > 0
+      ? design.selectedProducts
+      : (design.adapters
+          .map((a) => {
+            const s = adapterDefaultSku(a);
+            return s ? { sku: s } : undefined;
+          })
+          .filter((x): x is SelectedProduct => Boolean(x)));
+  const [activeSku, setActiveSku] = useState(products[0]?.sku ?? "");
   const [qty, setQty] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
+  const [heroError, setHeroError] = useState(false);
 
   const creatorData = creatorByHandle(design.creator);
   const creator = useMemo(
@@ -85,13 +102,13 @@ function ListingView({ design }: { design: Design }) {
         : { name: design.creator, handle: design.creator, verified: false },
     [design.creator, creatorData],
   );
-  const adapter = adapterById(activeAdapter);
+  const adapter = adapterById(adapterIdForSku(activeSku) ?? "");
   // C4/M4/M5: variants + price deltas come from the single ADAPTER_VARIANTS catalog
   // in data.ts — the same table the server uses. No page-local price tables.
-  const variants = variantsFor(activeAdapter);
+  const variants = variantsForSku(activeSku);
   const currentVariant = selectedVariant && variants.includes(selectedVariant) ? selectedVariant : variants[0];
-  // Shared with the API: null means "this adapter/variant combo is not sellable".
-  const unit = unitPriceCents(design, activeAdapter, currentVariant);
+  // Shared with the API: null means "this sku/variant combo is not sellable".
+  const unit = unitPriceForSku(activeSku, currentVariant);
   const related = designsByCreator(design.creator).filter((d) => d.id !== design.id).slice(0, 4);
   // A Studio-published creator is an email-derived handle with no profile page
   // (/creators is SSG for the seeded catalog). Don't fall back to unrelated
@@ -108,7 +125,9 @@ function ListingView({ design }: { design: Design }) {
       title: design.title,
       // C4: store the adapter ID, never the display name. The server resolves
       // prices by ID; sending "3D Print" silently fell back to the T-Shirt price.
-      adapter: activeAdapter,
+      adapter: adapterIdForSku(activeSku) ?? activeSku,
+      // M3: 具体 SKU（订单按 SKU 真实供应链成本计价）
+      sku: activeSku,
       variant: currentVariant,
       qty,
       priceCents: unit,
@@ -136,8 +155,14 @@ function ListingView({ design }: { design: Design }) {
           <div className="rv in">
             <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 22 }}>
               <div style={{ aspectRatio: "1", position: "relative" }}>
-                {design.imageUrl ? (
-                  <img src={design.imageUrl} alt={design.title} className="w-full h-full object-cover" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />
+                {design.imageUrl && !heroError ? (
+                  <img
+                    src={design.imageUrl}
+                    alt={design.title}
+                    onError={() => setHeroError(true)}
+                    className="w-full h-full object-cover"
+                    style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
+                  />
                 ) : (
                   <Artwork seed={design.seed} palette={design.palette} shape={design.shape} rounded={false} className="!rounded-none" />
                 )}
@@ -145,6 +170,11 @@ function ListingView({ design }: { design: Design }) {
                   {design.aiGenerated && (
                     <span className="badge" style={{ background: "rgba(12,12,13,0.75)", color: "#fff", backdropFilter: "blur(8px)" }}>
                       <Sparkles size={11} /> AI Generated
+                    </span>
+                  )}
+                  {!design.aiGenerated && design.imageUrl && (
+                    <span className="badge" style={{ background: "rgba(12,12,13,0.75)", color: "#fff", backdropFilter: "blur(8px)" }}>
+                      Uploaded
                     </span>
                   )}
                 </div>
@@ -155,15 +185,20 @@ function ListingView({ design }: { design: Design }) {
               {design.adapters.map((aid, i) => (
                 <button
                   key={aid}
-                  onClick={() => { setActiveAdapter(aid); setSelectedVariant(null); }}
+                  onClick={() => { setActiveSku(adapterDefaultSku(aid) ?? activeSku); setSelectedVariant(null); }}
                   className="overflow-hidden"
                   style={{
                     width: 80, height: 80, borderRadius: 14,
-                    border: activeAdapter === aid ? "2px solid var(--color-ink)" : "2px solid transparent",
+                    border: activeSku === adapterDefaultSku(aid) ? "2px solid var(--color-ink)" : "2px solid transparent",
                     padding: 0,
                   }}
                 >
-                  <Artwork seed={design.seed + aid} palette={design.palette} shape={(design.shape + i) % 6} rounded={false} className="!rounded-none" />
+                  {design.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={design.imageUrl} alt={`${design.title} on ${aid}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <Artwork seed={design.seed + aid} palette={design.palette} shape={(design.shape + i) % 6} rounded={false} className="!rounded-none" />
+                  )}
                 </button>
               ))}
             </div>
@@ -219,37 +254,42 @@ function ListingView({ design }: { design: Design }) {
             <div className="h2 tnum" style={{ marginBottom: 8 }}>
               {unit === null ? "Unavailable" : money(unit)}
             </div>
+            {design.royaltyRate ? (
+              <p className="tiny mono" style={{ color: "var(--color-cobalt)", marginBottom: 12 }}>
+                Creator earns {Math.round(design.royaltyRate * 100)}% on this design
+              </p>
+            ) : null}
             <p className="small muted" style={{ marginBottom: 32 }}>
               {adapter
                 ? `${adapter.method} · Lead time ${adapter.lead} business days · Produced on demand`
                 : "This product option is currently unavailable."}
             </p>
 
-            {/* Adapter selector */}
+            {/* M3: 具体商品（SKU）选择器 */}
             <div className="mb-6">
-              <div className="label">Product type</div>
-              <div className="grid" style={{ gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
-                {design.adapters.map((aid) => {
-                  const a = adapterById(aid);
-                  if (!a) return null;
-                  // Show the real all-in price for that adapter (base + design premium),
+              <div className="label">Product</div>
+              <div className="grid" style={{ gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
+                {products.map((p) => {
+                  const sku = SKU_BY_ID[p.sku];
+                  if (!sku) return null;
+                  // Show the real all-in price for that SKU (supply-chain retail + variant delta),
                   // so the tile matches the headline price instead of the bare base cost.
-                  const price = unitPriceCents(design, aid, variantsFor(aid)[0]);
+                  const price = unitPriceForSku(p.sku, variantsForSku(p.sku)[0]);
                   return (
                     <button
-                      key={aid}
-                      onClick={() => { setActiveAdapter(aid); setSelectedVariant(null); }}
+                      key={p.sku}
+                      onClick={() => { setActiveSku(p.sku); setSelectedVariant(null); }}
                       className="text-left"
                       style={{
                         padding: "12px", border: "1px solid",
-                        borderColor: activeAdapter === aid ? "var(--color-ink)" : "rgba(12,12,13,0.12)",
-                        borderRadius: 12, background: activeAdapter === aid ? "var(--color-ink)" : "var(--color-surface)",
-                        color: activeAdapter === aid ? "var(--color-paper)" : "var(--color-tx)",
+                        borderColor: activeSku === p.sku ? "var(--color-ink)" : "rgba(12,12,13,0.12)",
+                        borderRadius: 12, background: activeSku === p.sku ? "var(--color-ink)" : "var(--color-surface)",
+                        color: activeSku === p.sku ? "var(--color-paper)" : "var(--color-tx)",
                         transition: "all 0.2s",
                       }}
                     >
-                      <div className="h5">{a.name}</div>
-                      <div className="tiny mono" style={{ color: activeAdapter === aid ? "rgba(247,246,243,0.6)" : "var(--color-tx-3)", marginTop: 2 }}>
+                      <div className="h5" style={{ fontSize: "0.9rem", lineHeight: 1.3 }}>{sku.name}</div>
+                      <div className="tiny mono" style={{ color: activeSku === p.sku ? "rgba(247,246,243,0.6)" : "var(--color-tx-3)", marginTop: 2 }}>
                         {price === null ? "—" : money(price)}
                       </div>
                     </button>
@@ -317,6 +357,7 @@ function ListingView({ design }: { design: Design }) {
             <div className="stack gap-4">
               <div>
                 <div className="label">About this design</div>
+                {design.description && <p className="small" style={{ marginBottom: 10 }}>{design.description}</p>}
                 <p className="small muted">
                   Generated/designed by {creator.name}. Each unit is produced on demand when you order — no inventory, no waste. Our manufacturing partners in 14 regions route your order to the closest facility with available capacity.
                 </p>

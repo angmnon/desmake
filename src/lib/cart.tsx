@@ -13,6 +13,8 @@ export type CartItem = {
   seed: string;
   palette: [string, string, string];
   shape: number;
+  /** M3: 具体商品 SKU（下单时按 SKU 真实供应链成本计价） */
+  sku: string;
 };
 
 type CartCtx = {
@@ -53,7 +55,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // duplicating — also keeps per-line shipping sensible (Medium).
     setItems((prev) => {
       const idx = prev.findIndex(
-        (it) => it.listingId === item.listingId && it.adapter === item.adapter && it.variant === item.variant,
+        (it) => it.listingId === item.listingId && it.adapter === item.adapter && it.variant === item.variant && it.sku === item.sku,
       );
       if (idx >= 0) {
         const next = [...prev];

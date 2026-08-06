@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { Inactive } from "@/components/Inactive";
 
 const LINK_STYLE: CSSProperties = { color: "rgba(247,246,243,0.72)", transition: "color 0.2s" };
 
@@ -15,9 +14,9 @@ type FooterItem = readonly [label: string, href: string | null];
 
 const COLUMNS: readonly { h: string; items: readonly FooterItem[] }[] = [
   { h: "Product", items: [["Explore", "/explore"], ["Studio", "/studio"], ["Creators", "/creators"], ["Agents", "/agents"]] },
-  { h: "Manufacturing", items: [["Adapters", "/explore"], ["Pricing", null], ["Shipping", null], ["Quality", null]] },
-  { h: "Creators", items: [["Become a creator", "/creators"], ["Payouts", null], ["Guidelines", null], ["Dashboard", "/account"]] },
-  { h: "Company", items: [["About", null], ["Docs", null], ["API", "/agents"], ["Contact", null]] },
+  { h: "Manufacturing", items: [["Adapters", "/explore"], ["Pricing", "/pricing"], ["Shipping", "/shipping"], ["Quality", "/quality"]] },
+  { h: "Creators", items: [["Become a creator", "/creators"], ["Payouts", "/payouts"], ["Guidelines", "/guidelines"], ["Dashboard", "/account"]] },
+  { h: "Company", items: [["About", "/about"], ["Docs", "/docs"], ["API", "/agents"], ["Contact", "/contact"]] },
 ];
 
 export function SiteFooter() {
@@ -48,7 +47,7 @@ export function SiteFooter() {
                 {col.items.map(([label, href]) => (
                   <li key={label}>
                     {href === null ? (
-                      <Inactive className="small" style={LINK_STYLE}>{label}</Inactive>
+                      <span className="small dm-inactive" style={LINK_STYLE}>{label}</span>
                     ) : (
                       <Link href={href} className="small dm-footer-link" style={LINK_STYLE}>
                         {label}
@@ -68,9 +67,9 @@ export function SiteFooter() {
             © 2026 Desmake, Inc. — Designed for makers. Manufactured worldwide.
           </div>
           <div className="row gap-5 tiny mono" style={{ color: "rgba(247,246,243,0.4)" }}>
-            <Inactive style={{ color: "rgba(247,246,243,0.4)" }}>Privacy</Inactive>
-            <Inactive style={{ color: "rgba(247,246,243,0.4)" }}>Terms</Inactive>
-            <Inactive style={{ color: "rgba(247,246,243,0.4)" }}>Cookies</Inactive>
+            <Link href="/privacy" className="dm-footer-link" style={{ color: "rgba(247,246,243,0.4)" }}>Privacy</Link>
+            <Link href="/terms" className="dm-footer-link" style={{ color: "rgba(247,246,243,0.4)" }}>Terms</Link>
+            <Link href="/cookies" className="dm-footer-link" style={{ color: "rgba(247,246,243,0.4)" }}>Cookies</Link>
             <span>v0.1.0-mvp</span>
           </div>
         </div>

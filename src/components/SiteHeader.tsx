@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-import { Bell, ShoppingBag, Menu, X, Search, Heart } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Bell, ShoppingBag, Menu, X, Search, Heart, LogOut, User as UserIcon } from "lucide-react";
 import { useCart } from "@/lib/cart";
+import { useUser } from "@/lib/use-user";
 
 function CartBadge() {
   const { count } = useCart();
@@ -37,9 +38,40 @@ function CartBadge() {
   );
 }
 
+function initialsOf(name: string, email: string): string {
+  const base = (name || email).trim();
+  const parts = base.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export function SiteHeader() {
   const pathname = usePathname();
+  const { user } = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // `next` carries the current location so signing in returns the visitor to
+  // where they were. Never point it at /auth itself (would loop).
+  const next = pathname.startsWith("/auth") ? "/" : pathname;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
+
+  const signOut = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setMenuOpen(false);
+    // Hard nav clears in-memory session state everywhere and returns to home.
+    window.location.assign("/");
+  };
 
   const navItems = [
     { href: "/explore", label: "Explore" },
@@ -47,6 +79,57 @@ export function SiteHeader() {
     { href: "/creators", label: "Creators" },
     { href: "/agents", label: "Agents" },
   ];
+
+  const accountMenu = user ? (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setMenuOpen((o) => !o)}
+        className="row gap-2"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        style={{ padding: "4px 6px 4px 4px", borderRadius: 999, border: "1px solid rgba(12,12,13,0.1)" }}
+      >
+        <span
+          style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--color-ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}
+        >
+          {initialsOf(user.name, user.email)}
+        </span>
+        <span className="small" style={{ fontWeight: 500 }}>{(user.name || "Account").split(" ")[0]}</span>
+      </button>
+      {menuOpen && (
+        <div
+          className="card"
+          role="menu"
+          style={{ position: "absolute", right: 0, top: "calc(100% + 10px)", width: 232, padding: 8, zIndex: 60, boxShadow: "0 4px 12px rgba(12,12,13,0.06), 0 30px 60px -24px rgba(12,12,13,0.26)" }}
+        >
+          <div className="row gap-3" style={{ padding: "10px 12px" }}>
+            <span style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--color-ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8125rem", fontWeight: 600, flexShrink: 0 }}>
+              {initialsOf(user.name, user.email)}
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div className="h5" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name || "Account"}</div>
+              <div className="tiny faint" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
+            </div>
+          </div>
+          <div style={{ height: 1, background: "rgba(12,12,13,0.1)", margin: "4px 0" }} />
+          <Link href="/account" onClick={() => setMenuOpen(false)} className="dm-menu-item" role="menuitem">My account</Link>
+          <Link href="/orders" onClick={() => setMenuOpen(false)} className="dm-menu-item" role="menuitem">My orders</Link>
+          <button onClick={signOut} className="dm-menu-item" role="menuitem" style={{ width: "100%", textAlign: "left", color: "var(--color-signal)" }}>
+            <LogOut size={15} strokeWidth={1.8} style={{ display: "inline", verticalAlign: "-2px", marginRight: 8 }} /> Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  ) : (
+    <>
+      <Link href={`/auth?mode=register&next=${encodeURIComponent(next)}`} className="btn btn-sm btn-outline" style={{ padding: "9px 16px", fontSize: "0.875rem" }}>
+        Create account
+      </Link>
+      <Link href={`/auth?next=${encodeURIComponent(next)}`} className="btn btn-sm" style={{ padding: "9px 18px", fontSize: "0.875rem" }}>
+        Sign in
+      </Link>
+    </>
+  );
 
   return (
     <>
@@ -84,12 +167,7 @@ export function SiteHeader() {
             <Link href="/explore" className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-[rgba(12,12,13,0.05)] transition-colors" aria-label="Wishlist">
               <Heart size={18} strokeWidth={1.8} />
             </Link>
-            <Link href="/auth?mode=register" className="btn btn-sm btn-outline" style={{ padding: "9px 16px", fontSize: "0.875rem" }}>
-              Create account
-            </Link>
-            <Link href="/auth" className="btn btn-sm" style={{ padding: "9px 18px", fontSize: "0.875rem" }}>
-              Sign in
-            </Link>
+            {accountMenu}
           </div>
 
           <button className="md:hidden w-10 h-10 flex items-center justify-center" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
@@ -113,8 +191,17 @@ export function SiteHeader() {
               </Link>
             ))}
             <div className="flex gap-3 mt-6">
-              <Link href="/auth?mode=register" className="btn flex-1" onClick={() => setMobileOpen(false)}>Create account</Link>
-              <Link href="/auth" className="btn btn-outline" onClick={() => setMobileOpen(false)}>Sign in</Link>
+              {user ? (
+                <>
+                  <Link href="/account" className="btn flex-1" onClick={() => setMobileOpen(false)}><UserIcon size={18} /> Account</Link>
+                  <button className="btn btn-outline" onClick={() => { setMobileOpen(false); void signOut(); }}>Sign out</button>
+                </>
+              ) : (
+                <>
+                  <Link href={`/auth?mode=register&next=${encodeURIComponent(next)}`} className="btn flex-1" onClick={() => setMobileOpen(false)}>Create account</Link>
+                  <Link href={`/auth?next=${encodeURIComponent(next)}`} className="btn btn-outline" onClick={() => setMobileOpen(false)}>Sign in</Link>
+                </>
+              )}
               <Link href="/cart" className="btn btn-outline" onClick={() => setMobileOpen(false)}>
                 <ShoppingBag size={18} /> Cart
               </Link>

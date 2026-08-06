@@ -7,7 +7,7 @@ import { useCart } from "@/lib/cart";
 import { Artwork } from "@/components/Artwork";
 import { ArrowRight, Shield } from "lucide-react";
 import { ensureSession } from "@/lib/client-session";
-import { money, computeTotals, adapterName } from "@/lib/data";
+import { money, computeOrderTotals, regionFromCountry, adapterDefaultSku, adapterName } from "@/lib/data";
 
 const STEPS = ["Info", "Review"] as const;
 
@@ -25,10 +25,14 @@ export default function CheckoutPage() {
     country: "US",
   });
 
-  // Single pricing source of truth: call the SAME computeTotals() the API uses,
+  // Single pricing source of truth: call the SAME computeOrderTotals() the API uses,
   // rather than re-deriving shipping/tax here (a copy that silently drifts is how
   // the displayed total stopped matching the charged total).
-  const totals = computeTotals(cart.items.map((it) => ({ priceCents: it.priceCents, qty: it.qty })));
+  const region = regionFromCountry(form.country);
+  const totals = computeOrderTotals(
+    cart.items.map((it) => ({ sku: it.sku || adapterDefaultSku(it.adapter) || "", qty: it.qty, variant: it.variant })),
+    region,
+  );
   const { shippingCents: shipping, taxCents: tax, totalCents: total } = totals;
 
   useEffect(() => {
@@ -65,6 +69,8 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customer: { email: form.email, name: form.name },
+          country: form.country,
+          region,
           shipping: {
             address: `${form.address}, ${form.city} ${form.zip}, ${form.country}`,
             method: "standard",
@@ -72,6 +78,7 @@ export default function CheckoutPage() {
           items: cart.items.map((it) => ({
             listing_id: it.listingId,
             adapter: it.adapter,
+            sku: it.sku || adapterDefaultSku(it.adapter) || "",
             variant: it.variant,
             quantity: it.qty,
           })),

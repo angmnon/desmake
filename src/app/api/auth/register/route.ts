@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createUser, createSession, findUserByEmail, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { createVerificationToken } from "@/lib/verify";
+import { sendVerificationEmail } from "@/lib/email";
+import { getSiteBaseUrl } from "@/lib/url";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -32,10 +35,26 @@ export async function POST(request: NextRequest) {
 
   try {
     const user = createUser(email, name, password);
-    const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+    const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: user.emailVerified };
     const token = createSession(sessionUser);
 
-    const res = NextResponse.json({ user: sessionUser }, { status: 201 });
+    // Email confirmation: create a verification token and send it. When no email
+    // provider is configured we surface the link in the response so the flow is
+    // still testable (dev only — never log tokens in production).
+    let verificationLink: string | undefined;
+    try {
+      const vtoken = await createVerificationToken(user.id);
+      const baseUrl = getSiteBaseUrl(request);
+      const sent = await sendVerificationEmail(baseUrl, user.email, vtoken);
+      if (!sent.delivered) verificationLink = sent.link;
+    } catch (e) {
+      console.error("[register] verification email failed:", e instanceof Error ? e.message : e);
+    }
+
+    const res = NextResponse.json(
+      { user: sessionUser, email_verification_link: verificationLink },
+      { status: 201 },
+    );
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
     return res;
   } catch (err) {

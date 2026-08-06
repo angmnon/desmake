@@ -1,8 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { unitPriceCents, computeTotals, variantsFor } from "@/lib/data";
-import { findListingById } from "@/lib/catalog";
-import { ordersStore, newId, persistOrder } from "@/lib/stores";
+import {
+  unitPriceForSku,
+  variantDeltaForSku,
+  adapterIdForSku,
+  adapterDefaultSku,
+  variantsForSku,
+  computeOrderTotals,
+  regionFromCountry,
+  type Region,
+} from "@/lib/data";
+import {
+  SKU_BY_ID,
+  retailCents as skuRetailCents,
+  salePriceCents as skuSaleCents,
+  freightCents as skuFreightCents,
+} from "@/lib/pricing";
+import { findListingByIdAsync } from "@/lib/catalog";
+import { ordersStore, newId, persistOrder, findPublishedDesignByIdAsync } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 
 // NOTE: no `export const runtime = "edge"`. These handlers read the in-memory session
@@ -14,11 +29,18 @@ const MAX_ITEMS = 50;
 
 type LineItem = {
   listing_id: string;
+  listing_slug?: string;
   title: string;
   adapter: string;
   variant: string;
   quantity: number;
   unit_price_cents: number;
+  // M3: 分成链路
+  sku?: string;
+  creator_id?: string;
+  royalty_rate?: number;
+  net_cents?: number;
+  royalty_cents?: number;
 };
 
 export async function POST(request: NextRequest) {
@@ -46,8 +68,33 @@ export async function POST(request: NextRequest) {
   const lineItems: LineItem[] = [];
   const rejected: Array<{ index: number; reason: string }> = [];
 
+  // 目的地 → 税率档位（EU 19% / US 7% / 其他 0%）。平台代缴，计入售价，不进分成基数。
+  const regionRaw = typeof (body as { region?: unknown }).region === "string" ? (body as { region: string }).region : "";
+  const countryRaw = typeof (body as { country?: unknown }).country === "string" ? (body as { country: string }).country : "";
+  const region: Region =
+    regionRaw === "EU" || regionRaw === "US" ? (regionRaw as Region) : regionFromCountry(countryRaw);
+
+  // 跨实例解析：先把本次订单涉及的 listing 一次性解析好（内存未命中回落 D1），
+  // 否则 max_instances=3 时「刚发布的设计下单报 unknown listing_id」。
+  const requestedIds = Array.from(
+    new Set(
+      items
+        .map((raw: unknown) => (raw as { listing_id?: unknown })?.listing_id)
+        .filter((v: unknown): v is string => typeof v === "string"),
+    ),
+  );
+  const resolved = new Map<
+    string,
+    { listing: Awaited<ReturnType<typeof findListingByIdAsync>>; pub: Awaited<ReturnType<typeof findPublishedDesignByIdAsync>> }
+  >();
+  for (const id of requestedIds) {
+    const listing = await findListingByIdAsync(id);
+    const pub = listing ? await findPublishedDesignByIdAsync(listing.id) : undefined;
+    resolved.set(id, { listing, pub });
+  }
+
   items.forEach((raw: unknown, index: number) => {
-    const it = (raw ?? {}) as { listing_id?: unknown; adapter?: unknown; variant?: unknown; quantity?: unknown };
+    const it = (raw ?? {}) as { listing_id?: unknown; adapter?: unknown; sku?: unknown; variant?: unknown; quantity?: unknown };
 
     if (typeof it.listing_id !== "string") {
       rejected.push({ index, reason: "listing_id must be a string" });
@@ -64,44 +111,84 @@ export async function POST(request: NextRequest) {
       return;
     }
 
-    // Resolves seeded catalog designs AND designs published from Studio (R2/H8).
-    const listing = findListingById(it.listing_id);
+    // Resolves seeded catalog designs AND designs published from Studio (R2/H8),
+    // 内存未命中时已在上面回落过 D1。
+    const hit = resolved.get(it.listing_id);
+    const listing = hit?.listing;
     if (!listing) {
       rejected.push({ index, reason: "unknown listing_id" });
       return;
     }
 
-    const adapterId = typeof it.adapter === "string" ? it.adapter : "";
-    // R2/H3: the adapter must actually be offered by this listing. Without this check a
-    // crafted request could buy a `print3d`-only design as a `sticker` and pay $12
-    // instead of $68. There is deliberately no default adapter — an absent or unknown
-    // adapter is a client bug, not something to silently guess at.
-    if (!listing.adapters.includes(adapterId)) {
+    const pub = hit?.pub;
+
+    // ── M3: 解析 SKU（具体商品） ──
+    // 允许的商品集合 = 发布时勾选的 selectedProducts，或旧数据由 adapters 推导的 family 默认 SKU。
+    const allowedSkus = pub && pub.selectedProducts && pub.selectedProducts.length > 0
+      ? pub.selectedProducts.map((p) => p.sku)
+      : listing.adapters.map((a) => adapterDefaultSku(a) ?? "").filter(Boolean);
+
+    let sku = typeof it.sku === "string" ? it.sku : "";
+    if (!sku || !allowedSkus.includes(sku)) {
+      // 兼容旧下单：传 adapter 不传 sku → 用 family 默认 SKU
+      const reqAdapter = typeof it.adapter === "string" ? it.adapter : "";
+      sku = adapterDefaultSku(reqAdapter) ?? allowedSkus[0] ?? "";
+    }
+    if (!sku || !SKU_BY_ID[sku]) {
+      rejected.push({ index, reason: "unknown product" });
+      return;
+    }
+
+    const requestedAdapter = typeof it.adapter === "string" ? it.adapter : "";
+    const adapterId = requestedAdapter || adapterIdForSku(sku) || "";
+    // R2/H3: 当显式传了 adapter 时，必须确为该 listing 提供的适配器（防越权低价购买）。
+    if (requestedAdapter && !listing.adapters.includes(requestedAdapter)) {
       rejected.push({ index, reason: `adapter must be one of: ${listing.adapters.join(", ")}` });
       return;
     }
 
     const variant = typeof it.variant === "string" ? it.variant : "";
-    const allowedVariants = variantsFor(adapterId);
+    const allowedVariants = variantsForSku(sku);
     if (allowedVariants.length > 0 && !allowedVariants.includes(variant)) {
       rejected.push({ index, reason: `variant must be one of: ${allowedVariants.join(", ")}` });
       return;
     }
 
-    // Price is ALWAYS derived server-side; any client-supplied amount is ignored.
-    const unit = unitPriceCents(listing, adapterId, variant);
+    // 价格始终服务端计算：售价 = SKU 建议零售价(含运费×1.15) + variant 增量；
+    // 按 region 计平台代缴税后即为实际收取单价。客户端传的金额一律忽略。
+    const delta = variant ? variantDeltaForSku(sku, variant) : 0;
+    if (delta === null) {
+      rejected.push({ index, reason: "could not price this configuration" });
+      return;
+    }
+    const skuObj = SKU_BY_ID[sku];
+    const unit = unitPriceForSku(sku, variant);
     if (unit === null) {
       rejected.push({ index, reason: "could not price this configuration" });
       return;
     }
+    const saleUnit = skuSaleCents(skuObj, region) + delta; // 含平台代缴税
+
+    // ── M3: 创作者分成 ──
+    // 净价基数 N = 零售不含税 − 运费（与 region 无关）；royalty = round(N × rate)。
+    const rate =
+      pub?.royaltyRate && pub.royaltyRate >= 0.1 && pub.royaltyRate <= 0.5 ? pub.royaltyRate : 0;
+    const net = skuRetailCents(skuObj) - skuFreightCents(skuObj);
+    const royaltyCentsVal = rate > 0 ? Math.round(net * rate) : 0;
 
     lineItems.push({
       listing_id: listing.id,
+      listing_slug: listing.slug,
       title: listing.title,
       adapter: adapterId,
       variant,
       quantity: it.quantity,
-      unit_price_cents: unit,
+      unit_price_cents: saleUnit,
+      sku,
+      creator_id: pub?.user_id,
+      royalty_rate: rate,
+      net_cents: net,
+      royalty_cents: royaltyCentsVal,
     });
   });
 
@@ -121,7 +208,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const totals = computeTotals(lineItems.map((l) => ({ priceCents: l.unit_price_cents, qty: l.quantity })));
+  // 运费（首件全价 + 续件递减，按重量级）与税费（平台代缴，按 region）由引擎统一计算。
+  const totals = computeOrderTotals(
+    lineItems.map((l) => ({ sku: l.sku ?? "", qty: l.quantity, variant: l.variant })),
+    region,
+  );
 
   const customerRaw = (body.customer ?? {}) as { email?: unknown; name?: unknown };
   const shippingRaw = (body.shipping ?? {}) as { address?: unknown; method?: unknown };
@@ -138,6 +229,7 @@ export async function POST(request: NextRequest) {
       ref: newId("pay"),
       method: null as string | null,
       paid_at: null as string | null,
+      payment_intent_id: null as string | null,
     },
     items: lineItems,
     customer: {
@@ -148,6 +240,7 @@ export async function POST(request: NextRequest) {
       address: typeof shippingRaw.address === "string" ? shippingRaw.address.slice(0, 300) : null,
       method: shippingRaw.method === "express" ? "express" : "standard",
       cost_cents: totals.shippingCents,
+      region,
     },
     pricing: {
       subtotal_cents: totals.subtotalCents,

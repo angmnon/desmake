@@ -3,6 +3,16 @@ account_id = "ceb1001d1ab2a3f36b40aa34ca3b6db5"
 main = "worker.mjs"
 compatibility_date = "2026-07-26"
 
+# Non-secret configuration forwarded into the container via worker.mjs envVars.
+# Real secrets are set with `wrangler secret put` (see task #66) and are NOT stored
+# in this file or the image.
+[vars]
+R2_ACCOUNT_ID = "ceb1001d1ab2a3f36b40aa34ca3b6db5"
+R2_BUCKET = "desmake-assets"
+AGNES_BASE_URL = "https://apihub.agnes-ai.com/v1"
+AGNES_IMAGE_MODEL = "agnes-image-2.1-flash"
+SITE_URL = "https://desmake.com"
+
 # Cloudflare Containers: runs the existing custom Next.js Node server unchanged.
 # A single, fixed container instance ("desmake") hosts the whole site so the
 # in-memory session/order store (globalThis) is shared across all requests.
@@ -10,6 +20,10 @@ compatibility_date = "2026-07-26"
 class_name = "DesmakeContainer"
 image = "./Dockerfile"
 max_instances = 3
+
+[[r2_buckets]]
+binding = "DESMAKE_BUCKET"
+bucket_name = "desmake-assets"
 
 [[durable_objects.bindings]]
 name = "DESMAKE"

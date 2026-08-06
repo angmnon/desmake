@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createSession, findUserByEmail, verifyPassword, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function POST(request: NextRequest) {
+  // WAF-style throttle on auth: blunt credential-stuffing / brute force.
+  const rl = rateLimit(`${clientIp(request)}:auth`, 10);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many attempts — try again later" } },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
   let body: unknown = {};
   try {
     body = await request.json();
@@ -32,7 +42,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+  const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: user.emailVerified };
   const token = createSession(sessionUser);
 
   const res = NextResponse.json({ user: sessionUser });

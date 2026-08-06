@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
-import { CATEGORIES, DESIGNS, ADAPTERS } from "@/lib/data";
+import { CATEGORIES, DESIGNS, ADAPTERS, type Design } from "@/lib/data";
 import { DesignCard } from "@/components/DesignCard";
 
 const SORTS = [
@@ -19,9 +19,28 @@ export default function ExplorePage() {
   const [query, setQuery] = useState("");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
+  // Designs published from Studio (AI + uploaded) — merged into the grid so they
+  // are browsable and searchable alongside the static seed catalog.
+  const [published, setPublished] = useState<Design[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/explore")
+      .then((r) => r.json())
+      .then((d: { designs?: Design[] }) => { if (!cancelled && Array.isArray(d.designs)) setPublished(d.designs); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const filtered = useMemo(() => {
-    let list = [...DESIGNS];
+    const seen = new Set<string>();
+    let list: Design[] = [];
+    // Static seed first, then published (no duplicates by slug).
+    for (const d of [...DESIGNS, ...published]) {
+      if (seen.has(d.slug)) continue;
+      seen.add(d.slug);
+      list.push(d);
+    }
     if (activeCategory !== "all") list = list.filter((d) => d.category === activeCategory);
     if (activeAdapter) list = list.filter((d) => d.adapters.includes(activeAdapter));
     if (query.trim()) {
@@ -37,7 +56,7 @@ export default function ExplorePage() {
       default: list = [...list].sort((a, b) => b.likes - a.likes);
     }
     return list;
-  }, [activeCategory, activeAdapter, sort, query, priceMin, priceMax]);
+  }, [activeCategory, activeAdapter, sort, query, priceMin, priceMax, published]);
 
   return (
     <div>

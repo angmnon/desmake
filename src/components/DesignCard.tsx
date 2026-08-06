@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Heart, Sparkles } from "lucide-react";
 import { Artwork } from "./Artwork";
@@ -8,6 +9,9 @@ import { adapterName, compact, money, creatorByHandle } from "@/lib/data";
 import { BadgeCheck } from "lucide-react";
 
 export function DesignCard({ design }: { design: Design }) {
+  // If the real raster fails to load (expired/blocked host), fall back to the
+  // deterministic Artwork so a broken-image icon never reaches the grid.
+  const [imgError, setImgError] = useState(false);
   // creatorByHandle may legitimately return undefined — fall back to the raw
   // handle instead of silently rendering an unrelated creator (R2/H6).
   const creator = creatorByHandle(design.creator);
@@ -16,8 +20,15 @@ export function DesignCard({ design }: { design: Design }) {
     <Link href={`/listing/${design.slug}`} className="block group">
       <div className="card card-hover">
         <div className="art-canvas" style={{ aspectRatio: "1", position: "relative" }}>
-          {design.imageUrl ? (
-            <img src={design.imageUrl} alt={design.title} className="w-full h-full object-cover" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }} />
+          {design.imageUrl && !imgError ? (
+            <img
+              src={design.imageUrl}
+              alt={design.title}
+              loading="lazy"
+              onError={() => setImgError(true)}
+              className="w-full h-full object-cover"
+              style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
+            />
           ) : (
             <Artwork seed={design.seed} palette={design.palette} shape={design.shape} rounded={false} className="!rounded-none" />
           )}
@@ -26,6 +37,11 @@ export function DesignCard({ design }: { design: Design }) {
             {design.aiGenerated && (
               <span className="badge" style={{ background: "rgba(12,12,13,0.7)", color: "#fff", fontSize: "0.625rem", padding: "3px 9px", backdropFilter: "blur(8px)" }}>
                 <Sparkles size={10} /> AI
+              </span>
+            )}
+            {!design.aiGenerated && design.imageUrl && (
+              <span className="badge" style={{ background: "rgba(12,12,13,0.7)", color: "#fff", fontSize: "0.625rem", padding: "3px 9px", backdropFilter: "blur(8px)" }}>
+                Uploaded
               </span>
             )}
           </div>

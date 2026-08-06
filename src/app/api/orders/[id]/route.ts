@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { ordersStore, idCreatedTs } from "@/lib/stores";
+import { getOrder, idCreatedTs } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 
 // No edge runtime — this route reads the in-memory order store off `globalThis` (R2/C1).
@@ -56,7 +56,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
 
   // NEVER synthesize an order for an unknown id. A miss is a 404.
-  const order = ordersStore().get(id);
+  // getOrder() checks memory first, then falls back to D1 so a request routed to a
+  // different container instance than the one that created the order still resolves.
+  const order = await getOrder(id);
   // R2/H1: ownership check. Previously any signed-in user who guessed an order id
   // could read the full record — customer name, email and shipping address included.
   // A foreign id is reported as 404, not 403, so the endpoint does not confirm that

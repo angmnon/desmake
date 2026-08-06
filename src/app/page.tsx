@@ -6,7 +6,6 @@ import { ArrowRight, Sparkles, Box, Shirt, Frame, CreditCard, Smartphone, Sticke
 import { ADAPTERS, CATEGORIES, CREATORS, DESIGNS, HERO_STATS } from "@/lib/data";
 import { Artwork } from "@/components/Artwork";
 import { CreatorCard, DesignCard } from "@/components/DesignCard";
-import { Inactive } from "@/components/Inactive";
 
 const adapterIcon: Record<string, React.ReactNode> = {
   shirt: <Shirt size={20} strokeWidth={1.5} />,
@@ -317,7 +316,7 @@ export default function HomePage() {
             </ul>
             <div className="row gap-3 wrap">
               <Link href="/agents" className="btn btn-paper btn-lg">Open Agent Hub <span className="arw" /></Link>
-              <Inactive className="btn btn-lg btn-outline" label="Docs are not published yet" style={{ background: "transparent", color: "#f7f6f3", borderColor: "rgba(247,246,243,0.2)" }}>Read the docs</Inactive>
+              <Link href="/docs" className="btn btn-lg btn-outline" style={{ background: "transparent", color: "#f7f6f3", borderColor: "rgba(247,246,243,0.2)" }}>Read the docs</Link>
             </div>
           </div>
           <div>
@@ -390,7 +389,7 @@ export default function HomePage() {
                 </p>
                 <div className="row gap-3 wrap" style={{ marginTop: 30 }}>
                   <Link href="/creators" className="btn btn-lg">Become a creator <span className="arw" /></Link>
-                  <Inactive className="btn btn-lg btn-outline" label="Payout documentation is not published yet">See how payouts work</Inactive>
+                  <Link href="/payouts" className="btn btn-lg btn-outline">See how payouts work</Link>
                 </div>
               </div>
               <div className="grid" style={{ gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "28px 48px", minWidth: 280 }}>

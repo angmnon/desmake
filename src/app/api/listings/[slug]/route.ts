@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DESIGNS, CREATORS, ADAPTERS, ADAPTER_VARIANTS, unitPriceCents } from "@/lib/data";
-import { findListingBySlug } from "@/lib/catalog";
+import { findListingBySlug, publishedToDesign } from "@/lib/catalog";
+import { allPublishedDesigns } from "@/lib/stores";
 
 // No edge runtime — this route reads the published-designs store on `globalThis` (R2/C1).
 
@@ -8,10 +9,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   const { slug } = await params;
   // R2/H8: designs published from Studio are resolvable here too, otherwise the
   // Publish button would lead to a 404 detail page.
-  const design = findListingBySlug(slug);
+  let design = findListingBySlug(slug);
   if (!design) {
     return NextResponse.json({ error: { code: "not_found", message: "Design not found" } }, { status: 404 });
   }
+  // Cross-instance freshness: the in-memory store may predate a direct D1 update
+  // (e.g. the AI-image backfill rewrote imageUrl on existing rows). Overlay the D1
+  // copy of a published design so the detail page shows the latest art everywhere.
+  try {
+    const fresh = (await allPublishedDesigns()).find((p) => p.slug === slug);
+    if (fresh) design = publishedToDesign(fresh);
+  } catch { /* D1 disabled — keep memory result */ }
   const creator = CREATORS.find((c) => c.handle === design.creator);
   const adObjs = design.adapters.map((aid) => ADAPTERS.find((a) => a.id === aid)).filter(Boolean);
   const related = DESIGNS.filter((d) => d.creator === design.creator && d.slug !== slug).slice(0, 4);
@@ -54,6 +62,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       seed: design.seed,
       palette: design.palette,
       shape: design.shape,
+      image_url: design.imageUrl,
+      source: design.source,
+      description: design.description,
+      // M3: 商品配置与分成
+      royalty_rate: design.royaltyRate ?? 0,
+      selected_products: (design.selectedProducts ?? []).map((p) => ({ sku: p.sku, variant: p.variant ?? null })),
       license: {
         type: "personal",
         commercial_allowed: true,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jobsStore, type GenOutput } from "@/lib/stores";
+import { getJob, type GenOutput } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 import { STYLE_PRESETS } from "@/lib/presets";
 
@@ -28,7 +28,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // Never synthesize a job for an unknown id, and never expose someone else's.
   // R2/H1: the ownership check was missing — any signed-in user could poll another
   // user's job and read their prompt. A foreign id returns 404, not 403.
-  const job = jobsStore().get(id);
+  // getJob() reads memory first and falls back to D1 so the poll resolves even
+  // when it lands on a different container instance than the one that created it.
+  const job = await getJob(id);
   if (!job || job.user_id !== user.id) {
     return NextResponse.json({ error: { code: "not_found", message: "Job not found" } }, { status: 404 });
   }

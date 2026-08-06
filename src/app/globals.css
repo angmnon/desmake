@@ -559,6 +559,19 @@ ul, ol { padding: 0; list-style: none; }
 /* Footer link hover */
 .dm-footer-link:hover { color: #f7f6f3 !important; }
 
+/* Account dropdown menu items */
+.dm-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-tx);
+  transition: background 0.15s;
+}
+.dm-menu-item:hover { background: var(--color-paper-2); }
+
 /*
  * Inactive affordances.
  * Surfaces that have no destination in this build are rendered as non-interactive

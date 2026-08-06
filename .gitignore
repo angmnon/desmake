@@ -167,4 +167,5 @@ Desktop.ini
 # tooling / backups / logs
 .coze/
 .backup-r2/
+backups/
 *.log

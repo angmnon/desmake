@@ -18,6 +18,7 @@ export type SessionUser = {
   email: string;
   name: string;
   role: "user" | "creator";
+  emailVerified: boolean;
 };
 
 /** Full user row — includes the password hash, never exposed to the client. */
@@ -94,6 +95,7 @@ export function createUser(email: string, name: string, password: string): UserR
     email: key,
     name: name || key.split("@")[0],
     role: "user",
+    emailVerified: false,
     passwordHash: hashPassword(password),
     createdAt: new Date().toISOString(),
   };
@@ -105,11 +107,21 @@ export function createUser(email: string, name: string, password: string): UserR
 async function persistUser(u: UserRecord): Promise<void> {
   if (!D1_ENABLED) return;
   await d1Query(
-    `INSERT INTO users (id, email, name, password_hash, role, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(email) DO UPDATE SET id=excluded.id, name=excluded.name, password_hash=excluded.password_hash, role=excluded.role`,
-    [u.id, u.email, u.name, u.passwordHash, u.role, u.createdAt],
+    `INSERT INTO users (id, email, name, password_hash, role, created_at, email_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(email) DO UPDATE SET id=excluded.id, name=excluded.name, password_hash=excluded.password_hash, role=excluded.role, email_verified=excluded.email_verified`,
+    [u.id, u.email, u.name, u.passwordHash, u.role, u.createdAt, u.emailVerified ? 1 : 0],
   );
+}
+
+/** Mark a user's email as verified (D1 + in-memory). */
+export async function markUserVerified(userId: string): Promise<void> {
+  for (const u of users().values()) {
+    if (u.id === userId) u.emailVerified = true;
+  }
+  if (D1_ENABLED) {
+    await d1Query(`UPDATE users SET email_verified = 1 WHERE id = ?`, [userId]).catch(() => {});
+  }
 }
 
 // ────────────────────────── session ops ──────────────────────────
@@ -164,8 +176,8 @@ function sweepExpired(): void {
 export async function hydrateUsersAndSessions(): Promise<void> {
   if (!D1_ENABLED) return;
   try {
-    const rows = await d1Query<{ id: string; email: string; name: string; password_hash: string; role: string; created_at: string }>(
-      `SELECT id, email, name, password_hash, role, created_at FROM users`,
+    const rows = await d1Query<{ id: string; email: string; name: string; password_hash: string; role: string; created_at: string; email_verified?: number }>(
+      `SELECT id, email, name, password_hash, role, created_at, email_verified FROM users`,
     );
     for (const r of rows) {
       users().set(r.email, {
@@ -173,6 +185,7 @@ export async function hydrateUsersAndSessions(): Promise<void> {
         email: r.email,
         name: r.name,
         role: (r.role as SessionUser["role"]) || "user",
+        emailVerified: Boolean(r.email_verified),
         passwordHash: r.password_hash,
         createdAt: r.created_at,
       });
@@ -185,7 +198,7 @@ export async function hydrateUsersAndSessions(): Promise<void> {
       if (s.expires_at <= now) continue;
       const user = users().get(s.user_email);
       if (!user) continue;
-      sessions().set(s.token, { user: { id: user.id, email: user.email, name: user.name, role: user.role }, expiresAt: s.expires_at });
+      sessions().set(s.token, { user: { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: user.emailVerified }, expiresAt: s.expires_at });
     }
   } catch (e) {
     console.error("[db] hydrate users/sessions failed:", e instanceof Error ? e.message : e);

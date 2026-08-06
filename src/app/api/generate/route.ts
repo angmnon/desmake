@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jobsStore, newId, type GenJob } from "@/lib/stores";
+import { jobsStore, newId, persistJob, type GenJob } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 import { STYLE_PRESETS } from "@/lib/presets";
-import { generateWithOpenAI, OPENAI_IMAGE_ENABLED } from "@/lib/ai";
+import { generateImage, imageProviderEnabled } from "@/lib/ai";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
+import { recordError, notifyAlert } from "@/lib/monitor";
 
 // No edge runtime — jobs and sessions live in the shared `globalThis` store (R2/C1).
 
@@ -14,6 +16,16 @@ export async function POST(request: NextRequest) {
   const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to generate designs" } }, { status: 401 });
+  }
+
+  // WAF-style throttle: each user IP may start a handful of generations per minute
+  // (they hit the external image API and are the costliest endpoint).
+  const rl = rateLimit(`${clientIp(request)}:generate`, 6);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many generations — slow down" } },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
   }
 
   let body: { prompt?: string; style?: string; aspect?: string; count?: number } = {};
@@ -37,7 +49,7 @@ export async function POST(request: NextRequest) {
   const safeAspect = (ASPECTS as readonly string[]).includes(aspect) ? aspect : "1:1";
 
   const id = newId("gen");
-  const ai = OPENAI_IMAGE_ENABLED;
+  const ai = imageProviderEnabled();
   const job: GenJob = {
     id,
     user_id: user.id,
@@ -55,18 +67,19 @@ export async function POST(request: NextRequest) {
     demo: !ai,
   };
   jobsStore().set(id, job);
+  void persistJob(job).catch(() => {});
 
   // Real AI generation against an OpenAI-compatible provider when a key is set.
   // The job object is mutated in place asynchronously; the poll endpoint reads it.
   if (ai) {
     void (async () => {
       try {
-        const images = await generateWithOpenAI(prompt.trim(), n);
+        const images = await generateImage(prompt.trim(), n, safeAspect);
         const palette = STYLE_PRESETS[safeStyle] || STYLE_PRESETS.minimal;
         job.outputs = images.map((img, i) => ({
           seed: img.seed,
-          width: 1024,
-          height: 1024,
+          width: img.width,
+          height: img.height,
           palette,
           shape: i % 6,
           imageUrl: img.url,
@@ -77,12 +90,17 @@ export async function POST(request: NextRequest) {
         job.error = err instanceof Error ? err.message : "AI generation failed";
         job.status = "failed";
         console.error("[generate] AI provider error:", job.error);
+        recordError("/api/generate", err);
+        void notifyAlert("AI generation failed", `job ${id}: ${job.error}`);
+      } finally {
+        void persistJob(job).catch(() => {});
       }
     })();
   }
 
-  // No fake "credits_charged" / GPU claims. This endpoint produces a deterministic
-  // client-rendered preview; it does not invoke an external model.
+  // No fake "credits_charged" / GPU claims. This endpoint produces a preview; when
+  // a provider is configured it calls the external model, otherwise a deterministic
+  // client-rendered preview is synthesized on poll.
   return NextResponse.json(
     { job_id: id, status: "queued", eta_seconds: 6, created_at: job.created_at },
     { status: 202 },

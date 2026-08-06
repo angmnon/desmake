@@ -1,0 +1,78 @@
+{
+  "note": "Desmake 批量生图 manifest — batch 3（新主题）。24 条独立 prompt（count=1），原创、商标安全、设计向。复用既有分类标签以保证市场归类。",
+  "aspect": "1:1",
+  "packs": [
+    {
+      "pack": "Cosmic Dreams",
+      "category": "geometric",
+      "adapters": ["poster", "phonecase", "sticker", "tshirt"],
+      "palette": ["#6c5ce7", "#0c0c0d", "#f7f6f3"],
+      "variants": [
+        { "title": "Nebula Bloom", "prompt": "Nebula cloud forming a blooming flower of stardust, deep violet and black space, glowing particles, cosmic illustration, dreamy and vast", "tags": ["cosmic", "nebula", "space"], "description": "星尘绽放的星云花卉，梦幻宇宙感。" },
+        { "title": "Orbit Rings", "prompt": "Minimal planet with concentric orbit rings, navy and silver gradient, clean space poster, calm negative space, precise", "tags": ["cosmic", "planet", "minimal"], "description": "极简行星与轨道环，冷静太空海报。" },
+        { "title": "Galaxy Cat", "prompt": "Cute cat silhouette formed from a swirling galaxy, stars as whiskers, indigo and magenta, whimsical illustration", "tags": ["cosmic", "cat", "whimsical"], "description": "星系组成的猫咪，俏皮宇宙风。" },
+        { "title": "Aurora Wave", "prompt": "Northern lights as a flowing ribbon over silent mountains, teal and purple gradient, serene landscape poster", "tags": ["cosmic", "aurora", "landscape"], "description": "极光如丝带流淌，静谧山景。" }
+      ]
+    },
+    {
+      "pack": "Cute Critters",
+      "category": "illustration",
+      "adapters": ["tshirt", "sticker", "poster", "phonecase"],
+      "palette": ["#ff8c42", "#0c0c0d", "#f7f6f3"],
+      "variants": [
+        { "title": "Sleepy Fox", "prompt": "Curled-up sleeping fox, round soft shapes, warm orange fur, cozy flat illustration, gentle", "tags": ["animal", "fox", "cute"], "description": "蜷睡的狐狸，温暖治愈插画。" },
+        { "title": "Otter Hug", "prompt": "Sea otter holding hands while floating, soft blue water, adorable rounded illustration, gentle wellness vibe", "tags": ["animal", "otter", "cute"], "description": "牵手漂浮的水獭，可爱治愈。" },
+        { "title": "Bunny Cloud", "prompt": "Tiny bunny sitting on a fluffy cloud, pastel pink, dreamy children's-book illustration, soft light", "tags": ["animal", "bunny", "whimsical"], "description": "云上的小兔，童书梦幻风。" },
+        { "title": "Panda Nap", "prompt": "Panda lounging with a stalk of bamboo, simple bold shapes, black and cream, charming flat style", "tags": ["animal", "panda", "cute"], "description": "躺平吃竹的熊猫，憨态可掬。" }
+      ]
+    },
+    {
+      "pack": "Café Hours",
+      "category": "illustration",
+      "adapters": ["poster", "tshirt", "sticker", "phonecase"],
+      "palette": ["#c0392b", "#0c0c0d", "#f7f6f3"],
+      "variants": [
+        { "title": "Latte Heart", "prompt": "Top-down view of a latte with a heart in the foam, warm ceramic cup, cozy cafe illustration, cream tones", "tags": ["cafe", "coffee", "food"], "description": "拉花爱心拿铁，温馨咖啡馆。" },
+        { "title": "Croissant Morning", "prompt": "Golden croissant beside a coffee cup, soft morning light, appetizing flat-lay illustration, warm", "tags": ["cafe", "pastry", "food"], "description": "牛角包与咖啡，晨光早午餐。" },
+        { "title": "Matcha Moment", "prompt": "Matcha latte with a bamboo whisk, sage green tones, calm cafe vibe, minimal still life", "tags": ["cafe", "matcha", "calm"], "description": "抹茶与茶筅，静谧茶时光。" },
+        { "title": "Donut Rainbow", "prompt": "Sprinkled donut with pastel rainbow sprinkles, playful cute food illustration, soft pink background", "tags": ["cafe", "donut", "cute"], "description": "彩虹糖针甜甜圈，俏皮治愈。" }
+      ]
+    },
+    {
+      "pack": "Fluid Abstractions",
+      "category": "geometric",
+      "adapters": ["poster", "card", "print3d", "sticker"],
+      "palette": ["#0984e3", "#0c0c0d", "#f7f6f3"],
+      "variants": [
+        { "title": "Liquid Merge", "prompt": "Two flowing liquid blobs merging, blue and coral gradient, smooth 3D render, soft shadow, modern", "tags": ["abstract", "fluid", "3d"], "description": "流体融合的渐变块，现代 3D 感。" },
+        { "title": "Ink Diffusion", "prompt": "Abstract ink drop diffusing in clear water, monochrome, organic motion, high contrast, mesmerizing", "tags": ["abstract", "ink", "pattern"], "description": "水中墨晕扩散，有机流动。" },
+        { "title": "Bubble Field", "prompt": "Floating translucent bubbles, soft pastel gradient, airy minimal composition, peaceful", "tags": ["abstract", "bubble", "minimal"], "description": "悬浮透明气泡，轻盈极简。" },
+        { "title": "Tidal Swirl", "prompt": "Swirling gradient waves, teal to lavender, mesmerizing abstract composition, smooth", "tags": ["abstract", "wave", "gradient"], "description": "渐变漩涡波纹，迷幻抽象。" }
+      ]
+    },
+    {
+      "pack": "Street Echoes",
+      "category": "retro",
+      "adapters": ["poster", "tshirt", "sticker", "phonecase"],
+      "palette": ["#e17055", "#0c0c0d", "#f7f6f3"],
+      "variants": [
+        { "title": "Graffiti Bloom", "prompt": "Flower built from spray-paint tags, urban wall texture, bold color, street art poster, energetic", "tags": ["street", "graffiti", "urban"], "description": "涂鸦拼成的花，街头能量感。" },
+        { "title": "Cassette Revival", "prompt": "Retro cassette tape with bold display type, 90s zine aesthetic, magenta and teal, nostalgic", "tags": ["street", "cassette", "90s"], "description": "复古磁带与粗体字，90 年代风。" },
+        { "title": "Subway Map Art", "prompt": "Stylized subway map reimagined as graphic art, geometric transit lines, bold poster, editorial", "tags": ["street", "transit", "graphic"], "description": "地铁线路图重构为图形艺术。" },
+        { "title": "Skater Mark", "prompt": "Skateboard deck graphic with a bold mark, gritty texture, youthful streetwear vibe, confident", "tags": ["street", "skate", "graphic"], "description": "滑板板面图形，街头态度。" }
+      ]
+    },
+    {
+      "pack": "Zen Garden",
+      "category": "minimal",
+      "adapters": ["poster", "sticker", "tshirt", "card"],
+      "palette": ["#00b894", "#0c0c0d", "#f7f6f3"],
+      "variants": [
+        { "title": "Enso Circle", "prompt": "Single brushstroke enso circle, sumi-e ink on off-white, imperfect zen, calm, refined", "tags": ["zen", "enso", "minimal"], "description": "一笔写就的圆相，禅意留白。" },
+        { "title": "Bonsai Still", "prompt": "Minimal bonsai in a pot, single continuous line, calm green, editorial illustration, serene", "tags": ["zen", "bonsai", "lineart"], "description": "极简盆景单线，静谧东方。" },
+        { "title": "Wave Kanagawa", "prompt": "Stylized great wave in navy line art, japanese woodblock print homage, bold curves, classic", "tags": ["zen", "wave", "japanese"], "description": "神奈川冲浪里线描致敬。" },
+        { "title": "Stone Raking", "prompt": "Zen garden raked sand lines around a single pebble, muted tones, serene composition, peaceful", "tags": ["zen", "garden", "calm"], "description": "枯山水耙纹与石，安宁禅境。" }
+      ]
+    }
+  ]
+}

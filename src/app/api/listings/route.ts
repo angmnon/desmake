@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { DESIGNS, CREATORS, ADAPTERS } from "@/lib/data";
+import { allPublishedDesigns } from "@/lib/stores";
+import { publishedToDesign } from "@/lib/catalog";
 
 const PAGE_SIZE = 24;
 
@@ -13,7 +15,16 @@ export async function GET(request: Request) {
   const sort = url.searchParams.get("sort") || "trending";
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
 
+  // Static seed catalog + Studio-published designs (memory + D1). Reading published
+  // designs through D1 keeps the marketplace consistent across all container
+  // instances, so freshly batch-published designs show up without a restart.
   let items = DESIGNS.slice();
+  try {
+    const pub = await allPublishedDesigns();
+    items = items.concat(pub.map(publishedToDesign));
+  } catch { /* D1 disabled — marketplace shows seed catalog only */ }
+
+  const publishedTags = items.flatMap((d) => d.tags);
 
   if (q) {
     items = items.filter((d) => d.title.toLowerCase().includes(q) || d.tags.some((t) => t.toLowerCase().includes(q)));
@@ -33,7 +44,7 @@ export async function GET(request: Request) {
 
   switch (sort) {
     case "newest":
-      items.reverse();
+      items.sort((a, b) => String(b.created).localeCompare(String(a.created)));
       break;
     case "price-low":
       items.sort((a, b) => a.priceCents - b.priceCents);
@@ -54,7 +65,7 @@ export async function GET(request: Request) {
   const start = (page - 1) * PAGE_SIZE;
   const pageItems = items.slice(start, start + PAGE_SIZE);
 
-  const tags: string[] = Array.from(new Set(DESIGNS.flatMap((d) => d.tags))).slice(0, 30);
+  const tags: string[] = Array.from(new Set(publishedTags)).slice(0, 30);
 
   return NextResponse.json({
     total,
@@ -80,6 +91,7 @@ export async function GET(request: Request) {
         ai_generated: d.aiGenerated,
         is_new: d.isNew,
         created: d.created,
+        image_url: d.imageUrl,
         seed: d.seed,
         palette: d.palette,
         shape: d.shape,
