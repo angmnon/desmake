@@ -72,7 +72,16 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Real gateway path: verify the Stripe PaymentIntent server-side ──
-  if (STRIPE_ENABLED && stripe && paymentIntentId) {
+  if (STRIPE_ENABLED && stripe) {
+    // Stripe is configured, so a real, server-verified PaymentIntent is MANDATORY.
+    // A client that omits payment_intent_id must be rejected, never silently
+    // accepted — otherwise any buyer could mark their own order paid for free.
+    if (!paymentIntentId) {
+      return NextResponse.json(
+        { error: { code: "payment_intent_required", message: "A verified Stripe payment intent is required to confirm this order" } },
+        { status: 400 },
+      );
+    }
     let intent;
     try {
       intent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -113,8 +122,10 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Fallback (no gateway configured): legacy placeholder behaviour ──
-  // Kept only so the app still "works" in a no-Stripe build. In production a
-  // payment_intent_id is always supplied, so this branch is effectively dead.
+  // Reached ONLY when Stripe is NOT enabled (no secret key baked in). A no-Stripe
+  // build may still mark orders paid for local/demo use; on any Stripe-enabled
+  // deployment the branch above already enforced a verified intent, so a missing
+  // payment_intent_id can never reach here and silently mark an order paid.
   markPaid(order, paymentIntentId, order.payment.ref);
   return NextResponse.json({
     order_id: order.order_id,
