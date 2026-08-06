@@ -221,6 +221,9 @@ export default function CheckoutPage() {
             </div>
             <div className="hr" />
             <div className="stack gap-2 mt-4">
+              {/* 注意口径：这里的 cart.subtotal 是【不含税】零售价合计（购物车行单价来自
+                  详情页展示价），因此 Subtotal + Shipping + Tax = Total 是成立的。
+                  不要照搬 order.pricing.subtotal_cents 的口径——那个是【含税】售价。 */}
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Subtotal</span><span className="mono">{money(cart.subtotal)}</span></div>
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Shipping</span><span className="mono">{shipping === 0 ? "Free" : money(shipping)}</span></div>
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Tax</span><span className="mono">{money(tax)}</span></div>

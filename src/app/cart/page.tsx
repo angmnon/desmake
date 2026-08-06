@@ -107,6 +107,8 @@ export default function CartPage() {
           <aside className="card" style={{ padding: 24, height: "fit-content", position: "sticky", top: 88 }}>
             <h3 className="h4 mb-4">Order summary</h3>
             <div className="stack gap-2 mb-4">
+              {/* cart.subtotal 为【不含税】零售价合计，故 Subtotal + Shipping + Tax = Total 成立。
+                  与订单收据页（用含税的 pricing.subtotal_cents）口径不同，勿混用。 */}
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Subtotal</span><span className="mono">{money(cart.subtotal)}</span></div>
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Shipping</span><span className="mono">{shipping === 0 ? "Free" : money(shipping)}</span></div>
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Tax (est.)</span><span className="mono">{money(tax)}</span></div>

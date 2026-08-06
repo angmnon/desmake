@@ -135,9 +135,14 @@ export default function OrderDetailPage() {
             <div className="card" style={{ padding: 22 }}>
               <h4 className="h5 mb-3">Summary</h4>
               <div className="stack gap-2">
-                <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Subtotal</span><span className="mono">{money(p.subtotal_cents)}</span></div>
-                <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Tax</span><span className="mono">{money(p.tax_cents)}</span></div>
+                {/* pricing.subtotal_cents 是【含税】售价合计（computeOrderTotals 里的
+                    saleSubtotal），而 tax_cents 是其中所含的税。之前收据把两者当成独立加项
+                    并列，导致 Subtotal + Tax + Shipping 比 Total 多出一个税额，买家会以为
+                    被重复计税。这里减回不含税小计，让三行相加正好等于 Total —— 与购物车/
+                    结账页（那两处的 cart.subtotal 本来就是不含税口径）保持一致。 */}
+                <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Subtotal</span><span className="mono">{money(p.subtotal_cents - p.tax_cents)}</span></div>
                 <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Shipping</span><span className="mono">{p.shipping_cents === 0 ? "Free" : money(p.shipping_cents)}</span></div>
+                <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Tax</span><span className="mono">{money(p.tax_cents)}</span></div>
               </div>
               <div className="hr" style={{ margin: "14px 0" }} />
               <div className="row-between"><span className="h5">Total</span><span className="h4 mono">{money(p.total_cents)}</span></div>

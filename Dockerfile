@@ -12,7 +12,7 @@ RUN pnpm install
 
 # Cache-buster: force a clean rebuild from the current (consistent) source so the
 # deployed image can't reuse a stale layer from the earlier debugging/rolling-deploy era.
-ENV BUILD_REV="en-only-copy-2026-08-06"
+ENV BUILD_REV="receipt-tax-fix-2026-08-06"
 
 # Stripe publishable key (client-side). NEXT_PUBLIC_* must be present BEFORE `next build`
 # so it is inlined into the client bundle — the card form renders in the browser.
