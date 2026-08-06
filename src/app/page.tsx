@@ -191,7 +191,7 @@ export default function HomePage() {
             {[
               { n: "01 / ANALYSE", t: "Read the artwork", d: "Colour, print resolution, transparency and subject matter are scored against every adapter's production profile." },
               { n: "02 / ADAPT", t: "Match the products", d: "Six manufacturing adapters compete for the design. Each returns a production file, a cost and a lead time." },
-              { n: "03 / DRESS", t: "Mockups & copy", d: "Photoreal mockups, titles, descriptions, SEO tags and EN/中文 localisation generated in one pass." },
+              { n: "03 / DRESS", t: "Mockups & copy", d: "Photoreal mockups, titles, descriptions and marketplace-ready SEO tags generated in one pass." },
               { n: "04 / SHIP", t: "Live in minutes", d: "Listings go live after review. Orders route straight to the factory node with the best cost-to-door." },
             ].map((p) => (
               <div key={p.n} style={{ background: "#0c0c0d", padding: "26px 24px 30px", position: "relative" }}>

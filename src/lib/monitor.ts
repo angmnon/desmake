@@ -32,7 +32,7 @@ export async function notifyAlert(subject: string, text: string): Promise<void> 
     await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: `【Desmake 告警】${subject}\n${text}` }),
+      body: JSON.stringify({ text: `[Desmake Alert] ${subject}\n${text}` }),
       signal: AbortSignal.timeout(10_000),
     });
   } catch {

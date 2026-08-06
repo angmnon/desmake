@@ -1,101 +1,459 @@
 {
-  "note": "Desmake 批量生图 manifest — 基于 2026 POD 市场调研 + desmake 8 分类/6 适配器设计。每条独立 prompt（count=1），窄众、设计向、商标安全。",
+  "note": "Desmake batch generation manifest - built on 2026 POD market research across desmake's 8 categories / 6 adapters. One prompt per item (count=1); niche, design-led and trademark-safe.",
   "aspect": "1:1",
   "packs": [
     {
       "pack": "Quiet Botanicals",
       "category": "botanical",
-      "adapters": ["poster", "phonecase", "sticker", "tshirt"],
-      "palette": ["#1f7a4d", "#0c0c0d", "#f7f6f3"],
+      "adapters": [
+        "poster",
+        "phonecase",
+        "sticker",
+        "tshirt"
+      ],
+      "palette": [
+        "#1f7a4d",
+        "#0c0c0d",
+        "#f7f6f3"
+      ],
       "variants": [
-        { "title": "Monstera Line", "prompt": "Single-line continuous drawing of a monstera leaf and trailing pothos, minimalist botanical illustration, thin uniform ink lines on warm cream paper, editorial desmake aesthetic, soft natural light, clean composition", "tags": ["botanical", "lineart", "plant"], "description": "极简单线植物插画，适合植物爱好者与家居装饰。" },
-        { "title": "Eucalyptus Sketch", "prompt": "Fine line-art illustration of eucalyptus branches and seed pods, botanical sketchbook style, muted sage green on ivory, delicate detail, calm negative space", "tags": ["botanical", "eucalyptus", "sketch"], "description": "尤加利枝叶素描风，安静而有质感。" },
-        { "title": "Fern Veins", "prompt": "Minimalist abstract leaf veins pattern, layered fern fronds, soft beige and olive tones, organic seamless texture, high-resolution, tranquil", "tags": ["botanical", "fern", "pattern"], "description": "蕨类叶脉抽象纹理，可做无缝图案。" },
-        { "title": "Snake Plant Nook", "prompt": "Hand-drawn potted snake plant in a ribbed ceramic pot, cozy plant-parent illustration, warm earth palette, soft shadows, charming flat style", "tags": ["botanical", "plantparent", "home"], "description": "虎尾兰盆栽插画，植物家长的日常治愈。" }
+        {
+          "title": "Monstera Line",
+          "prompt": "Single-line continuous drawing of a monstera leaf and trailing pothos, minimalist botanical illustration, thin uniform ink lines on warm cream paper, editorial desmake aesthetic, soft natural light, clean composition",
+          "tags": [
+            "botanical",
+            "lineart",
+            "plant"
+          ],
+          "description": "Single-line continuous drawing of a monstera leaf and trailing pothos, minimalist botanical illustration."
+        },
+        {
+          "title": "Eucalyptus Sketch",
+          "prompt": "Fine line-art illustration of eucalyptus branches and seed pods, botanical sketchbook style, muted sage green on ivory, delicate detail, calm negative space",
+          "tags": [
+            "botanical",
+            "eucalyptus",
+            "sketch"
+          ],
+          "description": "Fine line-art illustration of eucalyptus branches and seed pods, botanical sketchbook style."
+        },
+        {
+          "title": "Fern Veins",
+          "prompt": "Minimalist abstract leaf veins pattern, layered fern fronds, soft beige and olive tones, organic seamless texture, high-resolution, tranquil",
+          "tags": [
+            "botanical",
+            "fern",
+            "pattern"
+          ],
+          "description": "Minimalist abstract leaf veins pattern, layered fern fronds."
+        },
+        {
+          "title": "Snake Plant Nook",
+          "prompt": "Hand-drawn potted snake plant in a ribbed ceramic pot, cozy plant-parent illustration, warm earth palette, soft shadows, charming flat style",
+          "tags": [
+            "botanical",
+            "plantparent",
+            "home"
+          ],
+          "description": "Hand-drawn potted snake plant in a ribbed ceramic pot, cozy plant-parent illustration."
+        }
       ]
     },
     {
       "pack": "Synthwave Nights",
       "category": "retro",
-      "adapters": ["poster", "tshirt", "sticker", "phonecase"],
-      "palette": ["#b026ff", "#ff2d95", "#0c0c0d"],
+      "adapters": [
+        "poster",
+        "tshirt",
+        "sticker",
+        "phonecase"
+      ],
+      "palette": [
+        "#b026ff",
+        "#ff2d95",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Neon Horizon", "prompt": "80s synthwave landscape, neon pink and electric purple grid horizon, retro sun with horizontal stripes, chrome and glow, dark indigo sky, vaporwave, cinematic", "tags": ["synthwave", "retro", "neon"], "description": "经典蒸汽波地平线，Y2K 复古热潮。" },
-        { "title": "Chrome Butterfly", "prompt": "Y2K chrome butterfly with holographic foil texture, bubblegum pink and baby blue gradients, glossy 3D render, playful futuristic, sparkle", "tags": ["y2k", "butterfly", "chrome"], "description": "全息铬金属蝴蝶，千禧辣妹风。" },
-        { "title": "Arcade Sunset", "prompt": "Retro 90s arcade poster, pixel sun and palm silhouettes, teal and magenta gradient, scanline grain, nostalgic gaming aesthetic, bold", "tags": ["retro", "arcade", "90s"], "description": "90 年代街机复古海报感。" },
-        { "title": "Outrun Highway", "prompt": "Outrun style sports car silhouette on a neon highway at dusk, magenta and cyan light trails, palm trees, sunset gradient, retro tech vibe", "tags": ["outrun", "retro", "car"], "description": "Outrun 公路霓虹，复古科技情绪。" }
+        {
+          "title": "Neon Horizon",
+          "prompt": "80s synthwave landscape, neon pink and electric purple grid horizon, retro sun with horizontal stripes, chrome and glow, dark indigo sky, vaporwave, cinematic",
+          "tags": [
+            "synthwave",
+            "retro",
+            "neon"
+          ],
+          "description": "80s synthwave landscape, neon pink and electric purple grid horizon."
+        },
+        {
+          "title": "Chrome Butterfly",
+          "prompt": "Y2K chrome butterfly with holographic foil texture, bubblegum pink and baby blue gradients, glossy 3D render, playful futuristic, sparkle",
+          "tags": [
+            "y2k",
+            "butterfly",
+            "chrome"
+          ],
+          "description": "Y2K chrome butterfly with holographic foil texture, bubblegum pink and baby blue gradients."
+        },
+        {
+          "title": "Arcade Sunset",
+          "prompt": "Retro 90s arcade poster, pixel sun and palm silhouettes, teal and magenta gradient, scanline grain, nostalgic gaming aesthetic, bold",
+          "tags": [
+            "retro",
+            "arcade",
+            "90s"
+          ],
+          "description": "Retro 90s arcade poster, pixel sun and palm silhouettes."
+        },
+        {
+          "title": "Outrun Highway",
+          "prompt": "Outrun style sports car silhouette on a neon highway at dusk, magenta and cyan light trails, palm trees, sunset gradient, retro tech vibe",
+          "tags": [
+            "outrun",
+            "retro",
+            "car"
+          ],
+          "description": "Outrun style sports car silhouette on a neon highway at dusk, magenta and cyan light trails."
+        }
       ]
     },
     {
       "pack": "Bold Type Affirmations",
       "category": "typography",
-      "adapters": ["tshirt", "poster", "sticker"],
-      "palette": ["#ff4d18", "#0c0c0d", "#f7f6f3"],
+      "adapters": [
+        "tshirt",
+        "poster",
+        "sticker"
+      ],
+      "palette": [
+        "#ff4d18",
+        "#0c0c0d",
+        "#f7f6f3"
+      ],
       "variants": [
-        { "title": "ENOUGH", "prompt": "Oversized bold display typography reading ENOUGH, stacked letters, high contrast black on cream, swiss poster style, graphic, clean vector", "tags": ["typography", "affirmation", "bold"], "description": "大字宣言 ENOUGH，极简有力。" },
-        { "title": "Still I Rise", "prompt": "Motivational words STILL I RISE in elegant tall serif, arched layout, charcoal on warm paper, editorial typography print, refined", "tags": ["typography", "serif", "affirmation"], "description": "优雅衬线宣言 Still I Rise。" },
-        { "title": "Not For Everyone", "prompt": "Playful chunky type reading NOT FOR EVERYONE, mixed-case, orange and off-white, risograph texture, confident poster look", "tags": ["typography", "humor", "bold"], "description": "俏皮粗体 Not For Everyone，态度海报。" },
-        { "title": "RESILIENT", "prompt": "Minimalist single word RESILIENT in thin geometric sans, wide letter-spacing, monochrome, gallery wall art, calm", "tags": ["typography", "minimal", "word"], "description": "纤细几何无衬线 RESILIENT，画廊感。" }
+        {
+          "title": "ENOUGH",
+          "prompt": "Oversized bold display typography reading ENOUGH, stacked letters, high contrast black on cream, swiss poster style, graphic, clean vector",
+          "tags": [
+            "typography",
+            "affirmation",
+            "bold"
+          ],
+          "description": "Oversized bold display typography reading ENOUGH, stacked letters."
+        },
+        {
+          "title": "Still I Rise",
+          "prompt": "Motivational words STILL I RISE in elegant tall serif, arched layout, charcoal on warm paper, editorial typography print, refined",
+          "tags": [
+            "typography",
+            "serif",
+            "affirmation"
+          ],
+          "description": "Motivational words STILL I RISE in elegant tall serif, arched layout."
+        },
+        {
+          "title": "Not For Everyone",
+          "prompt": "Playful chunky type reading NOT FOR EVERYONE, mixed-case, orange and off-white, risograph texture, confident poster look",
+          "tags": [
+            "typography",
+            "humor",
+            "bold"
+          ],
+          "description": "Playful chunky type reading NOT FOR EVERYONE, mixed-case."
+        },
+        {
+          "title": "RESILIENT",
+          "prompt": "Minimalist single word RESILIENT in thin geometric sans, wide letter-spacing, monochrome, gallery wall art, calm",
+          "tags": [
+            "typography",
+            "minimal",
+            "word"
+          ],
+          "description": "Minimalist single word RESILIENT in thin geometric sans, wide letter-spacing."
+        }
       ]
     },
     {
       "pack": "Coastal Cottagecore",
       "category": "illustration",
-      "adapters": ["tshirt", "poster", "sticker", "phonecase"],
-      "palette": ["#3a7ca5", "#0c0c0d", "#f7f6f3"],
+      "adapters": [
+        "tshirt",
+        "poster",
+        "sticker",
+        "phonecase"
+      ],
+      "palette": [
+        "#3a7ca5",
+        "#0c0c0d",
+        "#f7f6f3"
+      ],
       "variants": [
-        { "title": "Shell Cottage", "prompt": "Whimsical cottagecore illustration of a seashell cottage by the shore, soft watercolor, pastel blue and sand, dreamy storybook", "tags": ["cottagecore", "coastal", "whimsical"], "description": "贝壳小屋水彩，海边童话感。" },
-        { "title": "Coastal Still Life", "prompt": "Cozy coastal still life, stacked linen books, dried lavender and a starfish, warm beige and sage, hand-painted gouache, gentle", "tags": ["coastal", "stilllife", "gouache"], "description": "海岸静物水粉，温柔治愈。" },
-        { "title": "Flower Crown Ride", "prompt": "Cottagecore girl with flower crown riding a bicycle past a wildflower field, soft sunlight, illustrated children's-book style, nostalgic", "tags": ["cottagecore", "floral", "illustration"], "description": "花冠少女骑车，童书插画风。" },
-        { "title": "Mushroom Cottage", "prompt": "Mushroom cottage in a mossy forest, tiny door and warm window light, magical cottagecore, detailed illustration, earthy greens", "tags": ["cottagecore", "mushroom", "forest"], "description": "蘑菇小屋，秘境森林童话。" }
+        {
+          "title": "Shell Cottage",
+          "prompt": "Whimsical cottagecore illustration of a seashell cottage by the shore, soft watercolor, pastel blue and sand, dreamy storybook",
+          "tags": [
+            "cottagecore",
+            "coastal",
+            "whimsical"
+          ],
+          "description": "Whimsical cottagecore illustration of a seashell cottage by the shore, soft watercolor."
+        },
+        {
+          "title": "Coastal Still Life",
+          "prompt": "Cozy coastal still life, stacked linen books, dried lavender and a starfish, warm beige and sage, hand-painted gouache, gentle",
+          "tags": [
+            "coastal",
+            "stilllife",
+            "gouache"
+          ],
+          "description": "Cozy coastal still life, stacked linen books."
+        },
+        {
+          "title": "Flower Crown Ride",
+          "prompt": "Cottagecore girl with flower crown riding a bicycle past a wildflower field, soft sunlight, illustrated children's-book style, nostalgic",
+          "tags": [
+            "cottagecore",
+            "floral",
+            "illustration"
+          ],
+          "description": "Cottagecore girl with flower crown riding a bicycle past a wildflower field, soft sunlight."
+        },
+        {
+          "title": "Mushroom Cottage",
+          "prompt": "Mushroom cottage in a mossy forest, tiny door and warm window light, magical cottagecore, detailed illustration, earthy greens",
+          "tags": [
+            "cottagecore",
+            "mushroom",
+            "forest"
+          ],
+          "description": "Mushroom cottage in a mossy forest, tiny door and warm window light."
+        }
       ]
     },
     {
       "pack": "Swiss Geometry",
       "category": "geometric",
-      "adapters": ["poster", "card", "print3d", "sticker"],
-      "palette": ["#ff4d18", "#0c0c0d", "#f7f6f3"],
+      "adapters": [
+        "poster",
+        "card",
+        "print3d",
+        "sticker"
+      ],
+      "palette": [
+        "#ff4d18",
+        "#0c0c0d",
+        "#f7f6f3"
+      ],
       "variants": [
-        { "title": "Red Grid", "prompt": "Swiss style poster, precise red and black geometric grid, bold circle and diagonal rule, lots of white space, international typographic style", "tags": ["geometric", "swiss", "poster"], "description": "瑞士国际主义网格，红黑极简。" },
-        { "title": "Concentric Arcs", "prompt": "Parametric concentric arcs in navy and cream, minimal geometric composition, balanced asymmetry, modern editorial, clean", "tags": ["geometric", "parametric", "minimal"], "description": "参数化同心弧，现代编辑感。" },
-        { "title": "Iso Blocks", "prompt": "Abstract 3D geometric blocks floating, isometric, muted terracotta and stone, soft shadow, architectural object study", "tags": ["geometric", "3d", "iso"], "description": "等距几何块，建筑物件研究。" },
-        { "title": "Triangle Moire", "prompt": "Repeating triangular tessellation, optical moire pattern, high contrast black and cream, op-art, precise", "tags": ["geometric", "opart", "pattern"], "description": "三角镶嵌视幻图案，欧普艺术。" }
+        {
+          "title": "Red Grid",
+          "prompt": "Swiss style poster, precise red and black geometric grid, bold circle and diagonal rule, lots of white space, international typographic style",
+          "tags": [
+            "geometric",
+            "swiss",
+            "poster"
+          ],
+          "description": "Swiss style poster, precise red and black geometric grid."
+        },
+        {
+          "title": "Concentric Arcs",
+          "prompt": "Parametric concentric arcs in navy and cream, minimal geometric composition, balanced asymmetry, modern editorial, clean",
+          "tags": [
+            "geometric",
+            "parametric",
+            "minimal"
+          ],
+          "description": "Parametric concentric arcs in navy and cream, minimal geometric composition."
+        },
+        {
+          "title": "Iso Blocks",
+          "prompt": "Abstract 3D geometric blocks floating, isometric, muted terracotta and stone, soft shadow, architectural object study",
+          "tags": [
+            "geometric",
+            "3d",
+            "iso"
+          ],
+          "description": "Abstract 3D geometric blocks floating, isometric."
+        },
+        {
+          "title": "Triangle Moire",
+          "prompt": "Repeating triangular tessellation, optical moire pattern, high contrast black and cream, op-art, precise",
+          "tags": [
+            "geometric",
+            "opart",
+            "pattern"
+          ],
+          "description": "Repeating triangular tessellation, optical moire pattern."
+        }
       ]
     },
     {
       "pack": "Soft Mindful",
       "category": "minimal",
-      "adapters": ["sticker", "tshirt", "poster"],
-      "palette": ["#1f7a4d", "#0c0c0d", "#f7f6f3"],
+      "adapters": [
+        "sticker",
+        "tshirt",
+        "poster"
+      ],
+      "palette": [
+        "#1f7a4d",
+        "#0c0c0d",
+        "#f7f6f3"
+      ],
       "variants": [
-        { "title": "Held Heart", "prompt": "Soft hand-drawn affirmation illustration, a small heart held in two hands, gentle line art, warm blush and cream, calming wellness art", "tags": ["wellness", "minimal", "soft"], "description": "双手捧心，温柔正念插画。" },
-        { "title": "Breathe Ripples", "prompt": "Minimalist breathing visual, concentric soft circles like ripples, sage green on ivory, soothing, mental wellness, serene", "tags": ["wellness", "breath", "calm"], "description": "呼吸涟漪，冥想视觉。" },
-        { "title": "Anxious Bee", "prompt": "Cute anxious bee hugging a tiny coffee cup, gentle humor, soft pastel, rounded line art, comforting mental-health vibe", "tags": ["wellness", "humor", "cute"], "description": "焦虑小蜜蜂抱咖啡，治愈幽默。" },
-        { "title": "Calm Ribbon", "prompt": "Abstract calm wave lines, slow flowing ribbon, dusty blue and sand, meditative minimal art, peaceful", "tags": ["minimal", "wave", "peace"], "description": "静谧飘带，冥想极简。" }
+        {
+          "title": "Held Heart",
+          "prompt": "Soft hand-drawn affirmation illustration, a small heart held in two hands, gentle line art, warm blush and cream, calming wellness art",
+          "tags": [
+            "wellness",
+            "minimal",
+            "soft"
+          ],
+          "description": "Soft hand-drawn affirmation illustration, a small heart held in two hands."
+        },
+        {
+          "title": "Breathe Ripples",
+          "prompt": "Minimalist breathing visual, concentric soft circles like ripples, sage green on ivory, soothing, mental wellness, serene",
+          "tags": [
+            "wellness",
+            "breath",
+            "calm"
+          ],
+          "description": "Minimalist breathing visual, concentric soft circles like ripples."
+        },
+        {
+          "title": "Anxious Bee",
+          "prompt": "Cute anxious bee hugging a tiny coffee cup, gentle humor, soft pastel, rounded line art, comforting mental-health vibe",
+          "tags": [
+            "wellness",
+            "humor",
+            "cute"
+          ],
+          "description": "Cute anxious bee hugging a tiny coffee cup, gentle humor."
+        },
+        {
+          "title": "Calm Ribbon",
+          "prompt": "Abstract calm wave lines, slow flowing ribbon, dusty blue and sand, meditative minimal art, peaceful",
+          "tags": [
+            "minimal",
+            "wave",
+            "peace"
+          ],
+          "description": "Abstract calm wave lines, slow flowing ribbon."
+        }
       ]
     },
     {
       "pack": "Breed Portraits",
       "category": "illustration",
-      "adapters": ["tshirt", "sticker", "poster", "phonecase"],
-      "palette": ["#b57500", "#0c0c0d", "#f7f6f3"],
+      "adapters": [
+        "tshirt",
+        "sticker",
+        "poster",
+        "phonecase"
+      ],
+      "palette": [
+        "#b57500",
+        "#0c0c0d",
+        "#f7f6f3"
+      ],
       "variants": [
-        { "title": "Golden Puppy", "prompt": "Illustrated portrait of a golden retriever puppy, friendly expression, flat vector pet portrait, warm palette, breed-specific, charming", "tags": ["pet", "dog", "golden"], "description": "金毛幼犬扁平插画，品种专属。" },
-        { "title": "Frenchi Face", "prompt": "Cute French bulldog face illustration, big ears, minimalist pet portraiture, soft cream background, playful", "tags": ["pet", "dog", "frenchie"], "description": "法斗表情包插画，呆萌可爱。" },
-        { "title": "Tuxedo Cat", "prompt": "Watercolor cat portrait, a smug tuxedo cat, elegant brush strokes, botanical frame, pet lover art, refined", "tags": ["pet", "cat", "watercolor"], "description": "水墨燕尾猫，优雅宠物艺术。" },
-        { "title": "Proud Shiba", "prompt": "Shiba inu sitting proudly, illustrated dog portrait, autumn tones, clean line and wash, breed pride, adorable", "tags": ["pet", "dog", "shiba"], "description": "柴犬端坐，秋色调品种骄傲。" }
+        {
+          "title": "Golden Puppy",
+          "prompt": "Illustrated portrait of a golden retriever puppy, friendly expression, flat vector pet portrait, warm palette, breed-specific, charming",
+          "tags": [
+            "pet",
+            "dog",
+            "golden"
+          ],
+          "description": "Illustrated portrait of a golden retriever puppy, friendly expression."
+        },
+        {
+          "title": "Frenchi Face",
+          "prompt": "Cute French bulldog face illustration, big ears, minimalist pet portraiture, soft cream background, playful",
+          "tags": [
+            "pet",
+            "dog",
+            "frenchie"
+          ],
+          "description": "Cute French bulldog face illustration, big ears."
+        },
+        {
+          "title": "Tuxedo Cat",
+          "prompt": "Watercolor cat portrait, a smug tuxedo cat, elegant brush strokes, botanical frame, pet lover art, refined",
+          "tags": [
+            "pet",
+            "cat",
+            "watercolor"
+          ],
+          "description": "Watercolor cat portrait, a smug tuxedo cat."
+        },
+        {
+          "title": "Proud Shiba",
+          "prompt": "Shiba inu sitting proudly, illustrated dog portrait, autumn tones, clean line and wash, breed pride, adorable",
+          "tags": [
+            "pet",
+            "dog",
+            "shiba"
+          ],
+          "description": "Shiba inu sitting proudly, illustrated dog portrait."
+        }
       ]
     },
     {
       "pack": "Bio-Glow",
       "category": "3d",
-      "adapters": ["poster", "print3d", "tshirt", "sticker"],
-      "palette": ["#13b5a6", "#6b3df5", "#0c0c0d"],
+      "adapters": [
+        "poster",
+        "print3d",
+        "tshirt",
+        "sticker"
+      ],
+      "palette": [
+        "#13b5a6",
+        "#6b3df5",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Mycelial Mind", "prompt": "Biopunk glowing organism, neural network merged with mycelium, luminous teal and violet, dark background, 3D render, futuristic organic", "tags": ["biopunk", "3d", "glow"], "description": "生物朋克发光体，神经与菌丝融合。" },
-        { "title": "Glass Veins", "prompt": "Abstract 3D translucent glass blob with internal glowing veins, iridescent, studio lighting, object render, sleek", "tags": ["3d", "glass", "abstract"], "description": "透光玻璃块内蕴发光脉络。" },
-        { "title": "Biolume Reef", "prompt": "Bioluminescent coral reef fragment, glowing tendrils, deep ocean blue and cyan, detailed 3D, mesmerizing", "tags": ["3d", "ocean", "glow"], "description": "生物荧光珊瑚，深海蓝青。" },
-        { "title": "Bio-Digital Seed", "prompt": "Organic tech seed, a smooth pebble splitting to reveal circuit-like glow, bio-digital, neon green and black, conceptual 3D", "tags": ["3d", "bio", "concept"], "description": "生物数字种子，有机与电路共生。" }
+        {
+          "title": "Mycelial Mind",
+          "prompt": "Biopunk glowing organism, neural network merged with mycelium, luminous teal and violet, dark background, 3D render, futuristic organic",
+          "tags": [
+            "biopunk",
+            "3d",
+            "glow"
+          ],
+          "description": "Biopunk glowing organism, neural network merged with mycelium."
+        },
+        {
+          "title": "Glass Veins",
+          "prompt": "Abstract 3D translucent glass blob with internal glowing veins, iridescent, studio lighting, object render, sleek",
+          "tags": [
+            "3d",
+            "glass",
+            "abstract"
+          ],
+          "description": "Abstract 3D translucent glass blob with internal glowing veins, iridescent."
+        },
+        {
+          "title": "Biolume Reef",
+          "prompt": "Bioluminescent coral reef fragment, glowing tendrils, deep ocean blue and cyan, detailed 3D, mesmerizing",
+          "tags": [
+            "3d",
+            "ocean",
+            "glow"
+          ],
+          "description": "Bioluminescent coral reef fragment, glowing tendrils."
+        },
+        {
+          "title": "Bio-Digital Seed",
+          "prompt": "Organic tech seed, a smooth pebble splitting to reveal circuit-like glow, bio-digital, neon green and black, conceptual 3D",
+          "tags": [
+            "3d",
+            "bio",
+            "concept"
+          ],
+          "description": "Organic tech seed, a smooth pebble splitting to reveal circuit-like glow."
+        }
       ]
     }
   ]

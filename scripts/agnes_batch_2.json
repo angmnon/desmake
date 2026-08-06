@@ -1,101 +1,460 @@
 {
-  "note": "Desmake 批量生图 manifest — 第二批。基于 2026 POD 市场调研，补齐 abstract 分类并给其他 7 类换新角度。每条独立 prompt（count=1），窄众、设计向、商标安全。",
+  "note": "Desmake batch generation manifest - batch 2. One prompt per item (count=1); original, trademark-safe and design-led. Reuses the existing category tags so everything files correctly in the marketplace.",
   "aspect": "1:1",
   "packs": [
     {
       "pack": "Fluid Abstracts",
       "category": "abstract",
-      "adapters": ["poster", "print3d", "card", "sticker"],
-      "palette": ["#ff7a59", "#7b2ff7", "#0c0c0d"],
+      "adapters": [
+        "poster",
+        "print3d",
+        "card",
+        "sticker"
+      ],
+      "palette": [
+        "#ff7a59",
+        "#7b2ff7",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Marble Drift", "prompt": "Abstract fluid marbling, swirling veins of coral and violet ink in motion, high-contrast organic flow, fine-art abstract, elegant negative space, 4k", "tags": ["abstract", "marble", "fluid"], "description": "珊瑚紫罗兰流体大理石纹，艺术感抽象。" },
-        { "title": "Color Field Bloom", "prompt": "Soft abstract color-field painting, overlapping translucent circles of warm coral and lilac, Rothko-inspired calm gradient, matte texture, gallery print", "tags": ["abstract", "colorfield", "calm"], "description": "色域绘画式柔和叠色，画廊感。" },
-        { "title": "Ink Ripple", "prompt": "Minimal ink-in-water abstract, a single black ink drop blooming into soft tendrils on cream, serene monochrome, meditative", "tags": ["abstract", "ink", "minimal"], "description": "水中墨晕极简抽象，冥想视觉。" },
-        { "title": "Liquid Chrome", "prompt": "Abstract liquid metal pour, chrome and iridescent pearl swirl, reflective studio render, futuristic abstract object, sleek", "tags": ["abstract", "chrome", "liquid"], "description": "液态铬金属流动，未来感抽象。" }
+        {
+          "title": "Marble Drift",
+          "prompt": "Abstract fluid marbling, swirling veins of coral and violet ink in motion, high-contrast organic flow, fine-art abstract, elegant negative space, 4k",
+          "tags": [
+            "abstract",
+            "marble",
+            "fluid"
+          ],
+          "description": "Abstract fluid marbling, swirling veins of coral and violet ink in motion."
+        },
+        {
+          "title": "Color Field Bloom",
+          "prompt": "Soft abstract color-field painting, overlapping translucent circles of warm coral and lilac, Rothko-inspired calm gradient, matte texture, gallery print",
+          "tags": [
+            "abstract",
+            "colorfield",
+            "calm"
+          ],
+          "description": "Soft abstract color-field painting, overlapping translucent circles of warm coral and lilac."
+        },
+        {
+          "title": "Ink Ripple",
+          "prompt": "Minimal ink-in-water abstract, a single black ink drop blooming into soft tendrils on cream, serene monochrome, meditative",
+          "tags": [
+            "abstract",
+            "ink",
+            "minimal"
+          ],
+          "description": "Minimal ink-in-water abstract, a single black ink drop blooming into soft tendrils on cream."
+        },
+        {
+          "title": "Liquid Chrome",
+          "prompt": "Abstract liquid metal pour, chrome and iridescent pearl swirl, reflective studio render, futuristic abstract object, sleek",
+          "tags": [
+            "abstract",
+            "chrome",
+            "liquid"
+          ],
+          "description": "Abstract liquid metal pour, chrome and iridescent pearl swirl."
+        }
       ]
     },
     {
       "pack": "Desert Modern",
       "category": "minimal",
-      "adapters": ["tshirt", "poster", "phonecase", "sticker"],
-      "palette": ["#c4622d", "#e8d9c5", "#0c0c0d"],
+      "adapters": [
+        "tshirt",
+        "poster",
+        "phonecase",
+        "sticker"
+      ],
+      "palette": [
+        "#c4622d",
+        "#e8d9c5",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Terracotta Sun", "prompt": "Minimalist desert sunset, a single terracotta circle over layered sand dunes, flat vector, warm earth palette, lots of negative space", "tags": ["desert", "minimal", "sun"], "description": "陶土色沙漠落日，极简西南风。" },
-        { "title": "Cactus Line", "prompt": "Single continuous-line drawing of a saguaro cactus, thin uniform strokes, sand and clay tones, modern minimal southwest", "tags": ["desert", "cactus", "lineart"], "description": "单线仙人掌，现代西南极简。" },
-        { "title": "Adobe Arch", "prompt": "Simplified adobe arch silhouette, soft peach and clay, flat geometric minimal, southwestern calm", "tags": ["desert", "adobe", "geometric"], "description": "土坯拱门剪影，柔和极简。" },
-        { "title": "Dune Stripes", "prompt": "Abstract desert dunes in clean horizontal bands, terracotta and sand gradient, minimal poster, serene", "tags": ["desert", "dune", "pattern"], "description": "沙丘横纹抽象，宁静海报感。" }
+        {
+          "title": "Terracotta Sun",
+          "prompt": "Minimalist desert sunset, a single terracotta circle over layered sand dunes, flat vector, warm earth palette, lots of negative space",
+          "tags": [
+            "desert",
+            "minimal",
+            "sun"
+          ],
+          "description": "Minimalist desert sunset, a single terracotta circle over layered sand dunes."
+        },
+        {
+          "title": "Cactus Line",
+          "prompt": "Single continuous-line drawing of a saguaro cactus, thin uniform strokes, sand and clay tones, modern minimal southwest",
+          "tags": [
+            "desert",
+            "cactus",
+            "lineart"
+          ],
+          "description": "Single continuous-line drawing of a saguaro cactus, thin uniform strokes."
+        },
+        {
+          "title": "Adobe Arch",
+          "prompt": "Simplified adobe arch silhouette, soft peach and clay, flat geometric minimal, southwestern calm",
+          "tags": [
+            "desert",
+            "adobe",
+            "geometric"
+          ],
+          "description": "Simplified adobe arch silhouette, soft peach and clay."
+        },
+        {
+          "title": "Dune Stripes",
+          "prompt": "Abstract desert dunes in clean horizontal bands, terracotta and sand gradient, minimal poster, serene",
+          "tags": [
+            "desert",
+            "dune",
+            "pattern"
+          ],
+          "description": "Abstract desert dunes in clean horizontal bands, terracotta and sand gradient."
+        }
       ]
     },
     {
       "pack": "Kawaii Bites",
       "category": "illustration",
-      "adapters": ["sticker", "tshirt", "phonecase", "poster"],
-      "palette": ["#ff9eb5", "#6cc4a1", "#0c0c0d"],
+      "adapters": [
+        "sticker",
+        "tshirt",
+        "phonecase",
+        "poster"
+      ],
+      "palette": [
+        "#ff9eb5",
+        "#6cc4a1",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Matcha Buddy", "prompt": "Cute kawaii matcha latte character with a smiling face and tiny arms, pastel green, rounded illustration, charming sticker art", "tags": ["kawaii", "matcha", "cute"], "description": "抹茶拿铁萌物，圆润可爱插画。" },
-        { "title": "Donut Friend", "prompt": "Adorable donut character with sprinkles and a happy face, soft pink and cream, kawaii food illustration, playful", "tags": ["kawaii", "donut", "food"], "description": "甜甜圈萌角色，俏皮食物插画。" },
-        { "title": "Boba Smile", "prompt": "Cute boba tea character with tapioca pearls and a blush, milky pastel, kawaii illustration, delightful", "tags": ["kawaii", "boba", "cute"], "description": "珍珠奶茶萌物，奶系粉彩。" },
-        { "title": "Sushi Wink", "prompt": "Charming kawaii sushi roll with a winking face and nori band, soft colors, cute food illustration, whimsical", "tags": ["kawaii", "sushi", "food"], "description": "寿司萌物眨眼，奇趣食物插画。" }
+        {
+          "title": "Matcha Buddy",
+          "prompt": "Cute kawaii matcha latte character with a smiling face and tiny arms, pastel green, rounded illustration, charming sticker art",
+          "tags": [
+            "kawaii",
+            "matcha",
+            "cute"
+          ],
+          "description": "Cute kawaii matcha latte character with a smiling face and tiny arms, pastel green."
+        },
+        {
+          "title": "Donut Friend",
+          "prompt": "Adorable donut character with sprinkles and a happy face, soft pink and cream, kawaii food illustration, playful",
+          "tags": [
+            "kawaii",
+            "donut",
+            "food"
+          ],
+          "description": "Adorable donut character with sprinkles and a happy face, soft pink and cream."
+        },
+        {
+          "title": "Boba Smile",
+          "prompt": "Cute boba tea character with tapioca pearls and a blush, milky pastel, kawaii illustration, delightful",
+          "tags": [
+            "kawaii",
+            "boba",
+            "cute"
+          ],
+          "description": "Cute boba tea character with tapioca pearls and a blush, milky pastel."
+        },
+        {
+          "title": "Sushi Wink",
+          "prompt": "Charming kawaii sushi roll with a winking face and nori band, soft colors, cute food illustration, whimsical",
+          "tags": [
+            "kawaii",
+            "sushi",
+            "food"
+          ],
+          "description": "Charming kawaii sushi roll with a winking face and nori band, soft colors."
+        }
       ]
     },
     {
       "pack": "Street Hustle",
       "category": "typography",
-      "adapters": ["tshirt", "poster", "sticker"],
-      "palette": ["#ffd400", "#0c0c0d", "#f7f6f3"],
+      "adapters": [
+        "tshirt",
+        "poster",
+        "sticker"
+      ],
+      "palette": [
+        "#ffd400",
+        "#0c0c0d",
+        "#f7f6f3"
+      ],
       "variants": [
-        { "title": "NO DAYS OFF", "prompt": "Bold streetwear typography reading NO DAYS OFF, heavy condensed sans, high contrast black on volt yellow, urban poster, graphic", "tags": ["typography", "street", "bold"], "description": "街头健身高对比字形，都市海报。" },
-        { "title": "GRIND", "prompt": "Oversized gritty display type GRIND, distressed texture, black and off-white, street gym aesthetic, bold", "tags": ["typography", "gym", "gritty"], "description": "做旧粗体 GRIND，街头健身感。" },
-        { "title": "RISE", "prompt": "Motivational RISE in tall athletic slab serif, diagonal layout, monochrome, sporty editorial type", "tags": ["typography", "rise", "sporty"], "description": "运动感 RISE 字形，编辑式排版。" },
-        { "title": "BUILT NOT BORN", "prompt": "Confident type BUILT NOT BORN, stacked chunky letters, cream on charcoal, bold statement tee", "tags": ["typography", "statement", "bold"], "description": "态度宣言字形，重磅 T 恤感。" }
+        {
+          "title": "NO DAYS OFF",
+          "prompt": "Bold streetwear typography reading NO DAYS OFF, heavy condensed sans, high contrast black on volt yellow, urban poster, graphic",
+          "tags": [
+            "typography",
+            "street",
+            "bold"
+          ],
+          "description": "Bold streetwear typography reading NO DAYS OFF, heavy condensed sans."
+        },
+        {
+          "title": "GRIND",
+          "prompt": "Oversized gritty display type GRIND, distressed texture, black and off-white, street gym aesthetic, bold",
+          "tags": [
+            "typography",
+            "gym",
+            "gritty"
+          ],
+          "description": "Oversized gritty display type GRIND, distressed texture."
+        },
+        {
+          "title": "RISE",
+          "prompt": "Motivational RISE in tall athletic slab serif, diagonal layout, monochrome, sporty editorial type",
+          "tags": [
+            "typography",
+            "rise",
+            "sporty"
+          ],
+          "description": "Motivational RISE in tall athletic slab serif, diagonal layout."
+        },
+        {
+          "title": "BUILT NOT BORN",
+          "prompt": "Confident type BUILT NOT BORN, stacked chunky letters, cream on charcoal, bold statement tee",
+          "tags": [
+            "typography",
+            "statement",
+            "bold"
+          ],
+          "description": "Confident type BUILT NOT BORN, stacked chunky letters."
+        }
       ]
     },
     {
       "pack": "Cosmic Render",
       "category": "3d",
-      "adapters": ["poster", "phonecase", "print3d", "sticker"],
-      "palette": ["#5b2be0", "#21d4fd", "#0c0c0d"],
+      "adapters": [
+        "poster",
+        "phonecase",
+        "print3d",
+        "sticker"
+      ],
+      "palette": [
+        "#5b2be0",
+        "#21d4fd",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Nebula Orb", "prompt": "3D render of a glowing nebula planet, swirling magenta and cyan clouds, dark space, volumetric light, cinematic", "tags": ["3d", "nebula", "space"], "description": "星云行星 3D 渲染，电影光感。" },
-        { "title": "Ringed Pearl", "prompt": "Sleek 3D planet with a thin glowing ring, iridescent surface, studio lighting, futuristic cosmic object", "tags": ["3d", "planet", "ring"], "description": "带光环珍珠星球，未来宇宙物件。" },
-        { "title": "Stardust Cube", "prompt": "Abstract 3D translucent cube filled with floating stardust and tiny stars, holographic, soft glow", "tags": ["3d", "stardust", "cube"], "description": "星尘立方，全息微光抽象。" },
-        { "title": "Aurora Sphere", "prompt": "3D sphere wrapped in flowing aurora ribbons, teal and violet energy, dark void, mesmerizing render", "tags": ["3d", "aurora", "sphere"], "description": "极光缠绕球体，迷幻渲染。" }
+        {
+          "title": "Nebula Orb",
+          "prompt": "3D render of a glowing nebula planet, swirling magenta and cyan clouds, dark space, volumetric light, cinematic",
+          "tags": [
+            "3d",
+            "nebula",
+            "space"
+          ],
+          "description": "3D render of a glowing nebula planet, swirling magenta and cyan clouds."
+        },
+        {
+          "title": "Ringed Pearl",
+          "prompt": "Sleek 3D planet with a thin glowing ring, iridescent surface, studio lighting, futuristic cosmic object",
+          "tags": [
+            "3d",
+            "planet",
+            "ring"
+          ],
+          "description": "Sleek 3D planet with a thin glowing ring, iridescent surface."
+        },
+        {
+          "title": "Stardust Cube",
+          "prompt": "Abstract 3D translucent cube filled with floating stardust and tiny stars, holographic, soft glow",
+          "tags": [
+            "3d",
+            "stardust",
+            "cube"
+          ],
+          "description": "Abstract 3D translucent cube filled with floating stardust and tiny stars, holographic."
+        },
+        {
+          "title": "Aurora Sphere",
+          "prompt": "3D sphere wrapped in flowing aurora ribbons, teal and violet energy, dark void, mesmerizing render",
+          "tags": [
+            "3d",
+            "aurora",
+            "sphere"
+          ],
+          "description": "3D sphere wrapped in flowing aurora ribbons, teal and violet energy."
+        }
       ]
     },
     {
       "pack": "Pop Geometry",
       "category": "geometric",
-      "adapters": ["tshirt", "card", "poster", "sticker"],
-      "palette": ["#ff2e63", "#08d9d6", "#0c0c0d"],
+      "adapters": [
+        "tshirt",
+        "card",
+        "poster",
+        "sticker"
+      ],
+      "palette": [
+        "#ff2e63",
+        "#08d9d6",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Ben-Day Pop", "prompt": "Pop-art composition, bold red and teal shapes with ben-day dot texture, comic-panel energy, graphic, clean", "tags": ["geometric", "popart", "dots"], "description": "本戴点波普拼贴，漫画能量。" },
-        { "title": "Halftone Burst", "prompt": "Geometric starburst in halftone dots, primary blue and yellow, retro-pop print, dynamic", "tags": ["geometric", "halftone", "burst"], "description": "半调放射星芒，复古波普。" },
-        { "title": "Block Pop", "prompt": "Overlapping flat color blocks, magenta and cyan, bold geometric poster, modern pop minimal", "tags": ["geometric", "blocks", "pop"], "description": "色块叠搭，现代波普极简。" },
-        { "title": "Dot Grid Face", "prompt": "Abstract face built from a grid of dots, pop-art style, high contrast, playful geometric", "tags": ["geometric", "dots", "face"], "description": "点阵构成面孔，趣味几何。" }
+        {
+          "title": "Ben-Day Pop",
+          "prompt": "Pop-art composition, bold red and teal shapes with ben-day dot texture, comic-panel energy, graphic, clean",
+          "tags": [
+            "geometric",
+            "popart",
+            "dots"
+          ],
+          "description": "Pop-art composition, bold red and teal shapes with ben-day dot texture."
+        },
+        {
+          "title": "Halftone Burst",
+          "prompt": "Geometric starburst in halftone dots, primary blue and yellow, retro-pop print, dynamic",
+          "tags": [
+            "geometric",
+            "halftone",
+            "burst"
+          ],
+          "description": "Geometric starburst in halftone dots, primary blue and yellow."
+        },
+        {
+          "title": "Block Pop",
+          "prompt": "Overlapping flat color blocks, magenta and cyan, bold geometric poster, modern pop minimal",
+          "tags": [
+            "geometric",
+            "blocks",
+            "pop"
+          ],
+          "description": "Overlapping flat color blocks, magenta and cyan."
+        },
+        {
+          "title": "Dot Grid Face",
+          "prompt": "Abstract face built from a grid of dots, pop-art style, high contrast, playful geometric",
+          "tags": [
+            "geometric",
+            "dots",
+            "face"
+          ],
+          "description": "Abstract face built from a grid of dots, pop-art style."
+        }
       ]
     },
     {
       "pack": "Woodland Mushrooms",
       "category": "botanical",
-      "adapters": ["tshirt", "sticker", "poster", "phonecase"],
-      "palette": ["#b5481f", "#2f7d4f", "#0c0c0d"],
+      "adapters": [
+        "tshirt",
+        "sticker",
+        "poster",
+        "phonecase"
+      ],
+      "palette": [
+        "#b5481f",
+        "#2f7d4f",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Toadstool Trio", "prompt": "Illustrated cluster of red-capped toadstools with white dots on a mossy log, detailed botanical, earthy greens", "tags": ["botanical", "mushroom", "forest"], "description": "毒蝇伞三株，苔藓木质感。" },
-        { "title": "Fern Fairy", "prompt": "Delicate fern fronds curling around a tiny glowing mushroom, soft green watercolor, enchanted forest", "tags": ["botanical", "fern", "fairy"], "description": "蕨叶环抱发光菇，秘境水彩。" },
-        { "title": "Morel Study", "prompt": "Fine botanical illustration of morel mushrooms, honeycomb caps, muted brown on ivory, scientific sketch style", "tags": ["botanical", "morel", "sketch"], "description": "羊肚菌科学素描，象牙底。" },
-        { "title": "Chanterelle Path", "prompt": "Golden chanterelle mushrooms among fallen leaves, warm autumn botanical, hand-painted gouache", "tags": ["botanical", "chanterelle", "autumn"], "description": "鸡油菌落叶，秋日水粉。" }
+        {
+          "title": "Toadstool Trio",
+          "prompt": "Illustrated cluster of red-capped toadstools with white dots on a mossy log, detailed botanical, earthy greens",
+          "tags": [
+            "botanical",
+            "mushroom",
+            "forest"
+          ],
+          "description": "Illustrated cluster of red-capped toadstools with white dots on a mossy log, detailed botanical."
+        },
+        {
+          "title": "Fern Fairy",
+          "prompt": "Delicate fern fronds curling around a tiny glowing mushroom, soft green watercolor, enchanted forest",
+          "tags": [
+            "botanical",
+            "fern",
+            "fairy"
+          ],
+          "description": "Delicate fern fronds curling around a tiny glowing mushroom, soft green watercolor."
+        },
+        {
+          "title": "Morel Study",
+          "prompt": "Fine botanical illustration of morel mushrooms, honeycomb caps, muted brown on ivory, scientific sketch style",
+          "tags": [
+            "botanical",
+            "morel",
+            "sketch"
+          ],
+          "description": "Fine botanical illustration of morel mushrooms, honeycomb caps."
+        },
+        {
+          "title": "Chanterelle Path",
+          "prompt": "Golden chanterelle mushrooms among fallen leaves, warm autumn botanical, hand-painted gouache",
+          "tags": [
+            "botanical",
+            "chanterelle",
+            "autumn"
+          ],
+          "description": "Golden chanterelle mushrooms among fallen leaves, warm autumn botanical."
+        }
       ]
     },
     {
       "pack": "Memphis Retro",
       "category": "retro",
-      "adapters": ["poster", "tshirt", "card", "sticker"],
-      "palette": ["#1d4ed8", "#fbbf24", "#0c0c0d"],
+      "adapters": [
+        "poster",
+        "tshirt",
+        "card",
+        "sticker"
+      ],
+      "palette": [
+        "#1d4ed8",
+        "#fbbf24",
+        "#0c0c0d"
+      ],
       "variants": [
-        { "title": "Squiggle Pop", "prompt": "80s Memphis design, bold squiggles, confetti shapes and dots, primary blue and yellow, playful retro pattern", "tags": ["retro", "memphis", "squiggle"], "description": "孟菲斯波浪线，撞色复古。" },
-        { "title": "Terrazzo Retro", "prompt": "Memphis terrazzo of scattered geometric confetti on cream, black and pastel, nostalgic 80s graphic", "tags": ["retro", "terrazzo", "confetti"], "description": "孟菲斯水磨石，怀旧 80s。" },
-        { "title": "Boom Box", "prompt": "Retro boombox illustration, memphis shapes around it, teal and coral, fun 80s vibe", "tags": ["retro", "boombox", "80s"], "description": "复古收录机，孟菲斯环绕。" },
-        { "title": "Grid Confetti", "prompt": "Abstract memphis grid with floating triangles and zigzags, red and blue, energetic retro poster", "tags": ["retro", "memphis", "grid"], "description": "孟菲斯网格漂浮形，活力复古。" }
+        {
+          "title": "Squiggle Pop",
+          "prompt": "80s Memphis design, bold squiggles, confetti shapes and dots, primary blue and yellow, playful retro pattern",
+          "tags": [
+            "retro",
+            "memphis",
+            "squiggle"
+          ],
+          "description": "80s Memphis design, bold squiggles."
+        },
+        {
+          "title": "Terrazzo Retro",
+          "prompt": "Memphis terrazzo of scattered geometric confetti on cream, black and pastel, nostalgic 80s graphic",
+          "tags": [
+            "retro",
+            "terrazzo",
+            "confetti"
+          ],
+          "description": "Memphis terrazzo of scattered geometric confetti on cream, black and pastel."
+        },
+        {
+          "title": "Boom Box",
+          "prompt": "Retro boombox illustration, memphis shapes around it, teal and coral, fun 80s vibe",
+          "tags": [
+            "retro",
+            "boombox",
+            "80s"
+          ],
+          "description": "Retro boombox illustration, memphis shapes around it."
+        },
+        {
+          "title": "Grid Confetti",
+          "prompt": "Abstract memphis grid with floating triangles and zigzags, red and blue, energetic retro poster",
+          "tags": [
+            "retro",
+            "memphis",
+            "grid"
+          ],
+          "description": "Abstract memphis grid with floating triangles and zigzags, red and blue."
+        }
       ]
     }
   ]
