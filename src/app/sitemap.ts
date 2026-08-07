@@ -5,6 +5,10 @@ import { publishedToDesign } from "@/lib/catalog";
 
 const BASE = "https://desmake.com";
 
+// Disable route caching: the sitemap enumerates live D1 data and changes every
+// deploy. A stale cache would freeze an outdated index (and poison the edge).
+export const dynamic = "force-dynamic";
+
 /** Seed data stores `created` as a human relative string ("2 hours ago"); only
  *  safe-parse it. Anything unparseable falls back to "now" so the sitemap
  *  serialises instead of throwing `Invalid time value`. */

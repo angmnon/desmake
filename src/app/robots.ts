@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next";
 
+// Disable route caching: this file changes between deploys, and a stale
+// edge/instance cache would otherwise serve an old robots.txt for up to a day.
+export const dynamic = "force-dynamic";
+
 const PRIVATE = ["/api/", "/studio", "/account", "/cart", "/checkout", "/auth", "/cdn/", "/orders"];
 
 /**
