@@ -6,6 +6,30 @@ import { ArrowRight, Sparkles, Box, Shirt, Frame, CreditCard, Smartphone, Sticke
 import { ADAPTERS, CATEGORIES, CREATORS, DESIGNS, HERO_STATS } from "@/lib/data";
 import { Artwork } from "@/components/Artwork";
 import { CreatorCard, DesignCard } from "@/components/DesignCard";
+import { JsonLd, faqSchema } from "@/components/JsonLd";
+
+const HOME_FAQ = faqSchema([
+  {
+    q: "What is Desmake?",
+    a: "Desmake is an AI-native design-to-manufacture marketplace. Creators generate a design with AI or upload their own, publish it once, and Desmake automatically turns it into manufacturable products — posters, t-shirts, stickers, phone cases, business cards and 3D prints — produced on demand and shipped from the manufacturing node closest to each buyer.",
+  },
+  {
+    q: "How does Desmake work for creators?",
+    a: "Publish a single design — not a product catalogue. Desmake's Design-to-Market engine analyses the artwork, matches it to manufacturing adapters, renders photoreal mockups, writes the copy and SEO tags, prices it and lists it, typically in about four minutes. There is no inventory, no minimum order and no upfront cost; creators get paid a royalty (10%–50%) when a design sells.",
+  },
+  {
+    q: "How is Desmake different from Printful, Printify or Redbubble?",
+    a: "Desmake is AI-native and agent-first. You publish one design and it is automatically adapted, mockup-rendered, copywritten, priced and listed across six manufacturing methods, then routed to the factory node with the best cost-to-door. It also exposes an MCP server and REST API so AI agents (Claude, custom GPTs, LangGraph) can search, generate, publish and order products autonomously.",
+  },
+  {
+    q: "Can AI agents use Desmake?",
+    a: "Yes. Desmake is MCP/API-first. Add the Desmake MCP server (npx -y @desmake/mcp) with a scoped API key and an agent can search the catalogue, read live manufacturing cost, generate and publish designs, place orders and track fulfilment — with per-key metering and a full audit trail.",
+  },
+  {
+    q: "How much does Desmake cost and how do payouts work?",
+    a: "Publishing is free with 0% upfront cost. Products are made on demand starting around $5 for stickers and $7 for posters. Creators earn a royalty they set between 10% and 50% on each sale, with a transparent cost breakdown on every order and payouts across 34 shipping countries.",
+  },
+]);
 
 const adapterIcon: Record<string, React.ReactNode> = {
   shirt: <Shirt size={20} strokeWidth={1.5} />,
@@ -33,6 +57,7 @@ export default function HomePage() {
 
   return (
     <div>
+      <JsonLd data={HOME_FAQ} />
       {/* ══════════ HERO ══════════ */}
       <section className="relative grain overflow-hidden" style={{ paddingTop: "clamp(48px, 7vw, 96px)", paddingBottom: "clamp(40px, 5vw, 72px)" }}>
         <div className="spot" style={{ width: 480, height: 480, background: "rgba(255,77,24,0.14)", top: -160, right: -60 }} />

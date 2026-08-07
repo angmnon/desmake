@@ -1,12 +1,37 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, ArrowRight } from "lucide-react";
 import { CREATORS, creatorByHandle, designsByCreator, compact } from "@/lib/data";
 import { DesignCard } from "@/components/DesignCard";
 import { Artwork } from "@/components/Artwork";
+import { JsonLd, SITE_URL } from "@/components/JsonLd";
 
 export function generateStaticParams() {
   return CREATORS.map((c) => ({ handle: c.handle }));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+  const { handle } = await params;
+  const creator = creatorByHandle(handle);
+  if (!creator) return { title: "Creator not found", robots: { index: false, follow: true } };
+  const title = `${creator.name} (@${creator.handle})`;
+  const description = `${creator.bio} — ${creator.works} works, ${compact(creator.followers)} followers. Shop original ${creator.role.toLowerCase()} designs by ${creator.name} from ${creator.city}, made on demand and shipped worldwide by Desmake.`;
+  const canonical = `/creators/${encodeURIComponent(creator.handle)}`;
+  return {
+    title,
+    description,
+    keywords: [creator.name, creator.role, creator.city, "designer", "artist", "print on demand creator"],
+    alternates: { canonical },
+    openGraph: {
+      title: `${title} · Desmake`,
+      description,
+      url: `${SITE_URL}${canonical}`,
+      type: "profile",
+      images: [{ url: "/og.png", alt: creator.name }],
+    },
+    twitter: { card: "summary_large_image", title: `${title} · Desmake`, description, images: ["/og.png"] },
+  };
 }
 
 export default async function CreatorProfilePage({ params }: { params: Promise<{ handle: string }> }) {
@@ -18,8 +43,21 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
   const works = designsByCreator(creator.handle);
 
+  const personLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: creator.name,
+    alternateName: `@${creator.handle}`,
+    url: `${SITE_URL}/creators/${creator.handle}`,
+    jobTitle: creator.role,
+    description: creator.bio,
+    homeLocation: { "@type": "Place", name: creator.city },
+    mainEntityOfPage: `${SITE_URL}/creators/${creator.handle}`,
+  };
+
   return (
     <div>
+      <JsonLd data={personLd} />
       <section style={{ paddingTop: "clamp(40px,5vw,72px)" }}>
         <div className="container-wide">
           <div className="row gap-5 wrap" style={{ alignItems: "flex-end" }}>

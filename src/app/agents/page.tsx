@@ -1,6 +1,68 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Bot, Sparkles, Workflow, Zap, Globe, Shield } from "lucide-react";
 import { Inactive } from "@/components/Inactive";
+import { JsonLd, SITE_URL, faqSchema } from "@/components/JsonLd";
+
+export const metadata: Metadata = {
+  title: "Agent Hub — give your AI agents a factory floor (MCP & API)",
+  description:
+    "Connect Claude, a custom GPT or your own LangGraph worker to Desmake over MCP. AI agents can search the catalogue, read live manufacturing cost, generate and publish designs, place orders and track jobs — with scoped keys, per-key metering and a full audit trail.",
+  keywords: [
+    "MCP server",
+    "Model Context Protocol commerce",
+    "agent commerce",
+    "Claude MCP",
+    "AI agent print on demand",
+    "autonomous ordering API",
+    "@desmake/mcp",
+  ],
+  alternates: { canonical: "/agents" },
+  openGraph: {
+    title: "Agent Hub · Desmake",
+    description: "Give your AI agents a factory floor. MCP + REST + SDKs to search, publish, price and order — autonomously.",
+    url: `${SITE_URL}/agents`,
+    type: "website",
+    images: [{ url: "/og.png", alt: "Desmake Agent Hub" }],
+  },
+  twitter: { card: "summary_large_image", title: "Agent Hub · Desmake", images: ["/og.png"] },
+};
+
+const agentAppLd: Record<string, unknown> = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Desmake Agent Hub (MCP)",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Any",
+  url: `${SITE_URL}/agents`,
+  description:
+    "An MCP server and REST/SDK interface that lets AI agents search a manufacturing catalogue, generate and publish designs, place orders and track fulfilment. Install with `npx -y @desmake/mcp`.",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  featureList: [
+    "catalog.search",
+    "design.generate",
+    "design.publish",
+    "orders.create",
+    "manufacturing.track",
+    "Scoped API keys, per-key metering and full audit trail",
+  ],
+  softwareHelp: `${SITE_URL}/docs`,
+};
+
+const agentFaqLd = faqSchema([
+  {
+    q: "How do AI agents connect to Desmake?",
+    a: "Add the Desmake MCP server to your client config (npx -y @desmake/mcp) with a scoped DESMAKE_API_KEY. Claude, custom GPTs and LangGraph workers can then call 14 tools including catalog.search, design.generate, design.publish, orders.create and manufacturing.track. A REST API and TypeScript/Python SDKs are also available.",
+  },
+  {
+    q: "Can an AI agent actually place and ship a real order on Desmake?",
+    a: "Yes. Through the MCP or REST API an agent can generate or publish a design, price it against live manufacturing cost, create an order and track the job to the doorstep. Every action is scoped by the API key's permissions and recorded in an audit trail.",
+  },
+  {
+    q: "Is Desmake's agent access metered and secure?",
+    a: "Each key has scoped permissions, per-key usage metering and a full audit trail of every action taken on your behalf, so you can safely delegate commerce actions to autonomous agents.",
+  },
+]);
 
 const AGENTS = [
   { name: "Brief → Design", desc: "Turn a written creative brief into 8 production-ready concepts in 30 seconds.", icon: <Sparkles size={20} strokeWidth={1.8} />, adapters: ["poster", "apparel", "sticker"] },
@@ -13,6 +75,7 @@ const AGENTS = [
 export default function AgentsPage() {
   return (
     <div>
+      <JsonLd data={[agentAppLd, agentFaqLd]} />
       <section style={{ paddingTop: "clamp(32px,4vw,56px)" }}>
         <div className="container-narrow center">
           <span className="eyebrow eyebrow-dot">AI Agents</span>
