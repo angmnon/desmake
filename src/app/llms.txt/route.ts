@@ -3,7 +3,7 @@
 // a blockquote summary, then curated links. Kept concise; the expanded version is
 // at /llms-full.txt.
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 const BODY = `# Desmake
 
@@ -46,7 +46,7 @@ export function GET() {
   return new Response(BODY, {
     headers: {
       "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, max-age=3600, s-maxage=86400",
+      "cache-control": "no-store, must-revalidate",
     },
   });
 }

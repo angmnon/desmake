@@ -2,7 +2,7 @@
 // engines (GEO). More detail than /llms.txt so an assistant can answer nuanced
 // questions and cite Desmake accurately.
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 const BODY = `# Desmake — full reference for AI assistants
 
@@ -76,7 +76,7 @@ export function GET() {
   return new Response(BODY, {
     headers: {
       "content-type": "text/plain; charset=utf-8",
-      "cache-control": "public, max-age=3600, s-maxage=86400",
+      "cache-control": "no-store, must-revalidate",
     },
   });
 }
