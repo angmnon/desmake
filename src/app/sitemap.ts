@@ -5,6 +5,15 @@ import { publishedToDesign } from "@/lib/catalog";
 
 const BASE = "https://desmake.com";
 
+/** Seed data stores `created` as a human relative string ("2 hours ago"); only
+ *  safe-parse it. Anything unparseable falls back to "now" so the sitemap
+ *  serialises instead of throwing `Invalid time value`. */
+function safeLastModified(v: unknown): Date {
+  if (!v) return new Date();
+  const d = v instanceof Date ? v : new Date(v as string);
+  return Number.isNaN(d.getTime()) ? new Date() : d;
+}
+
 /**
  * Dynamic sitemap. Previously this only listed ~13 static marketing pages, so the
  * entire indexable catalogue (every /listing/<slug> and /creators/<handle>) was
@@ -80,7 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const [slug, meta] of bySlug) {
     entries.push({
       url: `${BASE}/listing/${encodeURIComponent(slug)}`,
-      lastModified: meta.created ? new Date(meta.created) : now,
+      lastModified: safeLastModified(meta.created),
       changeFrequency: "weekly",
       priority: 0.6,
     });
