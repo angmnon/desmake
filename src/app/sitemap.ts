@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { DESIGNS, CREATORS, CATEGORIES } from "@/lib/data";
+import { getAllPosts } from "@/lib/blog";
 import { allPublishedDesigns } from "@/lib/stores";
 import { publishedToDesign } from "@/lib/catalog";
 
@@ -45,6 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { p: "/shipping", priority: 0.5, freq: "monthly" },
     { p: "/guidelines", priority: 0.4, freq: "monthly" },
     { p: "/contact", priority: 0.4, freq: "monthly" },
+    { p: "/blog", priority: 0.7, freq: "weekly" },
     { p: "/privacy", priority: 0.3, freq: "yearly" },
     { p: "/terms", priority: 0.3, freq: "yearly" },
     { p: "/cookies", priority: 0.3, freq: "yearly" },
@@ -107,6 +109,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const c of CATEGORIES) {
     if (c.id === "all") continue;
     entries.push({ url: `${BASE}/categories/${c.id}`, lastModified: now, changeFrequency: "monthly", priority: 0.6 });
+  }
+
+  // ── Blog posts ──
+  for (const p of getAllPosts()) {
+    entries.push({
+      url: `${BASE}/blog/${p.slug}`,
+      lastModified: safeLastModified(p.date),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    });
   }
 
   return entries;

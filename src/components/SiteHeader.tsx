@@ -77,6 +77,7 @@ export function SiteHeader() {
     { href: "/explore", label: "Explore" },
     { href: "/studio", label: "Studio" },
     { href: "/creators", label: "Creators" },
+    { href: "/blog", label: "Blog" },
     { href: "/agents", label: "Agents" },
   ];
 
