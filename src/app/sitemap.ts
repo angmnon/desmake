@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { DESIGNS, CREATORS } from "@/lib/data";
+import { DESIGNS, CREATORS, CATEGORIES } from "@/lib/data";
 import { allPublishedDesigns } from "@/lib/stores";
 import { publishedToDesign } from "@/lib/catalog";
 
@@ -84,6 +84,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.6,
     });
+  }
+
+  // ── Programmatic SEO landing pages (vs / use-cases / categories) ──
+  const vs = ["printful", "printify", "redbubble"];
+  for (const s of vs) entries.push({ url: `${BASE}/vs/${s}`, lastModified: now, changeFrequency: "monthly", priority: 0.7 });
+  const useCases = ["ai-artist", "merch-brand", "agent-commerce"];
+  for (const s of useCases) entries.push({ url: `${BASE}/use-cases/${s}`, lastModified: now, changeFrequency: "monthly", priority: 0.7 });
+  for (const c of CATEGORIES) {
+    if (c.id === "all") continue;
+    entries.push({ url: `${BASE}/categories/${c.id}`, lastModified: now, changeFrequency: "monthly", priority: 0.6 });
   }
 
   return entries;
