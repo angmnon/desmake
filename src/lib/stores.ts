@@ -178,6 +178,12 @@ export type PublishedDesign = {
   created_at: string;
   /** Real image URL — AI output OR uploaded raster. Rendered ahead of SVG. */
   imageUrl?: string;
+  /**
+   * M-8: lifecycle status. Only "published" designs are purchasable; a draft /
+   * archived / sold_out design must be refused at checkout. Absent on legacy rows
+   * and seed catalog entries, which are treated as published (see orders/route.ts).
+   */
+  status?: string;
 };
 
 /** Neutral fallback palette for uploaded designs that carry no generative colors. */
