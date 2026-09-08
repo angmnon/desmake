@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type SessionUserLite = { id: string; email: string; name: string; role: string };
+export type SessionUserLite = { id: string; email: string; name: string; handle: string; role: string };
 
 /**
  * Reads the current session on mount and whenever the window regains focus,

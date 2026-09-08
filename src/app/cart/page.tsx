@@ -1,20 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Tag, Shield, Truck } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, Shield, Truck } from "lucide-react";
 import { useCart } from "@/lib/cart";
 import { Artwork } from "@/components/Artwork";
 import { useEffect, useState } from "react";
-import { adapterName, computeTotals, money } from "@/lib/data";
+import { adapterName, computeOrderTotals, adapterDefaultSku, money } from "@/lib/data";
 
 export default function CartPage() {
   const cart = useCart();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Same computeTotals() the API uses — no locally duplicated tax/shipping rules.
-  const { shippingCents: shipping, taxCents: tax, totalCents: total } = computeTotals(
-    cart.items.map((it) => ({ priceCents: it.priceCents, qty: it.qty })),
+  // H-3: this used to call computeTotals() — a legacy estimator that added a flat 8%
+  // tax and a $4.99 shipping fee the real pricing engine no longer charges (freight is
+  // baked into item prices, so the shipping line is always 0). It made the cart total
+  // up to ~81% higher than both the checkout page and the amount actually charged —
+  // buyers saw $12.39 here and $6.85 there, which reads as a bait-and-switch and
+  // kills trust at the exact moment they decide to buy.
+  //
+  // Now we use the same computeOrderTotals() the checkout page and the API use. The
+  // destination (and therefore VAT) isn't chosen until checkout, so tax is shown as
+  // "Calculated at checkout" rather than being invented here.
+  const { shippingCents: shipping, totalCents: total } = computeOrderTotals(
+    cart.items.map((it) => ({ sku: it.sku || adapterDefaultSku(it.adapter) || "", qty: it.qty, variant: it.variant })),
+    "DEFAULT",
   );
 
   if (!mounted) {
@@ -91,16 +101,12 @@ export default function CartPage() {
               </div>
             ))}
 
-            <div className="card" style={{ padding: 20, display: "flex", gap: 12 }}>
-              <Tag size={18} strokeWidth={1.8} style={{ color: "var(--color-tx-2)", marginTop: 3 }} />
-              <div className="flex-1">
-                <div className="label small">Promo code</div>
-                <div className="row gap-2 mt-2">
-                  <input className="input" placeholder="Enter code" style={{ flex: 1, fontSize: "0.875rem", borderRadius: 10 }} />
-                  <button className="btn btn-outline" style={{ padding: "10px 18px", fontSize: "0.8125rem" }}>Apply</button>
-                </div>
-              </div>
-            </div>
+            {/* M-6: a "Promo code" box used to sit here with no onChange and no onClick —
+                a dead control that silently did nothing. Discounts aren't supported by
+                the order API, so showing the field only misleads buyers. */}
+            <Link href="/explore" className="row gap-2 items-center small" style={{ color: "var(--color-tx-2)" }}>
+              Continue browsing designs <ArrowRight size={14} strokeWidth={1.8} />
+            </Link>
           </div>
 
           {/* Summary */}
@@ -111,7 +117,7 @@ export default function CartPage() {
                   与订单收据页（用含税的 pricing.subtotal_cents）口径不同，勿混用。 */}
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Subtotal</span><span className="mono">{money(cart.subtotal)}</span></div>
               <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Shipping</span><span className="mono">{shipping === 0 ? "Free" : money(shipping)}</span></div>
-              <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Tax (est.)</span><span className="mono">{money(tax)}</span></div>
+              <div className="row-between small"><span style={{ color: "var(--color-tx-2)" }}>Tax</span><span className="mono">At checkout</span></div>
             </div>
             <div className="hr" />
             <div className="row-between mt-4 mb-5">
@@ -121,7 +127,10 @@ export default function CartPage() {
             <Link href="/checkout" className="btn btn-lg full center">
               Checkout <ArrowRight size={18} strokeWidth={1.8} />
             </Link>
-            <p className="tiny muted center mt-3">Orders are stored against your session. 30-day returns.</p>
+            <p className="tiny muted center mt-3" style={{ lineHeight: 1.5 }}>
+              Shipping is included in item prices. Tax is added at checkout based on your destination (US 7%, EU 19%).
+            </p>
+            <p className="tiny muted center mt-2">Orders are stored against your session. 30-day returns.</p>
             <div className="row gap-2 mt-4" style={{ justifyContent: "center" }}>
               {["Visa", "MC", "Amex", "Apple Pay", "PayPal"].map((p) => (
                 <span key={p} className="tag mono" style={{ fontSize: "0.625rem" }}>{p}</span>

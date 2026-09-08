@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Pricing", description: "How Desmake pricing works — transparent manufacturing cost, your margin, and no upfront fees." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/pricing",
+  title: "Desmake pricing — transparent cost, your margin, no upfront fees",
+  description:
+    "How Desmake pricing works: transparent manufacturing cost, the margin you set, and no subscription or listing fees. You pay only when an item sells.",
+});
 
 export default function PricingPage() {
   return (
@@ -62,6 +69,32 @@ export default function PricingPage() {
         label: "Open Studio",
         href: "/studio",
       }}
+      breadcrumb={[
+        { name: "Home", href: "/" },
+        { name: "Pricing", href: "/pricing" },
+      ]}
+      faq={[
+        {
+          q: "How much does it cost to sell on Desmake?",
+          a: "Nothing upfront. There are no listing fees and no subscription. You pay the real manufacturing cost only when an item sells, and you keep the margin you set.",
+        },
+        {
+          q: "What is my margin?",
+          a: "You choose a royalty between 10% and 50% per sale. Start at $0 while you learn the catalogue and raise it as your audience grows. Every listing shows the exact cost breakdown.",
+        },
+        {
+          q: "When and how do I get paid?",
+          a: "Your margin is tracked per order and released on a scheduled payout once the item ships and the return window clears. You can watch every order and its status in your account.",
+        },
+        {
+          q: "Are there any hidden fees?",
+          a: "No. Manufacturing, standard payment processing and shipping are shown separately and taken from the order total. Defective or misprinted items are remade or refunded on our side, not yours.",
+        },
+        {
+          q: "Do I need inventory?",
+          a: "No. Items are made to order after they sell, so there is never stock to finance and no minimum order quantity.",
+        },
+      ]}
     />
   );
 }

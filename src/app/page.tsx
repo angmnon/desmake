@@ -1,12 +1,17 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles, Box, Shirt, Frame, CreditCard, Smartphone, Sticker, Check } from "lucide-react";
 import { ADAPTERS, CATEGORIES, CREATORS, DESIGNS, HERO_STATS } from "@/lib/data";
 import { Artwork } from "@/components/Artwork";
-import { CreatorCard, DesignCard } from "@/components/DesignCard";
+import { CreatorCard } from "@/components/DesignCard";
 import { JsonLd, faqSchema } from "@/components/JsonLd";
+import HomeDiscover from "@/components/HomeDiscover";
+
+// P1-1: this page is now a SERVER Component. The full seed catalog (`DESIGNS`,
+// `ADAPTERS`, `CATEGORIES`, `CREATORS`, `HERO_STATS`) plus the pricing engine it
+// pulls in via `@/lib/data` is computed here on the server only — it no longer
+// ships to the browser. The single piece of client interactivity (the Discover
+// tab switcher) lives in `HomeDiscover`, which receives only the 4 small
+// pre-filtered arrays (≤8 designs each) as props.
 
 const HOME_FAQ = faqSchema([
   {
@@ -31,37 +36,23 @@ const HOME_FAQ = faqSchema([
   },
 ]);
 
-const adapterIcon: Record<string, React.ReactNode> = {
-  shirt: <Shirt size={20} strokeWidth={1.5} />,
-  frame: <Frame size={20} strokeWidth={1.5} />,
-  card: <CreditCard size={20} strokeWidth={1.5} />,
-  phone: <Smartphone size={20} strokeWidth={1.5} />,
-  sticker: <Sticker size={20} strokeWidth={1.5} />,
-  cube: <Box size={20} strokeWidth={1.5} />,
-};
+// Pre-filtered design sets for the Discover grid (computed server-side, passed to
+// the client tab component as small props — not the full catalog).
+const trending = [...DESIGNS].sort((a, b) => b.likes - a.likes).slice(0, 8);
+const newDesigns = DESIGNS.slice(0, 8);
+const aiPicks = DESIGNS.filter((d) => d.aiGenerated).slice(0, 8);
+const editors = DESIGNS.slice(8, 16);
+
+// Hero floating cards selection
+const heroCards = DESIGNS.slice(0, 3);
+const featured = DESIGNS.find((d) => d.title === "Quiet Geometry") || DESIGNS[10];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState("Trending");
-  const tabs = ["Trending", "New", "AI Picks", "Editors"];
-
-  const trending = [...DESIGNS].sort((a, b) => b.likes - a.likes).slice(0, 8);
-  const newDesigns = DESIGNS.slice(0, 8);
-  const aiPicks = DESIGNS.filter((d) => d.aiGenerated).slice(0, 8);
-  const editors = DESIGNS.slice(8, 16);
-
-  const activeDesigns = activeTab === "Trending" ? trending : activeTab === "New" ? newDesigns : activeTab === "AI Picks" ? aiPicks : editors;
-
-  // Hero floating cards selection
-  const heroCards = DESIGNS.slice(0, 3);
-  const featured = DESIGNS.find((d) => d.title === "Quiet Geometry") || DESIGNS[10];
-
   return (
     <div>
       <JsonLd data={HOME_FAQ} />
       {/* ══════════ HERO ══════════ */}
-      <section className="relative grain overflow-hidden" style={{ paddingTop: "clamp(48px, 7vw, 96px)", paddingBottom: "clamp(40px, 5vw, 72px)" }}>
-        <div className="spot" style={{ width: 480, height: 480, background: "rgba(255,77,24,0.14)", top: -160, right: -60 }} />
-        <div className="spot" style={{ width: 420, height: 420, background: "rgba(34,68,255,0.1)", bottom: -180, left: -120 }} />
+      <section className="relative grain overflow-hidden" style={{ paddingTop: "clamp(24px, 3vw, 48px)", paddingBottom: "clamp(40px, 5vw, 72px)" }}>
         <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.06fr) minmax(0, 0.94fr)", gap: "clamp(32px,5vw,72px)", alignItems: "start" }}>
           <div className="rv in">
             <div className="row gap-3 wrap" style={{ marginBottom: 26 }}>
@@ -123,7 +114,7 @@ export default function HomePage() {
             >
               <div className="row-between" style={{ marginBottom: 9 }}>
                 <span className="eyebrow">Job #5521</span>
-                <span className="row gap-2 mono" style={{ fontSize: "0.625rem", color: "var(--color-moss)" }}>
+                <span className="row gap-2 mono" style={{ fontSize: "0.625rem", color: "var(--color-ink)" }}>
                   <i className="dot dot-live" />LIVE
                 </span>
               </div>
@@ -153,38 +144,13 @@ export default function HomePage() {
       </div>
 
       {/* ══════════ DISCOVER ══════════ */}
-      <section className="section">
-        <div className="container-wide">
-          <div className="sec-head rv">
-            <div>
-              <div className="eyebrow eyebrow-dot">The marketplace</div>
-              <h2 className="h1" style={{ marginTop: 14 }}>What the world is making<br />this week</h2>
-            </div>
-            <div className="stack gap-4" style={{ alignItems: "flex-end" }}>
-              <div className="seg">
-                {tabs.map((t) => (
-                  <button key={t} className={t === activeTab ? "is-active" : ""} onClick={() => setActiveTab(t)}>{t}</button>
-                ))}
-              </div>
-              <Link href="/explore" className="link-u small">Browse all 128,400 designs <ArrowRight size={14} /></Link>
-            </div>
-          </div>
-
-          <div className="row gap-2 wrap rv" style={{ marginBottom: 26 }}>
-            {CATEGORIES.slice(0, 8).map((c, i) => (
-              <button key={c.id} className={`chip ${i === 0 ? "is-active" : ""}`}>
-                {c.name} <span className="mono" style={{ fontSize: "0.6875rem", opacity: 0.6 }}>{c.count.toLocaleString()}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="grid g-4">
-            {activeDesigns.map((d) => (
-              <DesignCard key={d.id} design={d} />
-            ))}
-          </div>
-        </div>
-      </section>
+      <HomeDiscover
+        trending={trending}
+        newDesigns={newDesigns}
+        aiPicks={aiPicks}
+        editors={editors}
+        categories={CATEGORIES}
+      />
 
       {/* ══════════ D2M PIPELINE ══════════ */}
       <section className="section section-ink grain" style={{ position: "relative" }}>
@@ -209,7 +175,7 @@ export default function HomePage() {
               gap: 1,
               background: "rgba(247,246,243,0.14)",
               border: "1px solid rgba(247,246,243,0.14)",
-              borderRadius: 22,
+              borderRadius: 2,
               overflow: "hidden",
             }}
           >
@@ -238,7 +204,7 @@ export default function HomePage() {
       <section className="section">
         <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,.85fr)", gap: "clamp(24px,4vw,56px)", alignItems: "start" }}>
           <div className="rv" style={{ position: "relative" }}>
-            <div className="card" style={{ borderRadius: 22, overflow: "hidden", padding: 0 }}>
+            <div className="card" style={{ borderRadius: 2, overflow: "hidden", padding: 0 }}>
               <div style={{ aspectRatio: "4/3" }}>
                 <Artwork seed={featured.seed} palette={featured.palette} shape={featured.shape} rounded={false} className="!rounded-none" />
               </div>
@@ -262,7 +228,7 @@ export default function HomePage() {
       </section>
 
       {/* ══════════ CREATORS ══════════ */}
-      <section className="section section-paper2">
+      <section className="section">
         <div className="container-wide">
           <div className="sec-head rv">
             <div>
@@ -294,7 +260,7 @@ export default function HomePage() {
             {ADAPTERS.map((a, i) => {
               const sampleDesign = DESIGNS[i * 3] || DESIGNS[0];
               return (
-                <Link key={a.id} href="/explore" className="adp block" style={{ border: "1px solid rgba(12,12,13,0.1)", borderRadius: 14, overflow: "hidden", background: "#fff", transition: "all 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
+                <Link key={a.id} href="/explore" className="adp block" style={{ border: "1px solid var(--color-silver-line)", borderRadius: 14, overflow: "hidden", background: "#fff", transition: "all 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
                   <div style={{ background: "var(--color-paper-2)", aspectRatio: "4/3", position: "relative", overflow: "hidden" }}>
                     <Artwork seed={sampleDesign.seed} palette={sampleDesign.palette} shape={sampleDesign.shape} rounded={false} className="!rounded-none" />
                     <span className="badge" style={{ position: "absolute", top: 12, left: 12, background: "#fff", fontSize: "0.6875rem", padding: "4px 10px", fontWeight: 500 }}>{a.method}</span>
@@ -317,8 +283,6 @@ export default function HomePage() {
 
       {/* ══════════ AGENT BAND / CTA ══════════ */}
       <section className="section section-ink grain agent-band" style={{ position: "relative", overflow: "hidden" }}>
-        <div className="spot" style={{ width: 500, height: 500, background: "rgba(255,77,24,0.18)", top: -200, right: -100 }} />
-        <div className="spot" style={{ width: 420, height: 420, background: "rgba(107,61,245,0.15)", bottom: -200, left: -100 }} />
         <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.05fr)", gap: "clamp(28px,4vw,64px)", alignItems: "start", position: "relative", zIndex: 2 }}>
           <div>
             <div className="eyebrow eyebrow-dot">Agent Hub</div>
@@ -335,7 +299,7 @@ export default function HomePage() {
                 "Place orders and track jobs to the doorstep",
               ].map((t) => (
                 <li key={t} className="row gap-2.5 small" style={{ color: "rgba(247,246,243,0.72)" }}>
-                  <Check size={15} style={{ color: "var(--color-signal)", flexShrink: 0, marginTop: 2 }} /> {t}
+                  <Check size={15} style={{ color: "var(--color-ink)", flexShrink: 0, marginTop: 2 }} /> {t}
                 </li>
               ))}
             </ul>
@@ -401,8 +365,7 @@ export default function HomePage() {
       {/* ══════════ CREATOR CTA ══════════ */}
       <section className="section">
         <div className="container-wide">
-          <div className="card rv" style={{ padding: "clamp(32px,5vw,72px)", borderRadius: 32, position: "relative", overflow: "hidden", border: "1px solid rgba(12,12,13,0.1)" }}>
-            <div className="spot" style={{ width: 420, height: 420, background: "rgba(255,77,24,0.1)", right: -120, top: -140 }} />
+          <div className="card rv" style={{ padding: "clamp(32px,5vw,72px)", borderRadius: 2, position: "relative", overflow: "hidden", border: "1px solid var(--color-silver-line)" }}>
             <div className="row-between wrap gap-10" style={{ position: "relative", alignItems: "flex-start" }}>
               <div style={{ maxWidth: "46ch" }}>
                 <div className="eyebrow eyebrow-dot">For creators</div>

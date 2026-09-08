@@ -69,7 +69,24 @@ A: Publishing is free (0% upfront). Products start around $5 (stickers) and $7 (
 - Docs: https://desmake.com/docs
 - Pricing: https://desmake.com/pricing
 - Payouts: https://desmake.com/payouts
+- Blog: https://desmake.com/blog
 - Sitemap: https://desmake.com/sitemap.xml
+
+## Comparison & use-case pages
+- vs Printful: https://desmake.com/vs/printful
+- vs Printify: https://desmake.com/vs/printify
+- vs Redbubble: https://desmake.com/vs/redbubble
+- Use case — AI artists: https://desmake.com/use-cases/ai-artist
+- Use case — merch brands: https://desmake.com/use-cases/merch-brand
+- Use case — agent commerce: https://desmake.com/use-cases/agent-commerce
+
+## Blog posts (long-form, FAQ-rich answers)
+- How much do you actually earn per sale? POD royalties explained with real numbers: https://desmake.com/blog/how-much-designers-earn-per-sale
+- How to sell AI art without inventory: https://desmake.com/blog/how-to-sell-ai-art-without-inventory
+- Best print-on-demand services for AI artists in 2026: https://desmake.com/blog/best-print-on-demand-services-2026
+- AI art copyright & selling: https://desmake.com/blog/ai-art-copyright-legal-guide
+- MCP commerce explained: https://desmake.com/blog/mcp-commerce-explained
+- Passive income selling AI art: https://desmake.com/blog/passive-income-selling-ai-art
 `;
 
 export function GET() {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jobsStore, newId, persistJob, type GenJob } from "@/lib/stores";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import { getSession, SESSION_COOKIE, consumeGenerationQuota, isEmailVerificationSatisfied } from "@/lib/session";
 import { STYLE_PRESETS } from "@/lib/presets";
 import { generateImage, imageProviderEnabled } from "@/lib/ai";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
@@ -17,6 +17,13 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to generate designs" } }, { status: 401 });
   }
+  // H-8: block generation until the account email is verified (when the flag is on).
+  if (!isEmailVerificationSatisfied(user)) {
+    return NextResponse.json(
+      { error: { code: "email_unverified", message: "Please verify your email address to generate designs." } },
+      { status: 403 },
+    );
+  }
 
   // WAF-style throttle: each user IP may start a handful of generations per minute
   // (they hit the external image API and are the costliest endpoint).
@@ -25,6 +32,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: { code: "rate_limited", message: "Too many generations — slow down" } },
       { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
+  // H-10: per-user monthly generation quota (caps AI/compute cost and abuse).
+  const quota = await consumeGenerationQuota(user.id);
+  if (!quota.ok) {
+    return NextResponse.json(
+      { error: { code: "quota_exceeded", message: "Monthly generation limit reached — please try again next month." } },
+      { status: 429, headers: { "Retry-After": "2592000" } },
     );
   }
 

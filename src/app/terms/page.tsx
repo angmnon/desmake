@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Terms of Service", description: "The terms that govern your use of Desmake." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/terms",
+  title: "Desmake terms of service",
+  description:
+    "The terms that govern your use of Desmake — buying, selling, publishing and building on the platform.",
+});
 
 export default function TermsPage() {
   return (

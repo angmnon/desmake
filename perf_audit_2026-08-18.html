@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Desmake 性能评审报告 · 2026-08-18</title>
+<style>
+  :root { --ink:#0c0c0d; --paper:#f7f6f3; --line:rgba(12,12,13,0.12); --cobalt:#2244ff; --signal:#ff4d18; --moss:#1f7a4d; --amber:#b57500; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:48px 24px 96px; }
+  h1 { font-size:30px; line-height:1.2; margin:0 0 6px; letter-spacing:-0.02em; }
+  .sub { color:#555; margin:0 0 28px; }
+  .meta { font-size:13px; color:#777; border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:28px; }
+  h2 { font-size:20px; margin:40px 0 14px; letter-spacing:-0.01em; }
+  h3 { font-size:16px; margin:22px 0 6px; }
+  p { margin:8px 0; }
+  code { background:rgba(12,12,13,0.06); padding:1px 6px; border-radius:5px; font-size:13px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  .card { border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin:14px 0; background:#fff; }
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 9px; border-radius:999px; vertical-align:middle; }
+  .p0 { background:var(--signal); color:#fff; } .p1 { background:var(--amber); color:#fff; } .p2 { background:#e6e3dd; color:#333; } .ok { background:var(--moss); color:#fff; }
+  table { width:100%; border-collapse:collapse; margin:16px 0; font-size:13.5px; }
+  th,td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { background:rgba(12,12,13,0.04); font-weight:600; }
+  tr:hover td { background:rgba(34,68,255,0.03); }
+  .sev { white-space:nowrap; }
+  ul { margin:8px 0; padding-left:20px; } li { margin:4px 0; }
+  .file { font-family:ui-monospace,monospace; font-size:12.5px; color:var(--cobalt); }
+  .note { font-size:13px; color:#666; font-style:italic; }
+  .summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:18px 0; }
+  .stat { border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; background:#fff; }
+  .stat b { display:block; font-size:26px; }
+  .pill-ok { color:var(--moss); } .pill-bad { color:var(--signal); }
+  .tag { font-size:12px; color:#777; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Desmake 整体性能评审报告</h1>
+  <p class="sub">面向生产环境的代码/架构级性能体检 · 不依赖真机实测，结论均锚定真实源码</p>
+  <div class="meta">
+    评审日期：2026-08-18 · 评审范围：渲染/缓存、JS 包体、字体关键路径、图片、数据层 D1 查询、第三方脚本、压缩/CDN、API 响应、水合 ·
+    基线版本：生产实例（ISR + 自托管字体 + Brotli 已上线）
+  </div>
+
+  <div class="summary-grid">
+    <div class="stat"><b class="pill-bad">2</b> 个 P0 阻断</div>
+    <div class="stat"><b class="pill-bad">4</b> 个 P1 显著</div>
+    <div class="stat"><b class="pill-bad">5</b> 个 P2 优化</div>
+    <div class="stat"><b class="pill-ok">8</b> 项已良好</div>
+  </div>
+
+  <h2>一、已建立良好的基础（基线，非本次问题）</h2>
+  <div class="card">
+    <ul>
+      <li><span class="badge ok">OK</span> <b>图片优化</b>：<code>next/image</code> 已开启 AVIF/WebP、响应式尺寸档、1 年缓存（<code class="file">next.config.ts:9-17</code>）。</li>
+      <li><span class="badge ok">OK</span> <b>营销/博客/CMS 页已 ISR</b>：根 <code>layout.tsx:20</code> <code>export const revalidate = 600</code> → 边缘 <code>s-maxage=600, stale-while-revalidate</code>。</li>
+      <li><span class="badge ok">OK</span> <b>字体已自托管</b>：<code>next/font/google</code> 构建期下载同源服务（Inter / Instrument Serif / JetBrains Mono），无渲染阻塞外部请求。</li>
+      <li><span class="badge ok">OK</span> <b>边缘压缩</b>：Cloudflare <code>brotli=on</code>、<code>polish=lossless</code>、<code>cache_level=aggressive</code> 已生效。</li>
+      <li><span class="badge ok">OK</span> <b>第三方脚本门控</b>：GA4/Meta/Google Ads 仅在 Cookie 同意后才注入（占位期间不加载）。</li>
+      <li><span class="badge ok">OK</span> <b>目录索引 O(1) 读</b>：<code>catalogIndex.ts</code> 进程内建索引，避免每请求全量扫描。</li>
+      <li><span class="badge ok">OK</span> <b>种子数据静态化</b>：<code>DESIGNS</code> 模块加载期生成，无每请求拉取。</li>
+      <li><span class="badge ok">OK</span> <b>Artwork SVG LRU 缓存</b>：<code>Artwork.tsx:147</code> 上限 600，避免滚动重渲染重复生成。</li>
+    </ul>
+  </div>
+
+  <h2>二、发现的问题（按严重度）</h2>
+  <table>
+    <thead><tr><th class="sev">严重度</th><th>问题</th><th>位置</th><th>根因 / 影响</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="sev"><span class="badge p0">P0</span></td>
+        <td><b>跨实例索引失效设计实际不成立</b><br/>已发布设计在其它实例上“看不见”</td>
+        <td class="file">src/lib/catalogVersion.ts:9</td>
+        <td>版本号用模块级 <code>let version = 0</code>，<b>每个容器实例独立计数</b>。实例 A 发布后 <code>bumpDesignIndex()</code> 只把 A 的版本+1，B/C 仍为 0，其缓存索引（v0）被认为“仍有效”→ <b>永不重建</b>。注释声称“发布后所有实例一个请求内可见”是错的。后果：新设计在 2/3 实例上对用户不可见，直到该实例冷重启。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p0">P0</span></td>
+        <td><b>每次发布全量 D1 重扫（5.15MB）</b></td>
+        <td class="file">src/lib/catalogIndex.ts:79 · src/lib/stores.ts:220</td>
+        <td><code>getDesignIndex()</code> 每次重建都执行 <code>SELECT data FROM designs</code>（≈5.15MB）+ JSON.parse。由于 P0-1 的失效设计，每次发布只有发布实例重建；但 <code>max_instances=3</code> 下任一实例冷启动也触发。发布频繁或突发冷启动=重复搬运数 MB 数据，拖慢首响。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p1">P1</span></td>
+        <td><b>首页客户端包体携带全量种子目录</b></td>
+        <td class="file">src/app/page.tsx:1,6</td>
+        <td>首页是 <code>"use client"</code> 组件，直接 <code>import { DESIGNS, CATEGORIES, CREATORS, ADAPTERS } from "@/lib/data"</code>。整张种子目录（285 条设计 + 43 SKU 定价表 + 适配器变体）被打进<b>每个访客的 JS 包</b>（连带 <code>pricing.ts</code> 全量成本表）。这是当前最大的客户端体积浪费。修复：把 <code>/</code> 改为 Server Component（数据留在服务端，只下发 HTML）。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p1">P1</span></td>
+        <td><b>探索页 / 列表页仍为 force-dynamic，无边缘缓存</b></td>
+        <td class="file">src/app/explore/page.tsx:10 · src/app/listing/[slug]/page.tsx</td>
+        <td>每次请求直达源站容器（<code>max_instances=3</code>，冷启动敏感），TTFB 受容器冷启动与算力影响。权衡：曾为避开 4.5k slug 的 ISR 磁盘膨胀与改价陈旧而保留 dynamic。<b>更优解</b>：改为按需 ISR——发布时 <code>revalidatePath('/explore')</code> + <code>revalidatePath('/listing/[slug]')</code>，既保新鲜又享边缘缓存。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p1">P1</span></td>
+        <td><b>每请求 O(n) 过滤/排序 + 详情页 O(n) 推荐</b></td>
+        <td class="file">src/lib/catalogIndex.ts:130-157, 238-261</td>
+        <td><code>publishedPage()</code> 每次请求对 ~4530 项做 filter+sort；<code>relatedFor()</code> 在<b>每次详情页渲染</b>对全量 4530 项做 O(n) 相似度打分。虽注释称“单 digit ms”，但叠加 force-dynamic 后每请求都付此算力，且 relatedFor 结果未缓存。建议：relatedFor 结果按 slug 短期缓存（与索引同生命周期）。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p1">P1</span></td>
+        <td><b>D1 全表扫描、无投影</b></td>
+        <td class="file">src/lib/stores.ts:220, 302-303</td>
+        <td><code>allPublishedDesigns()</code> 拉 <code>SELECT data FROM designs</code>（整行 JSON blob）；仪表盘 <code>allOrders()</code> 亦 <code>SELECT ... FROM orders</code> 全量扫描。随数据增长线性变慢。建议：索引重建仅取所需列（id/slug/category/creator/tags/price/created_at/palette/shape/adapters）；仪表盘读数加分页/聚合。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p2">P2</span></td>
+        <td><b>Stripe 在支付页顶部急切加载</b></td>
+        <td class="file">src/app/checkout/pay/page.tsx:6-21</td>
+        <td>模块顶部 <code>loadStripe(PUBLISHABLE_KEY)</code> + 同步 <code>&lt;Elements&gt;</code>，会先拉 <code>js.stripe.com/v3</code> 才挂载卡片字段，阻塞支付交互。建议：用 <code>next/dynamic</code> 懒加载 Stripe Elements 包裹层，或在首屏绘制后再加载。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p2">P2</span></td>
+        <td><b>lucide-react 具名导入</b></td>
+        <td class="file">~20 处（DesignCard / SiteHeader / page.tsx 等）</td>
+        <td>皆用 <code>import { Icon } from "lucide-react"</code>。现代构建可摇树，但图标散落多客户端组件、总量可观。建议：换 <code>lucide-react/dynamic</code> 或按需单图标路径，进一步瘦身初始 chunk。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p2">P2</span></td>
+        <td><b>索引重建无单飞保护（惊群）</b></td>
+        <td class="file">src/lib/catalogIndex.ts:74-101</td>
+        <td>冷实例上若多个请求同时到达，各自触发一次 5.15MB 重扫。建议：用 module/promise 单飞（single-flight），首个请求建索引、其余复用。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p2">P2</span></td>
+        <td><b>行为事件每次浏览写 D1</b></td>
+        <td class="file">src/app/api/events/route.ts:27</td>
+        <td><code>recordDesignEvent</code> 为客户端 beacon 触发、<code>void</code> 异步（不阻塞 TTFB，✓），但 append-only <code>design_events</code> 表随流量持续增长、写量上升。建议：抽样或批量写入，并对表设生命周期/聚合。</td>
+      </tr>
+      <tr>
+        <td class="sev"><span class="badge p2">P2</span></td>
+        <td><b>边缘预连接/关键资源 preload 缺失</b></td>
+        <td class="file">src/app/layout.tsx</td>
+        <td>字体已自托管（next/font 自动 preload，✓），LCP 为内联 SVG（✓）。但外部依赖（Stripe/GA 门控后）无 <code>preconnect</code> 提示。属低优先级，可在同意后再注入时补 <code>preconnect</code>。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>三、根因归类</h2>
+  <div class="card">
+    <ul>
+      <li><b>缓存失效的“共享状态”缺失</b>：版本号、设计索引都是<b>进程内</b>状态，多实例（max_instances=3）下无法协调 → 既导致正确性 Bug（P0-1），也放大数据层成本（P0-2）。这是本次最高优先级的根因。</li>
+      <li><b>客户端/服务端边界模糊</b>：首页等本可服务端渲染的页面被标记为 <code>"use client"</code>，把全量种子数据塞进客户端包（P1-1）。</li>
+      <li><b>动态优先的惯性</b>：为求“部署即时生效 / 防陈旧”，把营销与探索页一律 force-dynamic，牺牲了边缘缓存这一最大 TTFB 杠杆（P1-2）。应按内容新鲜度分级用 ISR + 按需 revalidate。</li>
+      <li><b>查询未做投影/分页</b>：D1 全行拉取（P1-4、P0-2）在数据量增长后成为隐性瓶颈。</li>
+    </ul>
+  </div>
+
+  <h2>四、修复优先级与建议</h2>
+  <div class="card">
+    <h3>立即（P0，正确性 + 成本）</h3>
+    <ul>
+      <li>将设计索引版本号改存<b>共享存储</b>（D1 单行或 KV），使 <code>bumpDesignIndex</code> 对所有实例可见；或直接改用 <code>revalidateTag('catalog')</code> + <code>revalidatePath</code>，弃用自管内存版本。顺带消除“发布后不可见”Bug。</li>
+      <li>索引重建加<b>单飞</b> + 仅取所需列，把 5.15MB 扫描降到最小投影查询。</li>
+    </ul>
+    <h3>近期（P1，最大体验杠杆）</h3>
+    <ul>
+      <li>把 <code>src/app/page.tsx</code> 改为 Server Component（首页数据不进客户端包）。</li>
+      <li>探索/列表页改按需 ISR：发布时 <code>revalidatePath</code>，边缘缓存命中、改价即时生效。</li>
+      <li><code>relatedFor</code> 按 slug 缓存；D1 读数加投影与分页。</li>
+    </ul>
+    <h3>优化（P2）</h3>
+    <ul>
+      <li>支付页 Stripe Elements 懒加载；lucide 按需导入；consent 后注入脚本补 preconnect；行为事件抽样/批量。</li>
+    </ul>
+  </div>
+
+  <h2>五、方法说明与限制</h2>
+  <p class="note">
+    本次为<b>代码/架构级</b>评审：逐项读取真实源码（next.config、layout、data/catalog/catalogIndex/stores、各页面与组件、Stripe 与 lucide 引入点），并交叉核对运行时行为（ISR/force-dynamic 设定、D1 查询形态、客户端包边界）。
+    限制：当前执行环境仅 Cloudflare API 可出网，无法 curl 线上站点做真机 Core Web Vitals（LCP/FCP/TBT/CLS）实测。建议在本机用 Lighthouse / WebPageTest 复核：① 首页 JS 传输体积（应因 Server Component 化显著下降）；② 探索页 TTFB（改按需 ISR 后应降至边缘命中）；③ 发布后所有实例是否都能看到新设计。
+  </p>
+</div>
+</body>
+</html>

@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 import { DESIGNS, CREATORS, CATEGORIES } from "@/lib/data";
 import { getAllPosts } from "@/lib/blog";
-import { allPublishedDesigns } from "@/lib/stores";
-import { publishedToDesign } from "@/lib/catalog";
+import { getDesignIndex } from "@/lib/catalogIndex";
+import { allRealCreators } from "@/lib/creators";
 
 const BASE = "https://desmake.com";
 
@@ -47,6 +47,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { p: "/guidelines", priority: 0.4, freq: "monthly" },
     { p: "/contact", priority: 0.4, freq: "monthly" },
     { p: "/blog", priority: 0.7, freq: "weekly" },
+    { p: "/news", priority: 0.6, freq: "weekly" },
+    { p: "/faq", priority: 0.6, freq: "weekly" },
     { p: "/privacy", priority: 0.3, freq: "yearly" },
     { p: "/terms", priority: 0.3, freq: "yearly" },
     { p: "/cookies", priority: 0.3, freq: "yearly" },
@@ -71,7 +73,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // ── Creator profiles ──
+  // Static "Desmake Select" seed creators first, then real registered creators
+  // (who published ≥1 design) — deduped by handle so a real creator who also
+  // appears in the seed is not listed twice.
+  const creatorHandles = new Set<string>();
   for (const c of CREATORS) {
+    creatorHandles.add(c.handle);
     entries.push({
       url: `${BASE}/creators/${encodeURIComponent(c.handle)}`,
       lastModified: now,
@@ -79,23 +86,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     });
   }
-
-  // ── Every design detail page (seed catalogue + Studio-published) ──
-  const bySlug = new Map<string, { created?: string }>();
-  for (const d of DESIGNS) bySlug.set(d.slug, { created: d.created });
-  try {
-    const published = await allPublishedDesigns();
-    for (const p of published) {
-      const d = publishedToDesign(p);
-      bySlug.set(d.slug, { created: d.created });
-    }
-  } catch {
-    /* D1 disabled — seed catalogue still ships in the sitemap */
-  }
-  for (const [slug, meta] of bySlug) {
+  const realCreators = await allRealCreators();
+  for (const rc of realCreators) {
+    if (creatorHandles.has(rc.user.handle)) continue;
+    creatorHandles.add(rc.user.handle);
     entries.push({
-      url: `${BASE}/listing/${encodeURIComponent(slug)}`,
-      lastModified: safeLastModified(meta.created),
+      url: `${BASE}/creators/${encodeURIComponent(rc.user.handle)}`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    });
+  }
+
+  // ── Every design detail page (seed catalogue + Studio-published), index-backed ──
+  // Uses the cached design index instead of a fresh 5 MB `allPublishedDesigns()`
+  // scan per request — one cached build, O(n) over ~4.5k items.
+  const idx = await getDesignIndex();
+  for (const d of idx.all) {
+    if (!d.slug) continue;
+    entries.push({
+      url: `${BASE}/listing/${encodeURIComponent(d.slug)}`,
+      lastModified: safeLastModified(d.created_at),
       changeFrequency: "weekly",
       priority: 0.6,
     });
@@ -119,6 +130,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.6,
     });
+  }
+
+  // ── CMS posts published via the /api/cms API (news / blog / faq) ──
+  try {
+    const { listCmsPosts } = await import("@/lib/cms");
+    const cms = await listCmsPosts({ status: "published", limit: 500 });
+    for (const p of cms) {
+      const base = p.type === "news" ? "/news" : p.type === "faq" ? "/faq" : "/blog";
+      entries.push({
+        url: `${BASE}${base}/${p.slug}`,
+        lastModified: new Date(p.published_at),
+        changeFrequency: "weekly",
+        priority: 0.6,
+      });
+    }
+  } catch {
+    // D1 unavailable — skip CMS entries rather than failing the whole sitemap.
   }
 
   return entries;

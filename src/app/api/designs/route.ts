@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { designsStore, newId, persistDesign, DEFAULT_PALETTE, type PublishedDesign } from "@/lib/stores";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import { getSession, SESSION_COOKIE, getUserById } from "@/lib/session";
 import { uploadToR2, R2_ENABLED } from "@/lib/r2";
+import { rateLimit } from "@/lib/ratelimit";
 import { ADAPTERS, DESIGNS, CATEGORIES, adapterDefaultSku, adapterIdForSku, type SelectedProduct } from "@/lib/data";
 import { SKU_BY_ID } from "@/lib/pricing";
 
@@ -28,6 +30,77 @@ function isPalette(v: unknown): v is [string, string, string] {
 
 const ALLOWED_CT = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 4 * 1024 * 1024; // 4MB, matches /api/upload
+
+/**
+ * H-4a (SSRF): hosts this endpoint is willing to fetch an image from.
+ *
+ * Previously ANY client-supplied http(s) URL was fetched server-side and its bytes
+ * written to R2 with a content-type taken from the attacker-controlled response
+ * headers. That turned publish into a general-purpose, readable SSRF proxy.
+ *
+ * Only the configured AI provider(s) and our own origin are fetched now. If your
+ * provider serves rasters from a separate CDN, add it via `AI_IMAGE_HOSTS`
+ * (comma-separated hostnames); anything else falls back to the procedural Artwork
+ * placeholder rather than being fetched.
+ */
+function allowedImageHosts(): Set<string> {
+  const hosts = new Set<string>();
+  const push = (raw?: string | null) => {
+    if (!raw) return;
+    try {
+      hosts.add(new URL(raw).host.toLowerCase());
+    } catch {
+      /* ignore unparseable */
+    }
+  };
+  push(process.env.AGNES_BASE_URL || "https://apihub.agnes-ai.com/v1");
+  push(process.env.OPENAI_BASE_URL || "https://api.openai.com");
+  push(process.env.SITE_URL);
+  push(process.env.R2_PUBLIC_BASE_URL);
+  for (const h of (process.env.AI_IMAGE_HOSTS || "").split(",")) {
+    const t = h.trim().toLowerCase();
+    if (t) hosts.add(t);
+  }
+  return hosts;
+}
+
+/**
+ * H-4b: an uploaded design's image must be a same-origin `/cdn/...` path — the shape
+ * `/api/upload` returns. Previously `body.imageUrl` was stored verbatim (any absolute
+ * URL up to 6000 chars), and because the custom image loader rewrites a non-relative
+ * src into `/cdn-cgi/image/<opts>/<absolute-url>`, Cloudflare Image Resizing would
+ * then fetch that URL server-side on every render. That is a stored SSRF / open image
+ * proxy reachable by any logged-in user. Reject anything that is not ours.
+ */
+function isSameOriginCdnPath(raw: string): boolean {
+  if (raw.startsWith("/cdn/")) return true;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    const site = new URL(process.env.SITE_URL || "https://desmake.com");
+    if (u.host.toLowerCase() !== site.host.toLowerCase()) return false;
+    // Canonical storage is the raw /cdn/<key> path; the loader adds /cdn-cgi at render.
+    const p = u.pathname.replace(/^\/cdn-cgi\/image\/[^/]+\//, "/");
+    return p.startsWith("/cdn/");
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedImageUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    const host = u.host.toLowerCase();
+    // Reject obvious internal/loopback targets even if they somehow end up allowlisted.
+    if (host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host.endsWith(".internal") || host.endsWith(".local")) {
+      return false;
+    }
+    return allowedImageHosts().has(host);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Resolve a generated image into a durable, same-origin URL we can render.
@@ -58,9 +131,16 @@ async function resolveAiImage(raw: unknown): Promise<string | undefined> {
 
   if (/^https?:\/\//i.test(raw)) {
     const url = raw.slice(0, 4000);
+    // H-4a: refuse to fetch anything that is not the AI provider or our own origin.
+    if (!isAllowedImageUrl(url)) {
+      console.warn("[designs] rejected non-allowlisted image host — refusing to fetch");
+      return undefined;
+    }
     if (R2_ENABLED) {
       try {
-        const res = await fetch(url);
+        // redirect:"manual" — a 302 to an unvalidated host must not be followed,
+        // otherwise the allowlist above could be bypassed by an open redirector.
+        const res = await fetch(url, { redirect: "manual" });
         if (res.ok) {
           const ct = res.headers.get("content-type") || "image/png";
           if (ALLOWED_CT.has(ct)) {
@@ -76,7 +156,7 @@ async function resolveAiImage(raw: unknown): Promise<string | undefined> {
         /* fall through to storing the original URL */
       }
     }
-    return url; // store the original Agnes URL when R2 is unavailable/unreachable
+    return url; // allowlisted provider URL — safe to keep when R2 is unavailable
   }
 
   return undefined;
@@ -91,6 +171,15 @@ export async function POST(request: NextRequest) {
   const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to publish a design" } }, { status: 401 });
+  }
+
+  // M-1: throttle publishing (writes R2 + D1 and triggers revalidation).
+  const rl = rateLimit(`${user.id}:designs-publish`, 30);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many publishes — slow down" } },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
   }
 
   let body: Record<string, unknown> = {};
@@ -114,6 +203,15 @@ export async function POST(request: NextRequest) {
     imageUrl = typeof body.imageUrl === "string" && body.imageUrl ? body.imageUrl.slice(0, 6000) : undefined;
     if (!imageUrl) {
       return NextResponse.json({ error: { code: "validation", message: "imageUrl is required for uploads" } }, { status: 400 });
+    }
+    // H-4b: only accept a same-origin /cdn/<key> path (what /api/upload returns).
+    // Storing an arbitrary external URL would let the custom image loader turn
+    // Image Resizing into a stored SSRF / open proxy.
+    if (!isSameOriginCdnPath(imageUrl)) {
+      return NextResponse.json(
+        { error: { code: "validation", message: "imageUrl must be a /cdn/ path from this site" } },
+        { status: 400 },
+      );
     }
     aiGenerated = false;
     if (isPalette(body.palette)) palette = body.palette;
@@ -225,6 +323,8 @@ export async function POST(request: NextRequest) {
     tags: designTags,
     creator: user.email.split("@")[0].slice(0, 40) || "you",
     creatorName: user.name || "You",
+    creatorHandle: user.handle,
+    creatorVerified: Boolean(getUserById(user.id)?.verified),
     seed: seed || slug,
     palette: palette || DEFAULT_PALETTE,
     shape: shape ?? 0,
@@ -239,10 +339,20 @@ export async function POST(request: NextRequest) {
     selectedProducts,
     created_at: new Date().toISOString(),
     imageUrl,
+    status: "published",
   };
 
   store.set(slug, design);
-  void persistDesign(design).catch(() => {});
+  // Await the persist + version bump so the shared index is current before we
+  // invalidate caches, then drop the explore shell so the edge serves the new
+  // design on the next request. (Listing pages stay force-dynamic, so they need
+  // no revalidation.)
+  try {
+    await persistDesign(design);
+    revalidatePath("/explore");
+  } catch {
+    /* best-effort; the cross-instance version bump still refreshes the data layer */
+  }
 
   return NextResponse.json(
     { slug: design.slug, id: design.id, title: design.title, price_cents: design.priceCents },

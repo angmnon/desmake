@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getJob, type GenOutput } from "@/lib/stores";
+import { getJob, persistJob, type GenOutput, type GenJob } from "@/lib/stores";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 import { STYLE_PRESETS } from "@/lib/presets";
 
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // R2/H1: the ownership check was missing — any signed-in user could poll another
   // user's job and read their prompt. A foreign id returns 404, not 403.
   // getJob() reads memory first and falls back to D1 so the poll resolves even
-  // when it lands on a different container instance than the one that created it.
+  // when it lands on a different Worker isolate than the one that created it.
   const job = await getJob(id);
   if (!job || job.user_id !== user.id) {
     return NextResponse.json({ error: { code: "not_found", message: "Job not found" } }, { status: 404 });
@@ -38,6 +38,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const elapsed = Date.now() - (job.started_at || Date.now());
   let status: string;
   let progress: number;
+
+  // H-11: cap how long an AI job may stay queued. If the worker isolate was recycled
+  // mid-flight (the fire-and-forget generation never finished), the job would otherwise
+  // remain "queued" forever and the Studio UI would spin indefinitely. Flip it to failed
+  // once the timeout elapses so the user can retry instead of hanging.
+  const MAX_GEN_MS = 5 * 60_000;
+  if (job.ai && job.status !== "failed" && !job.outputs && elapsed > MAX_GEN_MS) {
+    job.status = "failed";
+    job.error = "Generation timed out — please try again";
+    void persistJob(job).catch(() => {});
+  }
 
   // Real AI jobs: the async worker mutates the job in place. Until outputs or an
   // error arrive, report queued/running so the Studio UI keeps polling.
@@ -95,6 +106,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       eta_seconds: Math.max(0, Math.ceil((100 - progress) / 25)),
       outputs,
       error: job.error,
+      // M-9: tell the client whether the result is a real AI generation or the
+      // deterministic client-side fallback (no provider configured). Without this the
+      // UI implies a genuine AI image was produced when it was actually a placeholder.
+      is_preview: !job.ai,
     },
     { headers: { "Cache-Control": "no-store" } },
   );

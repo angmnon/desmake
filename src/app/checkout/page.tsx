@@ -8,22 +8,118 @@ import { Artwork } from "@/components/Artwork";
 import { ArrowRight, Shield } from "lucide-react";
 import { ensureSession } from "@/lib/client-session";
 import { money, computeOrderTotals, regionFromCountry, adapterDefaultSku, adapterName } from "@/lib/data";
+import { track } from "@/lib/tracking";
 
 const STEPS = ["Info", "Review"] as const;
+
+// H-4: the destination was hard-coded to "US", so EU buyers were charged 7% instead
+// of 19% VAT (and every international address shipped with a ", US" suffix). The
+// buyer must be able to pick the real destination country.
+const COUNTRIES: Array<{ code: string; name: string }> = [
+  { code: "US", name: "United States" },
+  { code: "CA", name: "Canada" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "IE", name: "Ireland" },
+  { code: "DE", name: "Germany" },
+  { code: "FR", name: "France" },
+  { code: "ES", name: "Spain" },
+  { code: "IT", name: "Italy" },
+  { code: "NL", name: "Netherlands" },
+  { code: "BE", name: "Belgium" },
+  { code: "AT", name: "Austria" },
+  { code: "CH", name: "Switzerland" },
+  { code: "SE", name: "Sweden" },
+  { code: "NO", name: "Norway" },
+  { code: "DK", name: "Denmark" },
+  { code: "FI", name: "Finland" },
+  { code: "IS", name: "Iceland" },
+  { code: "PL", name: "Poland" },
+  { code: "PT", name: "Portugal" },
+  { code: "CZ", name: "Czechia" },
+  { code: "GR", name: "Greece" },
+  { code: "HU", name: "Hungary" },
+  { code: "RO", name: "Romania" },
+  { code: "SK", name: "Slovakia" },
+  { code: "SI", name: "Slovenia" },
+  { code: "HR", name: "Croatia" },
+  { code: "BG", name: "Bulgaria" },
+  { code: "EE", name: "Estonia" },
+  { code: "LV", name: "Latvia" },
+  { code: "LT", name: "Lithuania" },
+  { code: "LU", name: "Luxembourg" },
+  { code: "MT", name: "Malta" },
+  { code: "CY", name: "Cyprus" },
+  { code: "AU", name: "Australia" },
+  { code: "NZ", name: "New Zealand" },
+  { code: "JP", name: "Japan" },
+  { code: "KR", name: "South Korea" },
+  { code: "SG", name: "Singapore" },
+  { code: "HK", name: "Hong Kong, China" },
+  { code: "TW", name: "Taiwan, China" },
+  { code: "CN", name: "China" },
+  { code: "IN", name: "India" },
+  { code: "BR", name: "Brazil" },
+  { code: "MX", name: "Mexico" },
+  { code: "ZA", name: "South Africa" },
+  { code: "AE", name: "United Arab Emirates" },
+  { code: "IL", name: "Israel" },
+  { code: "TR", name: "Türkiye" },
+];
+
+const EMPTY_FORM = {
+  email: "",
+  name: "",
+  address: "",
+  apt: "",
+  city: "",
+  state: "",
+  zip: "",
+  country: "US",
+  phone: "",
+};
+
+const FORM_STORAGE_KEY = "dm_checkout_form";
 
 export default function CheckoutPage() {
   const cart = useCart();
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState<"info" | "review" | "processing">("info");
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    email: "",
-    name: "",
-    address: "",
-    city: "",
-    zip: "",
-    country: "US",
-  });
+  const [needsVerify, setNeedsVerify] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [idemKey] = useState(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `k${Date.now()}${Math.random().toString(16).slice(2)}`,
+  );
+
+  // M-1: the cart lives in localStorage, so server-rendered HTML always looks empty.
+  // Gate on `mounted` instead of rendering "Your cart is empty" during hydration and
+  // flashing it at buyers who do have items.
+  useEffect(() => setMounted(true), []);
+
+  // M-1: an unauthenticated buyer is only bounced to /auth at submit time, which
+  // destroyed everything they had typed. Persist the form so returning restores it.
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      const saved = sessionStorage.getItem(FORM_STORAGE_KEY);
+      if (saved) setForm({ ...EMPTY_FORM, ...(JSON.parse(saved) as typeof EMPTY_FORM) });
+    } catch {
+      /* ignore */
+    }
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(form));
+    } catch {
+      /* ignore */
+    }
+  }, [form, mounted]);
 
   // Single pricing source of truth: call the SAME computeOrderTotals() the API uses,
   // rather than re-deriving shipping/tax here (a copy that silently drifts is how
@@ -37,13 +133,40 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     // Only bounce empty-cart visitors away during the normal flow. While an order
-    // is being placed (processing) the cart is cleared on purpose right before
+    // is being placed (processing) the cart may be cleared on purpose right before
     // navigating to the payment page — that must NOT trigger a redirect back to
     // /cart (it would race the /checkout/pay navigation).
-    if (cart.items.length === 0 && step !== "processing") {
+    if (mounted && cart.items.length === 0 && step !== "processing") {
       router.replace("/cart");
     }
-  }, [cart.items.length, step, router]);
+  }, [cart.items.length, step, router, mounted]);
+
+  // P0-2: standard begin_checkout event when the buyer reaches the review step.
+  useEffect(() => {
+    if (step !== "review") return;
+    track("begin_checkout", {
+      currency: "USD",
+      value: total / 100,
+      items: cart.items.map((it) => ({
+        item_id: it.slug,
+        item_name: it.title,
+        price: it.priceCents / 100,
+        quantity: it.qty,
+      })),
+    });
+  }, [step, total, cart.items]);
+
+  // H-10: when checkout is blocked on email verification, the buyer needs a way to
+  // get another link. Previously the 403 was a dead end with no recovery path.
+  const resendVerification = async () => {
+    setResendState("sending");
+    try {
+      const r = await fetch("/api/auth/resend-verification", { method: "POST" });
+      setResendState(r.ok ? "sent" : "failed");
+    } catch {
+      setResendState("failed");
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,13 +189,25 @@ export default function CheckoutPage() {
       // PENDING payment and the buyer is sent to the payment page.
       const res = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          // M-9: retrying with the same key replays the first order instead of
+          // creating a second one that could also be paid.
+          "Idempotency-Key": idemKey,
+        },
         body: JSON.stringify({
           customer: { email: form.email, name: form.name },
           country: form.country,
-          region,
+          // H-6: structured address — the server no longer has to parse one blob, and
+          // nothing gets silently truncated out of the shipping label.
           shipping: {
-            address: `${form.address}, ${form.city} ${form.zip}, ${form.country}`,
+            line1: form.address,
+            line2: form.apt,
+            city: form.city,
+            state: form.state,
+            postalCode: form.zip,
+            country: form.country,
+            phone: form.phone,
             method: "standard",
           },
           items: cart.items.map((it) => ({
@@ -86,15 +221,36 @@ export default function CheckoutPage() {
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as {
-          error?: { message?: string; details?: Array<{ index: number; reason: string }> };
+          error?: { message?: string; code?: string; details?: Array<{ index: number; reason: string }> };
         };
-        // The API rejects the WHOLE order when any line is unsellable; surface which one.
-        const detail = err.error?.details?.map((d) => `line ${d.index + 1}: ${d.reason}`).join("; ");
-        throw new Error([err.error?.message || "Order could not be placed", detail].filter(Boolean).join(" — "));
+        // M-7: translate the failure into something the buyer can act on instead of
+        // raw internals like "line 3: unknown listing_id".
+        if (err.error?.code === "email_unverified") {
+          setNeedsVerify(true);
+          throw new Error("Please confirm your email address to place this order.");
+        }
+        if (err.error?.code === "unauthorized") {
+          router.push("/auth?next=/checkout");
+          return;
+        }
+        const detail = err.error?.details
+          ?.map((d) => {
+            const item = cart.items[d.index];
+            const label = item ? `“${item.title}”` : `item ${d.index + 1}`;
+            return `${label}: ${d.reason}`;
+          })
+          .join("; ");
+        throw new Error(
+          [detail || err.error?.message || "Order could not be placed", detail ? "Please remove it and try again." : ""]
+            .filter(Boolean)
+            .join(" "),
+        );
       }
       const data = (await res.json()) as { order_id: string; total: number };
-      cart.clear();
-      // Off to the payment page — the order is pending until payment is confirmed.
+      // H-5: the cart is intentionally NOT cleared here any more — only once payment
+      // actually succeeds (see /checkout/pay). Clearing now meant a declined card also
+      // destroyed the cart, with no way to resume.
+      sessionStorage.removeItem(FORM_STORAGE_KEY);
       router.push(`/checkout/pay?order=${data.order_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -102,7 +258,17 @@ export default function CheckoutPage() {
     }
   };
 
-  if (cart.items.length === 0) {
+  if (!mounted) {
+    return (
+      <section className="section">
+        <div className="container-narrow center" style={{ padding: "clamp(48px,8vw,96px) 24px" }}>
+          <p className="small muted">Loading checkout…</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (cart.items.length === 0 && step !== "processing") {
     return (
       <section className="section"><div className="container-narrow center" style={{ padding: "clamp(48px,8vw,96px) 24px" }}>
         <h1 className="h2 balance">Your cart is empty</h1>
@@ -145,23 +311,45 @@ export default function CheckoutPage() {
                 <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="label small">Email</label>
-                    <input required type="email" className="input mt-1" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" style={{ borderRadius: 10 }} />
+                    <input required type="email" autoComplete="email" inputMode="email" className="input mt-1" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" style={{ borderRadius: 10 }} />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="label small">Full name</label>
-                    <input required className="input mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Alex Design" style={{ borderRadius: 10 }} />
+                    <input required autoComplete="name" className="input mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Alex Design" style={{ borderRadius: 10 }} />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="label small">Address</label>
-                    <input required className="input mt-1" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Maker Lane" style={{ borderRadius: 10 }} />
+                    <input required autoComplete="street-address" className="input mt-1" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Maker Lane" style={{ borderRadius: 10 }} />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label className="label small">Apartment, suite, unit <span style={{ color: "var(--color-tx-3)" }}>(optional)</span></label>
+                    <input autoComplete="address-line2" className="input mt-1" value={form.apt} onChange={(e) => setForm({ ...form, apt: e.target.value })} placeholder="Apt 4B" style={{ borderRadius: 10 }} />
                   </div>
                   <div>
                     <label className="label small">City</label>
-                    <input required className="input mt-1" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Brooklyn" style={{ borderRadius: 10 }} />
+                    <input required autoComplete="address-level2" className="input mt-1" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Brooklyn" style={{ borderRadius: 10 }} />
                   </div>
                   <div>
-                    <label className="label small">ZIP</label>
-                    <input required className="input mt-1" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} placeholder="11201" style={{ borderRadius: 10 }} />
+                    <label className="label small">State / Province</label>
+                    <input autoComplete="address-level1" className="input mt-1" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="NY" style={{ borderRadius: 10 }} />
+                  </div>
+                  <div>
+                    <label className="label small">ZIP / Postal code</label>
+                    <input required autoComplete="postal-code" className="input mt-1" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} placeholder="11201" style={{ borderRadius: 10 }} />
+                  </div>
+                  <div>
+                    {/* H-4: country drives VAT — it must be selectable, not hard-coded. */}
+                    <label className="label small">Country</label>
+                    <select required autoComplete="country" className="input mt-1" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} style={{ borderRadius: 10 }}>
+                      {COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    {/* H-6: carriers need a phone number for international delivery. */}
+                    <label className="label small">Phone <span style={{ color: "var(--color-tx-3)" }}>(for delivery updates)</span></label>
+                    <input autoComplete="tel" inputMode="tel" className="input mt-1" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 0100" style={{ borderRadius: 10 }} />
                   </div>
                 </div>
               </div>
@@ -190,10 +378,48 @@ export default function CheckoutPage() {
                     </div>
                   ))}
                 </div>
+                <div className="hr" />
+                <div className="stack gap-1 mt-4">
+                  <div className="tiny mono" style={{ color: "var(--color-tx-3)" }}>Ship to</div>
+                  <div className="small">
+                    {form.name} · {form.address}{form.apt ? `, ${form.apt}` : ""}
+                    <br />
+                    {form.city}{form.state ? `, ${form.state}` : ""} {form.zip} · {COUNTRIES.find((c) => c.code === form.country)?.name || form.country}
+                    {form.phone ? <><br />{form.phone}</> : null}
+                  </div>
+                </div>
               </div>
             )}
 
-            {error && <div className="tiny" style={{ color: "var(--color-signal)" }}>{error}</div>}
+            {error && (
+              <div className="tiny" style={{ color: "var(--color-ink)", lineHeight: 1.6, fontWeight: 500 }}>{error}</div>
+            )}
+
+            {needsVerify && (
+              <div className="card" style={{ padding: 20 }}>
+                <h4 className="h5 mb-2">Confirm your email to continue</h4>
+                <p className="small muted" style={{ marginBottom: 14, lineHeight: 1.6 }}>
+                  We email a confirmation link when you register. Open it and you can place this order
+                  immediately — your cart and details are saved.
+                </p>
+                <div className="row gap-2 items-center">
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={resendVerification}
+                    disabled={resendState === "sending"}
+                  >
+                    {resendState === "sending" ? "Sending…" : "Resend confirmation email"}
+                  </button>
+                  {resendState === "sent" && (
+                    <span className="tiny" style={{ color: "var(--color-ink)" }}>Sent — check your inbox.</span>
+                  )}
+                  {resendState === "failed" && (
+                    <span className="tiny" style={{ color: "var(--color-ink)", fontWeight: 500 }}>Could not send. Please try again shortly.</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             <button type="submit" className="btn btn-lg full center" disabled={step === "processing"}>
               {step === "processing" ? "Processing…" : step === "info" ? <>Continue to review <ArrowRight size={18} strokeWidth={1.8} /></> : <>Place order · {money(total)}</>}
@@ -233,6 +459,13 @@ export default function CheckoutPage() {
               <span className="h5">Total</span>
               <span className="h4 mono">{money(total)}</span>
             </div>
+            {/* M-2: say where the tax comes from. Prices shown in the catalog exclude
+                tax, so without this the total looks like it jumped at the last step. */}
+            <p className="tiny muted mt-3" style={{ color: "var(--color-tx-3)", lineHeight: 1.5 }}>
+              {tax > 0
+                ? "Includes tax collected on behalf of the destination country. Shipping is already included in item prices."
+                : "Shipping is already included in item prices. No additional tax applies to your destination."}
+            </p>
           </aside>
         </div>
       </div>

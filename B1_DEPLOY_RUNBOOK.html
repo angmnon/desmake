@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Desmake B1 部署手册 — Containers → Cloudflare Workers (OpenNext)</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --line:#262b36; --txt:#e6e9ef; --mut:#9aa3b2; --acc:#4f9dff; --ok:#3ecf8e; --warn:#ffb454; --bad:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:980px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  h2 { font-size:18px; margin:34px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  h3 { font-size:15px; margin:20px 0 8px; color:var(--acc); }
+  .sub { color:var(--mut); margin:0 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:12px 0; }
+  code, pre { font-family:"SF Mono",Menlo,Consolas,monospace; }
+  code { background:#0c0f14; padding:1px 6px; border-radius:5px; color:#ffd9a0; font-size:12.5px; }
+  pre { background:#0c0f14; border:1px solid var(--line); border-radius:10px; padding:14px 16px; overflow:auto; font-size:12.5px; line-height:1.5; }
+  table { width:100%; border-collapse:collapse; margin:8px 0; font-size:13px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; }
+  .pill { display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; font-weight:600; }
+  .p-ok { background:rgba(62,207,142,.15); color:var(--ok); }
+  .p-warn { background:rgba(255,180,84,.15); color:var(--warn); }
+  .p-bad { background:rgba(255,107,107,.15); color:var(--bad); }
+  ul { margin:6px 0 6px 0; padding-left:20px; } li { margin:4px 0; }
+  .kv { color:var(--mut); }
+  .tag { color:var(--acc); }
+  .note { border-left:3px solid var(--warn); padding:8px 12px; background:rgba(255,180,84,.07); border-radius:0 8px 8px 0; margin:10px 0; }
+  .ok { border-left:3px solid var(--ok); background:rgba(62,207,142,.07); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Desmake B1 部署手册</h1>
+  <p class="sub">去 Containers 依赖 · 纯 Cloudflare Workers（OpenNext 适配器）· 状态：代码改造完成，待构建/部署校验</p>
+
+  <div class="card">
+    <b>结论速览</b>
+    <ul>
+      <li>✅ 已删除容器相关文件：<code>worker.mjs</code>、<code>Dockerfile</code>、<code>wrangler.toml</code>、<code>src/server.ts</code>（自定义 Node server）、<code>proxy.ts</code>（Node middleware）。</li>
+      <li>✅ 新增 OpenNext 全套配置：<code>wrangler.jsonc</code>、<code>open-next.config.ts</code>、<code>image-loader.ts</code>、<code>scripts/gen-blog-content.mjs</code>、<code>/orders</code> 与 <code>/account</code> layout 守卫。</li>
+      <li>✅ 数据层改写为原生绑定：<code>db.ts</code>（D1）、<code>r2.ts</code>（R2）、<code>analytics.ts</code>（ctx.waitUntil，无定时器）。</li>
+      <li>✅ <code>blog.ts</code> 改用构建期内联的 <code>BLOG_CONTENT</code>（无运行时 <code>fs</code>/<code>process.cwd()</code>）。</li>
+      <li>✅ 修复跨 isolate 的 <code>getJob</code> 陈旧缓存（D1 为唯一真相源）。</li>
+      <li>⚠️ <b>本沙箱无法 pnpm install / next build</b>（被 safe-delete 拦截），真实构建须在可出网环境（Docker / CI / 本机）执行本手册步骤。</li>
+    </ul>
+  </div>
+
+  <h2>1. 环境前置</h2>
+  <table>
+    <tr><th>项</th><th>要求</th><th>说明</th></tr>
+    <tr><td>Node / pnpm</td><td>Node 20+ · pnpm 9+</td><td>构建在 Node 运行时进行（非 Docker 镜像）</td></tr>
+    <tr><td>CF 账号</td><td>Workers Paid</td><td>需要 D1 / R2 / Images 权限</td></tr>
+    <tr><td>CF API Token</td><td>Workers:Edit + D1 + R2</td><td>部署与绑定读写；或 <code>wrangler login</code></td></tr>
+    <tr><td>D1 库</td><td><code>desmake-db</code> = 39a994b2-…-1339</td><td>已存在，绑定名 <code>DB</code></td></tr>
+    <tr><td>R2 桶</td><td><code>desmake-assets</code></td><td>已存在，绑定名 <code>BUCKET</code></td></tr>
+    <tr><td>Docker Desktop</td><td><span class="pill p-ok">不再需要</span></td><td>Workers 直接由 wrangler 部署，省去容器构建</td></tr>
+  </table>
+
+  <h2>2. 本地开发</h2>
+  <pre>pnpm install
+pnpm dev      # next dev + OpenNext Cloudflare 本地 shim，读取 .dev.vars 的绑定</pre>
+  <p class="kv">开发期 dev 变量位于 <code>.dev.vars</code>（AGNES_BASE_URL / AGNES_IMAGE_MODEL / SITE_URL）。需要本地调试的 secret 也可临时放进 <code>.dev.vars</code>。</p>
+
+  <h2>3. 生产部署（核心）</h2>
+  <pre>pnpm install
+pnpm deploy   # = node scripts/gen-blog-content.mjs &amp;&amp; \
+              #   opennextjs-cloudflare build &amp;&amp; \
+              #   opennextjs-cloudflare deploy</pre>
+  <ul>
+    <li>构建产物：<code>.open-next/</code>（<code>worker.js</code> + <code>assets/</code>）。<code>wrangler.jsonc</code> 的 <code>main: .open-next/worker.js</code>。</li>
+    <li>部署环境需持有 <code>CF_API_TOKEN</code>（或已 <code>wrangler login</code>）。</li>
+    <li><code>images</code> 绑定（<code>IMAGES</code>）与 <code>WORKER_SELF_REFERENCE</code> 服务绑定已声明，供 Image Resizing 与 <code>revalidatePath</code> 跨 isolate 失效使用。</li>
+  </ul>
+
+  <h2>4. 必填密钥（<code>wrangler secret put</code>）</h2>
+  <p class="kv">代码通过 <code>process.env.*</code> 读取；OpenNext 在 Worker 运行时把 CF secret / vars 映射为 <code>process.env</code>。<b>未设置则不致命</b>（对应功能优雅降级），但生产须补齐：</p>
+  <table>
+    <tr><th>密钥</th><th>用途</th><th>缺失影响</th></tr>
+    <tr><td><code>SESSION_SECRET</code></td><td>会话签名（<span class="pill p-bad">必须</span>）</td><td>无则会话不安全且轮换即失效</td></tr>
+    <tr><td><code>STRIPE_SECRET_KEY</code></td><td>Stripe 服务端</td><td>支付不可用</td></tr>
+    <tr><td><code>STRIPE_WEBHOOK_SECRET</code></td><td>Webhook 验签</td><td>回执/入账失败</td></tr>
+    <tr><td><code>CMS_API_KEY</code></td><td>CMS API 鉴权</td><td>CMS 写接口 401</td></tr>
+    <tr><td><code>AGNES_API_KEY</code></td><td>Agnes AI 生图</td><td>退回 demo 预览模式</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td>备用生图 provider</td><td>备用不可用</td></tr>
+    <tr><td><code>RESEND_API_KEY</code></td><td>交易邮件</td><td>不发确认邮件</td></tr>
+    <tr><td><code>META_PIXEL_ID</code> / <code>META_ACCESS_TOKEN</code></td><td>Meta CAPI</td><td>服务端转化追踪缺失</td></tr>
+    <tr><td><code>ALERT_WEBHOOK_URL</code></td><td>监控告警</td><td>无告警</td></tr>
+    <tr><td><code>ADMIN_TOKEN</code></td><td>admin/settle 接口</td><td>结算接口 401</td></tr>
+    <tr><td><code>GOOGLE_SITE_VERIFICATION</code> / <code>BING_SITE_VERIFICATION</code></td><td>GSC / Bing</td><td>验证标签缺失（可选）</td></tr>
+  </table>
+
+  <h3>构建期内联的 NEXT_PUBLIC_*（非 secret，须在 <code>pnpm deploy</code> 时存在于环境）</h3>
+  <table>
+    <tr><th>变量</th><th>用途</th></tr>
+    <tr><td><code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code></td><td>Stripe.js 客户端</td></tr>
+    <tr><td><code>NEXT_PUBLIC_GA4_ID</code></td><td>GA4</td></tr>
+    <tr><td><code>NEXT_PUBLIC_META_PIXEL_ID</code></td><td>Meta Pixel</td></tr>
+    <tr><td><code>NEXT_PUBLIC_GOOGLE_ADS_ID</code></td><td>Google Ads</td></tr>
+  </table>
+  <p class="kv">这些在 <code>next build</code> 阶段被内联进客户端包，因此要在运行 <code>pnpm deploy</code> 的机器/CI 的环境变量里提供（可用 <code>.env</code>，已被 gitignore）。</p>
+
+  <h2>5. 部署后校验（P0 清单）</h2>
+  <table>
+    <tr><th>#</th><th>检查</th><th>命令 / 预期</th></tr>
+    <tr><td>1</td><td><span class="tag">★最高</span> Image Resizing</td><td><code>curl -I https://desmake.com/cdn-cgi/image/width=800/&lt;cdn-path&gt;</code> → 200 且为缩放后图。详见下方“风险点 A”。</td></tr>
+    <tr><td>2</td><td>清缓存</td><td>部署后执行 zone purge_cache（同既有流程）。</td></tr>
+    <tr><td>3</td><td>页面渲染</td><td>首页、<code>/explore</code>、<code>/listing/[slug]</code> 正常返回 200。</td></tr>
+    <tr><td>4</td><td>D1 读写</td><td>注册/登录 → Studio 发布设计 → <code>/explore</code> 出现该设计。</td></tr>
+    <tr><td>5</td><td>R2 图片</td><td>Studio 上传图 → <code>/cdn/&lt;key&gt;</code> 可访问（immutable 缓存）。</td></tr>
+    <tr><td>6</td><td>Stripe</td><td>测试 checkout 下单 + webhook 回执（若已配密钥）。</td></tr>
+    <tr><td>7</td><td>Blog</td><td><code>/blog</code> 与 <code>/blog/[slug]</code> 渲染（内容已内联打包）。</td></tr>
+    <tr><td>8</td><td>生图任务</td><td>创建 job → 轮询最终 <code>succeeded</code>（AI 模式落 D1，跨 isolate 一致）。</td></tr>
+  </table>
+
+  <h2>6. 风险点与回退方案</h2>
+  <div class="note">
+    <b>风险点 A — <code>/cdn-cgi/image/</code> 在 Worker 源站下的行为</b><br/>
+    <code>image-loader.ts</code> 生成 <code>/cdn-cgi/image/&lt;opts&gt;/&lt;src&gt;</code>。Cloudflare 的 Image Resizing 通常在边缘拦截 <code>/cdn-cgi/image/</code> 并在取源（我们的 <code>/cdn/&lt;key&gt;</code> → R2）后缩放。<b>但</b>若 CF 把 <code>/cdn-cgi/</code> 也路由到该 Worker（OpenNext worker 接管了 <code>/*</code>），则无对应路由会 404，导致全部图片破裂。<br/><br/>
+    <b>验证：</b>部署后跑第 1 项校验。若 404 → 回退方案：新增 <code>src/app/cdn-cgi/image/[...path]/route.ts</code>，在其中调用 <code>env.IMAGES</code> 绑定的 <code>images.resizing()/draw()</code> 返回缩放结果，并把 loader 改为指向该路由（或由 <code>IMAGES</code> 绑定的 fetch 形式提供）。
+  </div>
+  <div class="note">
+    <b>风险点 B — Stripe Node SDK 在 workerd</b><br/>
+    使用 <code>nodejs_compat</code> + <code>compatibility_date 2026-08-20</code>，<code>node:crypto</code> 可用。需实测 webhook 验签（<code>constructEvent</code>）。若 workerd 下报错，改用 <code>@stripe/stripe-js</code> 仅客户端 + 服务端以 <code>fetch</code> 直连 Stripe API 验签。
+  </div>
+  <div class="card ok">
+    <b>已知限制（非阻塞）</b>
+    <ul>
+      <li><b>Demo 模式生图轮询为单 isolate</b>：未配置 <code>AGNES_API_KEY</code> 时，合成输出仅存于创建 isolate 的内存；跨 isolate 轮询会停在 queued。生产 AI 模式（落 D1）跨 isolate 正确。</li>
+      <li><b>analytics 事件 flush</b>：依赖 <code>ctx.waitUntil</code>（best-effort），低频流量在累计满 50 条时批量写入；极低频下个别事件可能延迟落库（不丢，下个事件触发）。</li>
+      <li><b>会话/订单的内存缓存</b>：与旧容器模型一致的设计——内存为热缓存，D1 为真相源，读请求回退 D1。跨 isolate 偶发读到刚冷启动前的旧缓存快照，属既有权衡，非 B1 回归。</li>
+    </ul>
+  </div>
+
+  <h2>7. 回滚</h2>
+  <ul>
+    <li>Worker 名同为 <code>desmake</code>。回滚 = <code>git revert</code> B1 提交后重新 <code>pnpm deploy</code>，或保留上一次 <code>.open-next</code> 产物重新 <code>wrangler deploy</code>。</li>
+    <li>D1 / R2 数据不受影响（绑定保持不变），回滚仅换 Worker 代码。</li>
+  </ul>
+
+  <h2>8. 部署脚本对照</h2>
+  <table>
+    <tr><th>脚本</th><th>旧（容器）</th><th>新（B1 Workers）</th></tr>
+    <tr><td><code>scripts/build.sh</code></td><td>next build + tsup server</td><td>gen-blog + next build</td></tr>
+    <tr><td><code>scripts/dev.sh</code></td><td>tsx watch src/server.ts</td><td>gen-blog + next dev</td></tr>
+    <tr><td><code>scripts/start.sh</code></td><td>node dist/server.js</td><td>opennextjs-cloudflare build &amp;&amp; wrangler dev</td></tr>
+    <tr><td><code>pnpm deploy</code></td><td>npx wrangler deploy（容器）</td><td>gen-blog + opennextjs-cloudflare build &amp;&amp; deploy</td></tr>
+  </table>
+  <p class="kv">注：<code>package.json</code> 仍含 <code>@cloudflare/containers</code> 与 <code>aws4</code> 依赖（已无代码引用，无害）；如需精简可在能跑 <code>pnpm install</code> 的环境删除并同步 lockfile。</p>
+</div>
+</body>
+</html>

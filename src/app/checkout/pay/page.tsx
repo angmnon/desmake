@@ -3,10 +3,19 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { ShieldCheck, Lock, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { money, adapterName } from "@/lib/data";
+import { track } from "@/lib/tracking";
+import { useCart } from "@/lib/cart";
+
+// P2-1: Stripe is loaded lazily. The payment UI (which pulls in @stripe/stripe-js and
+// fetches js.stripe.com/v3) is a separate client chunk mounted only once the order is
+// resolved, so it never blocks first paint of the checkout page.
+const StripeCheckout = dynamic(() => import("@/components/StripeCheckout"), {
+  ssr: false,
+  loading: () => <div className="tiny muted center" style={{ maxWidth: 460, margin: "0 auto" }}>Loading payment…</div>,
+});
 
 type PayOrder = {
   order_id: string;
@@ -16,114 +25,14 @@ type PayOrder = {
   pricing: { subtotal_cents: number; tax_cents: number; shipping_cents: number; total_cents: number; currency: string };
 };
 
-const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
-const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : null;
-
-const CARD_OPTIONS = {
-  style: {
-    base: {
-      fontSize: "15px",
-      color: "#0c0c0d",
-      "::placeholder": { color: "#9a9a9a" },
-      iconColor: "#0c0c0d",
-    },
-    invalid: { color: "#d9534f", iconColor: "#d9534f" },
-  },
-};
-
-function PayForm({ order, orderId, onPaid }: { order: PayOrder; orderId: string; onPaid: (o: PayOrder) => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [initError, setInitError] = useState<string | null>(null);
-  const [paying, setPaying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/payments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ order_id: orderId }),
-    })
-      .then(async (r) => {
-        const data = (await r.json().catch(() => ({}))) as { client_secret?: string; error?: { message?: string } };
-        if (!r.ok || !data.client_secret) throw new Error(data.error?.message || "Could not start payment");
-        if (!cancelled) setClientSecret(data.client_secret);
-      })
-      .catch((e) => { if (!cancelled) setInitError(e instanceof Error ? e.message : "Could not start payment"); });
-    return () => { cancelled = true; };
-  }, [orderId]);
-
-  const pay = async () => {
-    if (!stripe || !elements || !clientSecret) return;
-    setPaying(true);
-    setError(null);
-    const card = elements.getElement(CardElement);
-    if (!card) { setError("Card input is not ready"); setPaying(false); return; }
-
-    const { error: stripeErr, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-      payment_method: { card },
-    });
-    if (stripeErr) {
-      setError(stripeErr.message || "Payment failed");
-      setPaying(false);
-      return;
-    }
-    if (paymentIntent?.status !== "succeeded") {
-      setError("Payment was not completed");
-      setPaying(false);
-      return;
-    }
-
-    // Server-side verification before marking the order paid.
-    try {
-      const res = await fetch("/api/payments/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order_id: orderId, payment_intent_id: paymentIntent.id }),
-      });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
-        throw new Error(err.error?.message || "Payment could not be confirmed");
-      }
-      onPaid({ ...order, status: "paid", payment: { ...order.payment, method: "card", paid_at: new Date().toISOString(), payment_intent_id: paymentIntent.id } });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Payment failed");
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  if (initError) {
-    return (
-      <div className="tiny" role="alert" style={{ color: "var(--color-signal)", textAlign: "left" }}>{initError}</div>
-    );
-  }
-
-  return (
-    <>
-      <div className="card" style={{ padding: 24, maxWidth: 460, margin: "0 auto 16px", textAlign: "left" }}>
-        <div className="label mb-3">Card details</div>
-        <div className="input" style={{ padding: "12px 14px", borderRadius: 10, background: "#fff" }}>
-          <CardElement options={CARD_OPTIONS} />
-        </div>
-        <div className="row gap-2 mt-4">
-          <span className="tag mono"><ShieldCheck size={11} /> Buyer protection</span>
-          <span className="tag mono"><Lock size={11} /> Secure</span>
-        </div>
-      </div>
-      {error && <div className="tiny" role="alert" style={{ color: "var(--color-signal)", marginBottom: 12, textAlign: "center" }}>{error}</div>}
-      <button onClick={pay} disabled={paying || !stripe || !clientSecret} className="btn btn-lg full center" style={{ maxWidth: 460, margin: "0 auto" }}>
-        {paying ? <><Loader2 size={18} className="animate-spin" /> Processing payment…</> : <>Pay {money(order.pricing.total_cents)} <ArrowRight size={18} strokeWidth={1.8} /></>}
-      </button>
-    </>
-  );
-}
-
 function PayPage() {
   const params = useSearchParams();
   const orderId = params.get("order") || "";
+  // H-5: the cart is now cleared here — on confirmed payment — instead of at order
+  // creation. Previously `cart.clear()` ran the moment the pending order was made, so
+  // a declined card, a closed tab or a changed mind destroyed the buyer's cart with
+  // no way to recover it, and the pending order could never be resumed from the UI.
+  const cart = useCart();
   const [order, setOrder] = useState<PayOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
@@ -164,6 +73,25 @@ function PayPage() {
     );
   }
 
+  // P0-2: fire the server-confirmed purchase event once, on the payment transition
+  // (not when an already-paid order is merely reloaded).
+  const handlePaid = (o: PayOrder) => {
+    setDone(true);
+    // H-5: only now — after the payment is genuinely confirmed — is it safe to clear.
+    cart.clear();
+    track("purchase", {
+      currency: o.pricing.currency || "USD",
+      value: o.pricing.total_cents / 100,
+      transaction_id: o.order_id,
+      items: o.items.map((it) => ({
+        item_id: it.title,
+        item_name: it.title,
+        price: it.unit_price_cents / 100,
+        quantity: it.quantity,
+      })),
+    });
+  };
+
   const total = order.pricing.total_cents;
 
   if (done) {
@@ -174,7 +102,7 @@ function PayPage() {
           <h1 className="h1 balance" style={{ marginTop: 14 }}>Payment complete</h1>
           <p className="small muted" style={{ margin: "10px auto 28px" }}>Order <span className="mono">{order.order_id}</span></p>
           <div className="card" style={{ padding: 32, maxWidth: 460, margin: "0 auto 24px" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--color-moss)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", color: "#fff" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--color-ink)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", color: "#fff" }}>
               <CheckCircle2 size={28} strokeWidth={1.8} />
             </div>
             <h3 className="h3" style={{ marginBottom: 8 }}>Your payment was confirmed</h3>
@@ -188,12 +116,6 @@ function PayPage() {
           </div>
         </div>
       </section>
-    );
-  }
-
-  if (!stripePromise) {
-    return (
-      <section className="section"><div className="container-narrow center"><p className="small muted">Payment is not configured.</p></div></section>
     );
   }
 
@@ -220,12 +142,14 @@ function PayPage() {
           </div>
         </div>
 
-        <Elements stripe={stripePromise}>
-          <PayForm order={order} orderId={orderId} onPaid={() => setDone(true)} />
-        </Elements>
+        <StripeCheckout order={order} orderId={orderId} onPaid={handlePaid} />
 
         <div className="tiny muted center mt-4" style={{ maxWidth: 460, margin: "14px auto 0" }}>
           <Link href="/cart" className="link-u small">Cancel and return to cart</Link>
+          <p style={{ marginTop: 8 }}>
+            Your cart is kept, and this order stays payable from{" "}
+            <Link href="/orders" className="link-u">My orders</Link>.
+          </p>
         </div>
       </div>
     </section>

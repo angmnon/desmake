@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Creator Payouts", description: "How Desmake pays creators — transparent margins, per-order payouts, and clear thresholds." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/payouts",
+  title: "Desmake creator payouts — transparent margins, per-order earnings",
+  description:
+    "How Desmake pays creators: your margin is tracked per order and released on a clear schedule. No upfront cost, no inventory risk, defects covered.",
+});
 
 export default function PayoutsPage() {
   return (

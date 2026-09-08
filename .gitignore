@@ -12,6 +12,10 @@ __pycache__/
 *.egg-info/
 /.env
 .env
+.dev.vars
+cloudflare-env.d.ts
+worker-configuration.d.ts
+src/lib/blogContent.generated.ts
 .cozeproj/reduction
 
 # JS/TS bundlers & build outputs
@@ -23,6 +27,7 @@ __pycache__/
 .cache
 coverage
 storybook-static
+.open-next
 
 # Package manager artifacts
 .pnp*
@@ -169,3 +174,12 @@ Desktop.ini
 .backup-r2/
 backups/
 *.log
+
+# Local caches / memory / scratch (never commit)
+.workbuddy/
+.wrangler/
+.next_old_linux/
+package-lock.json
+scripts/_scan_result.json
+scripts/_chk.ts
+_tmp_*

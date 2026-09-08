@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createSession, findUserByEmail, verifyPassword, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { createSession, findUserByEmailAsync, verifyPassword, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -33,8 +33,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: { code: "validation", message: "Password must be 6–128 characters" } }, { status: 400 });
   }
 
-  // Real credential check against the persisted account — no magic emails.
-  const user = findUserByEmail(email);
+  // C-1 fix: look the account up in D1 when this isolate's cache misses. The old
+  // synchronous lookup only saw users created in this very isolate, so every
+  // returning customer got "Incorrect email or password" and could never order.
+  const user = await findUserByEmailAsync(email);
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return NextResponse.json(
       { error: { code: "unauthorized", message: "Incorrect email or password" } },
@@ -42,7 +44,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: user.emailVerified };
+  const sessionUser = { id: user.id, email: user.email, name: user.name, handle: user.handle, role: user.role, emailVerified: user.emailVerified, sessionEpoch: user.sessionEpoch ?? 0 };
   const token = createSession(sessionUser);
 
   const res = NextResponse.json({ user: sessionUser });

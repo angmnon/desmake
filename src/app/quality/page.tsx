@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Quality & Guarantees", description: "How Desmake keeps print and product quality consistent across every manufacturing adapter and node." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/quality",
+  title: "Desmake quality & guarantees — consistent prints across every node",
+  description:
+    "How Desmake keeps print and product quality consistent across every manufacturing adapter and node — profiling, pre-checks, node scoring and a remake-or-refund guarantee.",
+});
 
 export default function QualityPage() {
   return (

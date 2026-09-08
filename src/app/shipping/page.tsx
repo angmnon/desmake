@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Shipping", description: "How Desmake routes orders to the factory node closest to the buyer, with transparent lead times and tracking." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/shipping",
+  title: "Desmake shipping — made close to the buyer, tracked worldwide",
+  description:
+    "How Desmake routes every order to the factory node closest to the buyer, with transparent lead times, tracking, and 30-day returns.",
+});
 
 export default function ShippingPage() {
   return (

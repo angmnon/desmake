@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getOrder, idCreatedTs } from "@/lib/stores";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
 
 // No edge runtime — this route reads the in-memory order store off `globalThis` (R2/C1).
 
@@ -48,7 +48,7 @@ function buildHistory(ageMs: number): HistoryEntry[] {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // Order details contain PII — require an authenticated session.
-  const user = getSession(req.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(req.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to view this order" } }, { status: 401 });
   }
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // NEVER synthesize an order for an unknown id. A miss is a 404.
   // getOrder() checks memory first, then falls back to D1 so a request routed to a
-  // different container instance than the one that created the order still resolves.
+  // different Worker isolate than the one that created the order still resolves.
   const order = await getOrder(id);
   // R2/H1: ownership check. Previously any signed-in user who guessed an order id
   // could read the full record — customer name, email and shipping address included.

@@ -112,6 +112,12 @@ export type Design = {
   description?: string;
   /** "ai" = generated in Studio; "upload" = creator supplied their own image. */
   source?: "ai" | "upload";
+  // ── M-UGC: creator identity (real users). Populated by publishedToDesign from the
+  // PublishedDesign's handle fields. Falls back to creatorByHandle(design.creator)
+  // when absent, so older catalog data still renders. ──
+  creatorHandle?: string;
+  creatorDisplayName?: string;
+  creatorVerified?: boolean;
   // ── M3: 商品配置与创作者分成 ──
   /** 创作者分成比例 0.10–0.50；缺省表示未配置（下单时按 0 处理，不产生分成） */
   royaltyRate?: number;
@@ -145,6 +151,7 @@ export const adapterName = (id: string): string => adapterById(id)?.name ?? id;
 
 export const CATEGORIES = [
   { id: "all", name: "All", count: 24220 },
+  { id: "art", name: "Art", count: 4430 },
   { id: "abstract", name: "Abstract", count: 4820 },
   { id: "typography", name: "Typography", count: 3140 },
   { id: "geometric", name: "Geometric", count: 2760 },
@@ -629,13 +636,19 @@ export function computeOrderTotals(lines: OrderSkuLine[], region: Region = "DEFA
     freightLines.push({ sku: l.sku, qty: l.qty });
   }
 
-  const shippingCents = Math.round(skuOrderFreightUSD(freightLines) * 100);
+  // P0-1 FIX (paid-acquisition launch blocker): freight is already baked into each
+  // unit's retail price — see pricing.ts `retailUSD`, which applies FREIGHT_PASS_THROUGH
+  // (×1.15) to the per-unit freight. Adding a separate shipping line here would
+  // double-charge the customer for the same freight (≈2.15×). Shipping is therefore
+  // included ("free shipping"); the order total is simply the taxed goods subtotal.
+  // Royalty base (netPriceUSD) is unchanged, so creator payouts are unaffected.
+  const shippingCents = 0;
   const taxCentsTotal = saleSubtotal - retailSubtotal;
   return {
     subtotalCents: saleSubtotal,
     shippingCents,
     taxCents: taxCentsTotal,
     totalCents: saleSubtotal + shippingCents,
-    freeShipping: shippingCents === 0,
+    freeShipping: true,
   };
 }

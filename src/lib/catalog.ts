@@ -6,7 +6,7 @@
 
 import type { Design, SelectedProduct } from "@/lib/data";
 import { DESIGNS, adapterDefaultSku } from "@/lib/data";
-import { designsStore, allPublishedDesigns, type PublishedDesign } from "@/lib/stores";
+import { designsStore, type PublishedDesign } from "@/lib/stores";
 
 /**
  * M3: 该设计实际可售的商品列表。
@@ -60,6 +60,9 @@ export function publishedToDesign(p: PublishedDesign): Design {
     source: p.source,
     royaltyRate: royaltyRateOf(p),
     selectedProducts: productsOf(p),
+    creatorHandle: p.creatorHandle,
+    creatorDisplayName: p.creatorName,
+    creatorVerified: p.creatorVerified,
   };
 }
 
@@ -87,6 +90,9 @@ export function findListingById(id: string): Design | undefined {
 export async function findListingByIdAsync(id: string): Promise<Design | undefined> {
   const local = findListingById(id);
   if (local) return local;
-  const fresh = (await allPublishedDesigns()).find((p) => p.id === id || p.slug === id);
+  // P0: was a full D1 scan on the checkout path. Now an O(1) index lookup.
+  // Imported lazily so this module stays free of a static cycle with catalogIndex.
+  const { findPublishedByIdOrSlug } = await import("@/lib/catalogIndex");
+  const fresh = await findPublishedByIdOrSlug(id);
   return fresh ? publishedToDesign(fresh) : undefined;
 }

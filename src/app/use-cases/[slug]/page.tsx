@@ -161,5 +161,43 @@ export default async function UseCasePage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const d = DATA[slug];
   if (!d) notFound();
-  return <ContentPage eyebrow="Use cases" title={d.title} intro={d.intro} sections={d.sections} cta={d.cta} />;
+
+  const roleMap: Record<string, string> = {
+    "ai-artist": "an AI artist",
+    "merch-brand": "a brand",
+    "agent-commerce": "an AI-agent builder",
+  };
+  const role = roleMap[slug] ?? "a creator";
+  const faq = [
+    { q: `How do I get started as ${role} on Desmake?`, a: d.intro },
+    {
+      q: "Do I need inventory or a minimum order?",
+      a: "No. Every item is made to order after it sells, so there is no stock to finance and no minimum quantity — publish one or one thousand.",
+    },
+    {
+      q: "Can AI agents be involved in selling?",
+      a: "Yes. Desmake is MCP/API-first: an agent with a scoped key can search the catalogue, publish designs and place orders on your behalf.",
+    },
+    {
+      q: "How do I get paid?",
+      a: "You set a royalty of 10–50% per sale and earn it when items sell, with a transparent cost breakdown on every order and payouts across 34 countries.",
+    },
+  ];
+  const breadcrumb = [
+    { name: "Home", href: "/" },
+    { name: "Use cases", href: "/explore" },
+    { name: d.title.split(":")[0], href: `/use-cases/${slug}` },
+  ];
+
+  return (
+    <ContentPage
+      eyebrow="Use cases"
+      title={d.title}
+      intro={d.intro}
+      sections={d.sections}
+      cta={d.cta}
+      faq={faq}
+      breadcrumb={breadcrumb}
+    />
+  );
 }

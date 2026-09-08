@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Desmake CMS API — Operations Publishing</title>
+<style>
+  :root { --ink:#0c0c0d; --mut:#5b5b60; --line:rgba(12,12,13,.12); --bg:#fff; --code:#f5f5f7; --accent:#111; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:40px 20px; }
+  .wrap { max-width:820px; margin:0 auto; }
+  h1 { font-size:28px; margin:0 0 4px; letter-spacing:-.02em; }
+  h2 { font-size:19px; margin:36px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+  p { color:#1d1d1f; }
+  code, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+  pre { background:var(--code); padding:14px 16px; border-radius:10px; overflow:auto; font-size:13px; line-height:1.5; border:1px solid var(--line); }
+  .key { background:#0c0c0d; color:#fff; padding:10px 14px; border-radius:10px; font-size:14px; display:inline-block; margin:6px 0 2px; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--mut); font-weight:600; }
+  .tag { display:inline-block; background:#eef; color:#225; border-radius:999px; padding:1px 9px; font-size:12px; margin-left:6px; }
+  .note { background:#fff8e6; border:1px solid #f0dca0; padding:10px 14px; border-radius:10px; color:#5a4a10; font-size:13.5px; }
+  ul { padding-left:20px; } li { margin:4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Desmake CMS API</h1>
+  <p style="color:var(--mut)">Operations publishing API — push News, Blog and FAQ to the live site without a rebuild.</p>
+
+  <h2>1 · API key <span class="tag">required</span></h2>
+  <p>Every request must carry the shared ops key in the <code>Authorization</code> header (or the <code>x-cms-key</code> header).</p>
+  <div class="key">cms_f1c937598ec12189d2d67a1d01fbf18d79c6ed97568e870d</div>
+  <p style="font-size:13px;color:var(--mut)">This key is stored only as a Cloudflare Worker secret (CMS_API_KEY); it is not in the image or git. To rotate, run <code>wrangler secret put CMS_API_KEY</code>.</p>
+
+  <h2>2 · Base URL</h2>
+  <p><code>https://desmake.com</code> — all endpoints are under <code>/api/cms</code>.</p>
+
+  <h2>3 · Endpoints</h2>
+  <table>
+    <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+    <tr><td><code>POST</code></td><td><code>/api/cms/posts</code></td><td>Create a post (news / blog / faq)</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/cms/posts</code></td><td>List posts (filters below)</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/cms/posts/&lt;id&gt;</code></td><td>Fetch one post by its id</td></tr>
+    <tr><td><code>PUT</code></td><td><code>/api/cms/posts/&lt;id&gt;</code></td><td>Update a post (partial)</td></tr>
+    <tr><td><code>DELETE</code></td><td><code>/api/cms/posts/&lt;id&gt;</code></td><td>Delete a post</td></tr>
+  </table>
+  <p style="font-size:13px;color:var(--mut)">All endpoints require the API key. <code>GET</code> list params: <code>type</code> (news|blog|faq), <code>status</code> (published|draft), <code>limit</code> (≤200), <code>offset</code>.</p>
+
+  <h2>4 · Post fields (POST / PUT body)</h2>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+    <tr><td><code>type</code></td><td>string</td><td>yes</td><td>One of <code>news</code>, <code>blog</code>, <code>faq</code></td></tr>
+    <tr><td><code>title</code></td><td>string</td><td>yes</td><td>Headline / question</td></tr>
+    <tr><td><code>body_md</code></td><td>string</td><td>yes</td><td>Markdown body (start with <code>##</code> headings; the title is shown separately)</td></tr>
+    <tr><td><code>slug</code></td><td>string</td><td>no</td><td>URL slug; auto-generated from title if omitted</td></tr>
+    <tr><td><code>excerpt</code></td><td>string</td><td>no</td><td>Summary / answer-preview</td></tr>
+    <tr><td><code>cover_image</code></td><td>string</td><td>no</td><td>Absolute image URL</td></tr>
+    <tr><td><code>author</code></td><td>string</td><td>no</td><td>Defaults to <code>Desmake</code></td></tr>
+    <tr><td><code>tags</code></td><td>array</td><td>no</td><td><code>["ai-art","news"]</code></td></tr>
+    <tr><td><code>status</code></td><td>string</td><td>no</td><td><code>published</code> (default) or <code>draft</code></td></tr>
+    <tr><td><code>published_at</code></td><td>number</td><td>no</td><td>Epoch ms; defaults to now</td></tr>
+  </table>
+
+  <h2>5 · Example — publish a News post</h2>
+  <pre>curl -X POST https://desmake.com/api/cms/posts \
+  -H "Authorization: Bearer cms_f1c937598ec12189d2d67a1d01fbf18d79c6ed97568e870d" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "news",
+    "title": "Desmake launches agent storefronts",
+    "excerpt": "Creators can now let AI agents sell for them.",
+    "tags": ["product", "agents"],
+    "body_md": "## What changed\n\nWe shipped a new MCP endpoint so agents can publish on your behalf.\n\n## Why it matters\n\nLess manual work, more reach."
+  }'</pre>
+
+  <h2>6 · Public pages (auto-rendered)</h2>
+  <ul>
+    <li><code>/news</code> and <code>/news/&lt;slug&gt;</code> — News &amp; updates</li>
+    <li><code>/faq</code> and <code>/faq/&lt;slug&gt;</code> — Q&amp;A</li>
+    <li><code>/blog</code> and <code>/blog/&lt;slug&gt;</code> — merges the static pillar posts with API-published blog posts</li>
+  </ul>
+
+  <h2>7 · Notes</h2>
+  <div class="note">The API is live only after the CMS build is deployed. If a request returns <code>401</code>, the key header is missing or wrong. If it returns <code>500</code> on create, the D1 schema may not have been applied yet (it is created automatically on first container start).</div>
+  <ul>
+    <li>Markdown is rendered with the site's own renderer (headings, lists, tables, links, inline code). Start the body at <code>##</code> — the page already shows the title above it.</li>
+    <li>Drafts are not shown publicly; set <code>status:"published"</code> to go live immediately.</li>
+    <li>Every published post is auto-added to the XML sitemap.</li>
+  </ul>
+</div>
+</body>
+</html>

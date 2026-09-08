@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Creator Guidelines", description: "Content and conduct guidelines for creators publishing designs on Desmake." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/guidelines",
+  title: "Desmake creator guidelines — what you can publish",
+  description:
+    "Content and conduct guidelines for creators publishing designs on Desmake: what you can publish, what's not allowed, and quality expectations.",
+});
 
 export default function GuidelinesPage() {
   return (

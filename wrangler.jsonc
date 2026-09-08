@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "desmake",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "desmake"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "39a994b2-f353-4ee3-a1ff-6288963a1339"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "desmake-assets"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  },
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "remote": true
+    }
+  ],
+  "vars": {
+    "AGNES_BASE_URL": "https://apihub.agnes-ai.com/v1",
+    "AGNES_IMAGE_MODEL": "agnes-image-2.1-flash",
+    "SITE_URL": "https://desmake.com",
+    "REQUIRE_EMAIL_VERIFICATION": "true",
+    "IMAGE_RESIZING_ENABLED": "true"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

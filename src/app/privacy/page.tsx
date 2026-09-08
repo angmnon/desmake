@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Privacy Policy", description: "How Desmake collects, uses, and protects your data." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/privacy",
+  title: "Desmake privacy policy — how we collect, use and protect your data",
+  description:
+    "How Desmake collects, uses and protects your data — what we collect, why, and the choices you have. Plain language, no law degree required.",
+});
 
 export default function PrivacyPage() {
   return (

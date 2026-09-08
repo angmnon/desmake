@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getOrder, ordersStore, persistOrder } from "@/lib/stores";
+import { getOrder, ordersStore, persistOrder, recordOrderEarnings, recordReferralEarnings, getOrderByPaymentIntent, reverseEarningsForOrder } from "@/lib/stores";
 import { stripe, STRIPE_ENABLED, STRIPE_WEBHOOK_SECRET } from "@/lib/stripe";
-import { recordError } from "@/lib/monitor";
+import { recordError, notifyAlert } from "@/lib/monitor";
 
 // No edge runtime — needs the raw request body to verify the Stripe signature.
 
@@ -57,7 +57,32 @@ export async function POST(request: NextRequest) {
         order.manufacturing.status = "routing";
         ordersStore().set(order.order_id, order);
         void persistOrder(order).catch(() => {});
+        // P0-5: record earnings here too, so they are captured regardless of whether the
+        // client /confirm or this webhook was the path that marked the order paid. Idempotent.
+        void recordOrderEarnings(order).catch(() => {});
+        void recordReferralEarnings(order).catch(() => {});
       }
+    }
+  }
+
+  // P0-5: refunds / chargebacks. A Stripe refund or dispute means the platform must NOT
+  // pay out the creator/referral earnings — roll back any pending rows so the monthly
+  // settle (which only flips 'pending'→'paid') skips them.
+  if (event.type === "charge.refunded" || event.type === "charge.dispute.created") {
+    const charge = event.data.object as { payment_intent?: string | null };
+    const order = await getOrderByPaymentIntent(charge.payment_intent || "");
+    if (order && order.status !== "refunded" && order.status !== "disputed") {
+      const newStatus = event.type === "charge.refunded" ? "refunded" : "disputed";
+      order.status = newStatus;
+      order.updated_at = new Date().toISOString();
+      order.history = [
+        ...order.history,
+        { status: newStatus, note: `Stripe ${event.type}`, ts: order.updated_at },
+      ];
+      ordersStore().set(order.order_id, order);
+      void persistOrder(order).catch(() => {});
+      void reverseEarningsForOrder(order.order_id).catch(() => {});
+      void notifyAlert(`Order ${newStatus}`, `order ${order.order_id} (Stripe ${event.type})`);
     }
   }
 

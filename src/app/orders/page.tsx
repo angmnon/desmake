@@ -13,8 +13,15 @@ const TONE: Record<string, string> = {
   violet: "badge-violet",
   signal: "badge-signal",
 };
-const stateLabel = (id: string) => ORDER_STATES.find((s) => s.id === id)?.label || id;
-const stateTone = (id: string) => TONE[ORDER_STATES.find((s) => s.id === id)?.tone || "signal"] || "badge-outline";
+// H-5: "pending" (created but not yet paid) is absent from ORDER_STATES, which only
+// models manufacturing states, so it rendered as the raw word "pending" with no
+// explanation and — worse — no way for the buyer to finish paying.
+const stateLabel = (id: string) =>
+  id === "pending" ? "Awaiting payment" : ORDER_STATES.find((s) => s.id === id)?.label || id;
+const stateTone = (id: string) =>
+  id === "pending"
+    ? "badge-amber"
+    : TONE[ORDER_STATES.find((s) => s.id === id)?.tone || "signal"] || "badge-outline";
 
 type ApiItem = { title?: string; adapter?: string; variant?: string; quantity?: number };
 type ApiOrder = { order_id: string; status: string; total_cents: number; items?: ApiItem[]; created_at?: string };
@@ -95,7 +102,7 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {error && <p className="small" style={{ color: "var(--color-signal)" }}>{error}</p>}
+        {error && <p className="small" style={{ color: "var(--color-ink)", fontWeight: 500 }}>{error}</p>}
 
         {rows !== null && rows.length === 0 && !error && (
           <div className="card center" style={{ padding: "clamp(40px,6vw,72px)" }}>
@@ -109,7 +116,8 @@ export default function OrdersPage() {
         {rows !== null && rows.length > 0 && (
           <div className="stack gap-4">
             {rows.map((o) => (
-              <Link key={o.id} href={`/orders/${o.id}`} className="card card-hover" style={{ padding: 22, display: "block" }}>
+              <div key={o.id} className="card card-hover" style={{ padding: 22 }}>
+                <Link href={`/orders/${o.id}`} style={{ display: "block" }}>
                 <div className="row-between wrap gap-3 mb-3">
                   <div className="row gap-3">
                     <span className="mono small" style={{ fontWeight: 600 }}>{o.id}</span>
@@ -125,7 +133,19 @@ export default function OrdersPage() {
                     </span>
                   ))}
                 </div>
-              </Link>
+                </Link>
+                {/* H-5: the missing resume path. Without this, an abandoned or declined
+                    payment left an order permanently stuck in `pending` with no way to
+                    complete it from the UI, so the sale was simply lost. */}
+                {o.state === "pending" && (
+                  <div className="row gap-3 wrap items-center" style={{ borderTop: "1px solid rgba(12,12,13,0.08)", marginTop: 14, paddingTop: 14 }}>
+                    <Link href={`/checkout/pay?order=${o.id}`} className="btn btn-outline" style={{ padding: "9px 16px", fontSize: "0.8125rem" }}>
+                      Complete payment <ArrowRight size={14} strokeWidth={1.8} />
+                    </Link>
+                    <span className="tiny muted">This order is saved and can still be paid for.</span>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}

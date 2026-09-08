@@ -1,28 +1,30 @@
 import { NextResponse } from "next/server";
-import { DESIGNS, CREATORS, ADAPTERS, ADAPTER_VARIANTS, unitPriceCents } from "@/lib/data";
+import { CREATORS, ADAPTERS, ADAPTER_VARIANTS, unitPriceCents, type Design } from "@/lib/data";
 import { findListingBySlug, publishedToDesign } from "@/lib/catalog";
-import { allPublishedDesigns } from "@/lib/stores";
+import { findPublishedBySlug, relatedFor } from "@/lib/catalogIndex";
 
 // No edge runtime — this route reads the published-designs store on `globalThis` (R2/C1).
 
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  // R2/H8: designs published from Studio are resolvable here too, otherwise the
-  // Publish button would lead to a 404 detail page.
-  let design = findListingBySlug(slug);
+  // P0: the authoritative lookup is now an O(1) hit on the cached design index
+  // (was a full 5.15 MB D1 scan + JSON.parse on every product view). Falls back to
+  // the seed/in-memory catalog if the index cannot be built (D1 disabled).
+  let design: Design | undefined;
+  try {
+    const fresh = await findPublishedBySlug(slug);
+    if (fresh) design = publishedToDesign(fresh);
+  } catch { /* D1 disabled — fall back below */ }
+  if (!design) design = findListingBySlug(slug);
   if (!design) {
     return NextResponse.json({ error: { code: "not_found", message: "Design not found" } }, { status: 404 });
   }
-  // Cross-instance freshness: the in-memory store may predate a direct D1 update
-  // (e.g. the AI-image backfill rewrote imageUrl on existing rows). Overlay the D1
-  // copy of a published design so the detail page shows the latest art everywhere.
-  try {
-    const fresh = (await allPublishedDesigns()).find((p) => p.slug === slug);
-    if (fresh) design = publishedToDesign(fresh);
-  } catch { /* D1 disabled — keep memory result */ }
   const creator = CREATORS.find((c) => c.handle === design.creator);
   const adObjs = design.adapters.map((aid) => ADAPTERS.find((a) => a.id === aid)).filter(Boolean);
-  const related = DESIGNS.filter((d) => d.creator === design.creator && d.slug !== slug).slice(0, 4);
+  // P3: `related` used to be filtered out of the 132 static seeds only, so it was
+  // empty for ~97% of the catalogue. Now it is the same content-similarity ranking
+  // the detail page uses, computed over every published design.
+  const related = (await relatedFor(slug, 4).catch(() => [])).map(publishedToDesign);
 
   return NextResponse.json({
     data: {

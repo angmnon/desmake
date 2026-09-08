@@ -10,6 +10,9 @@
 // /api/orders. Everything here is Node-runtime only.
 
 import type { SelectedProduct } from "@/lib/data";
+// Cache-version module is intentionally dependency-free so importing it here cannot
+// create a cycle (stores -> catalogVersion, catalogIndex -> stores + catalogVersion).
+import { bumpDesignIndex } from "@/lib/catalogVersion";
 
 export type GenOutput = {
   seed: string;
@@ -60,6 +63,9 @@ export type OrderLineItem = {
   net_cents?: number;
   /** 该笔 line 的创作者分成（cents）= round(net_cents × royalty_rate) */
   royalty_cents?: number;
+  // ── M-UGC: 推荐归因 ──
+  /** 带来这笔 line 下单的推荐人 user_id（来自 dm_ref cookie 或注册 referred_by）；反自推后为 undefined */
+  referrer_id?: string;
 };
 
 export type OrderRecord = {
@@ -75,7 +81,26 @@ export type OrderRecord = {
   };
   items: OrderLineItem[];
   customer: { email: string; name: string };
-  shipping: { address: string | null; method: string; cost_cents: number; region?: string };
+  // H-6: 结构化收货信息。此前整单只有一个 address 字符串（且被截断到 300 字符），
+  // 没有国家/城市/邮编/电话独立字段，国际订单实际无法报关与派送。
+  // 全部为可选字段，保证历史订单数据向后兼容。
+  shipping: {
+    address: string | null;
+    method: string;
+    cost_cents: number;
+    region?: string;
+    /** 街道地址第一行 */
+    line1?: string | null;
+    /** 公寓/单元/公司等第二行 */
+    line2?: string | null;
+    city?: string | null;
+    /** 州/省 */
+    state?: string | null;
+    postal_code?: string | null;
+    /** ISO 3166-1 alpha-2 国家码，同时决定税率档位 */
+    country?: string | null;
+    phone?: string | null;
+  };
   pricing: {
     subtotal_cents: number;
     tax_cents: number;
@@ -95,6 +120,23 @@ export type OrderRecord = {
   updated_at: string;
   _created_ts: number;
   history: { status: string; note: string; ts: string }[];
+  // ── M-UGC: 推荐归因 ──
+  /** 带来这笔订单的推荐人 user_id（dm_ref cookie 末次点击 或 注册 referred_by 终身记忆）；反自推后为 null */
+  referrer_id?: string | null;
+  /**
+   * M-9: 客户端幂等键。网络抖动或用户双击会创建多笔 pending 订单，若两笔都进入
+   * 支付流程就会重复扣款。带上同一个 key 重试应返回首次创建的订单。
+   */
+  idempotency_key?: string | null;
+  // ── P0-2: 付费投放归因（UTM / 点击 ID），用于把收入归到具体广告系列 ──
+  acquisition?: {
+    source?: string | null;
+    medium?: string | null;
+    campaign?: string | null;
+    gclid?: string | null;
+    fbclid?: string | null;
+    landing?: string | null;
+  } | null;
 };
 
 /**
@@ -113,6 +155,10 @@ export type PublishedDesign = {
   tags: string[];
   creator: string;
   creatorName: string;
+  /** M-UGC: the publishing user's public handle, used for the creator profile URL. */
+  creatorHandle?: string;
+  /** M-UGC: curator-verified badge snapshot at publish time. */
+  creatorVerified?: boolean;
   seed?: string;
   palette?: [string, string, string];
   shape?: number;
@@ -190,7 +236,18 @@ export function designsStore(): Map<string, PublishedDesign> {
  * Listing endpoints must read from here so newly published designs are visible on
  * every instance immediately — without waiting for a container restart/rehydrate.
  */
+// M-3: allPublishedDesigns() does a full `SELECT data FROM designs` + per-row JSON.parse
+// (the ~5 MB blob scan). It is called from the creators page, dashboard, and order lookup,
+// so without caching those paths re-scan the whole table on every request. Cache the merged
+// result for a short window; persistDesign() invalidates it on write so new publications
+// still surface promptly.
+let __cachedAllDesigns: PublishedDesign[] | null = null;
+let __cachedAllAt = 0;
+const ALL_DESIGNS_TTL_MS = Number(process.env.ALL_DESIGNS_TTL_MS || 20000);
+
 export async function allPublishedDesigns(): Promise<PublishedDesign[]> {
+  const now = Date.now();
+  if (__cachedAllDesigns && now - __cachedAllAt < ALL_DESIGNS_TTL_MS) return __cachedAllDesigns;
   const map = new Map<string, PublishedDesign>();
   for (const d of designsStore().values()) map.set(d.slug, d);
   if (D1_ENABLED) {
@@ -210,15 +267,101 @@ export async function allPublishedDesigns(): Promise<PublishedDesign[]> {
       console.error("[db] allPublishedDesigns failed:", e instanceof Error ? e.message : e);
     }
   }
-  return Array.from(map.values());
+  const result = Array.from(map.values());
+  __cachedAllDesigns = result;
+  __cachedAllAt = now;
+  return result;
 }
 
-// ────────────────────────── D1 persistence (best-effort) ──────────────────────────
+/**
+ * P0-2 / P2-3: lightweight projection used to (re)build the in-memory catalog index.
+ *
+ * Unlike `allPublishedDesigns()` (which does `SELECT data FROM designs` and
+ * JSON.parses the full ~5 MB blob per row), this extracts only the index-relevant
+ * columns via `json_extract` and parses just those small fragments — so a rebuild
+ * no longer pays the full-blob parse cost. The in-process `designsStore()` map is
+ * merged first (so a design published on this very instance is present immediately).
+ *
+ * Falls back to `allPublishedDesigns()` on any parse/query error so a malformed row
+ * can never take the catalog offline.
+ */
+export async function catalogIndexRows(): Promise<PublishedDesign[]> {
+  const map = new Map<string, PublishedDesign>();
+  for (const d of designsStore().values()) map.set(d.slug, d);
+  if (!D1_ENABLED) return Array.from(map.values());
+  try {
+    const rows = await d1Query<Record<string, string | null>>(
+      `SELECT
+         json_extract(data,'$.id')               AS id,
+         slug,
+         json_extract(data,'$.user_id')          AS user_id,
+         json_extract(data,'$.title')            AS title,
+         json_extract(data,'$.category')          AS category,
+         json_extract(data,'$.tags')             AS tags,
+         json_extract(data,'$.creator')           AS creator,
+         json_extract(data,'$.creatorName')       AS creatorName,
+         json_extract(data,'$.creatorHandle')     AS creatorHandle,
+         json_extract(data,'$.creatorVerified')   AS creatorVerified,
+         json_extract(data,'$.seed')              AS seed,
+         json_extract(data,'$.palette')           AS palette,
+         json_extract(data,'$.shape')             AS shape,
+         json_extract(data,'$.adapters')          AS adapters,
+         json_extract(data,'$.premiumCents')      AS premiumCents,
+         json_extract(data,'$.priceCents')        AS priceCents,
+         json_extract(data,'$.aiGenerated')       AS aiGenerated,
+         json_extract(data,'$.source')            AS source,
+         json_extract(data,'$.royaltyRate')       AS royaltyRate,
+         json_extract(data,'$.selectedProducts')  AS selectedProducts,
+         json_extract(data,'$.created_at')        AS created_at,
+         json_extract(data,'$.imageUrl')          AS imageUrl
+       FROM designs`,
+    );
+    for (const r of rows) {
+      try {
+        if (!r.slug) continue;
+        const d: PublishedDesign = {
+          id: (r.id as string) || (r.slug as string),
+          slug: r.slug as string,
+          user_id: (r.user_id as string) || "seed",
+          title: (r.title as string) || (r.slug as string),
+          category: (r.category as string) || "",
+          tags: r.tags ? (JSON.parse(r.tags as string) as string[]) : [],
+          creator: (r.creator as string) || "",
+          creatorName: (r.creatorName as string) || (r.creator as string) || "",
+          creatorHandle: r.creatorHandle ? (r.creatorHandle as string) : undefined,
+          creatorVerified: Boolean(r.creatorVerified),
+          seed: (r.seed as string) || (r.slug as string),
+          palette: r.palette ? (JSON.parse(r.palette as string) as [string, string, string]) : undefined,
+          shape: r.shape ? Number(r.shape) : undefined,
+          adapters: r.adapters ? (JSON.parse(r.adapters as string) as string[]) : [],
+          premiumCents: Number(r.premiumCents) || 0,
+          priceCents: Number(r.priceCents) || 0,
+          aiGenerated: Boolean(r.aiGenerated),
+          source: (r.source as "ai" | "upload") || undefined,
+          royaltyRate: r.royaltyRate ? Number(r.royaltyRate) : 0,
+          selectedProducts: r.selectedProducts
+            ? (JSON.parse(r.selectedProducts as string) as SelectedProduct[])
+            : undefined,
+          created_at: (r.created_at as string) || "2000-01-01T00:00:00.000Z",
+          imageUrl: r.imageUrl ? (r.imageUrl as string) : undefined,
+          status: (r.pstatus as string) || undefined,
+        };
+        // D1 is authoritative — its copy wins over the memory cache.
+        map.set(d.slug, d);
+      } catch {
+        /* skip corrupt row */
+      }
+    }
+  } catch (e) {
+    console.error("[db] catalogIndexRows failed, falling back to full blob:", e instanceof Error ? e.message : e);
+    return allPublishedDesigns();
+  }
+  return Array.from(map.values());
+}
 // In-memory Maps stay the hot path; every write is mirrored to D1 and stores are
 // rehydrated from D1 at boot, so orders/designs survive container rebuilds.
 
-import { d1Query, D1_ENABLED } from "@/lib/db";
-
+import { d1Query, d1Run, D1_ENABLED } from "@/lib/db";
 export async function persistOrder(o: OrderRecord): Promise<void> {
   if (!D1_ENABLED) return;
   await d1Query(
@@ -228,13 +371,67 @@ export async function persistOrder(o: OrderRecord): Promise<void> {
   );
 }
 
+/**
+ * H-1 fix: list a user's orders from D1 (source of truth) merged with the in-memory
+ * store.
+ *
+ * `GET /api/orders` previously read ONLY the per-isolate in-memory Map, so on
+ * Cloudflare's multi-isolate runtime a buyer's freshly placed — and paid — order was
+ * invisible on roughly two of three requests. The order detail route did fall back to
+ * D1, which made it worse: the order existed but never showed up in "My orders".
+ * Buyers conclude they were scammed and open chargebacks.
+ */
+export async function listOrdersForUserAsync(userId: string, limit = 100): Promise<OrderRecord[]> {
+  const merged = new Map<string, OrderRecord>();
+  for (const o of ordersStore().values()) {
+    if (o.user_id === userId) merged.set(o.order_id, o);
+  }
+  if (D1_ENABLED) {
+    try {
+      const rows = await d1Query<{ data: string }>(
+        `SELECT data FROM orders WHERE user_id = ? ORDER BY created_ts DESC LIMIT ?`,
+        [userId, limit],
+      );
+      for (const r of rows) {
+        try {
+          const parsed = JSON.parse(r.data) as OrderRecord;
+          if (!parsed?.order_id) continue;
+          // An in-memory copy can be a few milliseconds newer than D1 (written before
+          // the durable round-trip finished), so keep whichever is freshest.
+          const existing = merged.get(parsed.order_id);
+          if (!existing || (parsed._created_ts || 0) >= (existing._created_ts || 0)) {
+            merged.set(parsed.order_id, parsed);
+          }
+        } catch {
+          /* skip unparseable row rather than failing the whole list */
+        }
+      }
+    } catch (e) {
+      console.error("[db] listOrdersForUserAsync failed:", e instanceof Error ? e.message : e);
+    }
+  }
+  return Array.from(merged.values())
+    .sort((a, b) => (b._created_ts || 0) - (a._created_ts || 0))
+    .slice(0, limit);
+}
+
 export async function persistDesign(d: PublishedDesign): Promise<void> {
   if (!D1_ENABLED) return;
+  // P0-1: write the row to D1 FIRST, then bump the shared index version. Ordering
+  // matters — if we bumped the version before the row landed, another instance could
+  // rebuild its index in the gap and cache the new version with the design still
+  // missing, never seeing it until the next publish. Writing first guarantees that
+  // once `getDesignIndexVersion()` reports the bump, the row is already queryable.
   await d1Query(
     `INSERT INTO designs (slug, user_id, data, created_ts) VALUES (?, ?, ?, ?)
      ON CONFLICT(slug) DO UPDATE SET data=excluded.data, user_id=excluded.user_id`,
     [d.slug, d.user_id, JSON.stringify(d), Date.now()],
   );
+  // Invalidate the cached design index so the next read rebuilds and picks up this
+  // design immediately (cross-instance visibility without a container restart).
+  await bumpDesignIndex();
+  // M-3: also drop the allPublishedDesigns() result cache so the merged list updates now.
+  __cachedAllDesigns = null;
 }
 
 /**
@@ -263,9 +460,12 @@ export async function getJob(jobId: string): Promise<GenJob | undefined> {
   try {
     const rows = await d1Query<{ data: string }>("SELECT data FROM generation_jobs WHERE id = ?", [jobId]);
     if (rows.length === 0) return undefined;
-    const j = JSON.parse(rows[0].data) as GenJob;
-    jobsStore().set(j.id, j);
-    return j;
+    // Return the authoritative D1 snapshot. Do NOT cache it into this isolate's
+    // in-memory store: on Cloudflare Workers each isolate has its own `globalThis`,
+    // so caching a D1 read here would serve a stale snapshot forever on isolates
+    // that didn't create the job (live progress lives only on the creating isolate's
+    // memory). The final job state is always persisted to D1, so D1 is the source of truth.
+    return JSON.parse(rows[0].data) as GenJob;
   } catch {
     return undefined;
   }
@@ -312,7 +512,7 @@ export type EarningRecord = {
   royalty_rate: number;
   net_cents: number;
   royalty_cents: number;
-  status: "pending" | "paid";
+  status: "pending" | "paid" | "reversed";
   created_at: string;
   paid_at: string | null;
 };
@@ -355,10 +555,33 @@ export async function findPublishedDesignByIdAsync(id: string): Promise<Publishe
 
 /** 把订单中带 royalty 的行写入 creator_earnings（status=pending）。幂等：同 order_id 先清后写。 */
 export async function recordOrderEarnings(order: OrderRecord): Promise<void> {
+  // M-10: never record earnings for an order that has already been refunded/disputed.
+  // A refund can arrive out of order (or on another isolate) before or after this write;
+  // consulting D1 keeps us consistent with the authoritative order status instead of
+  // trusting a possibly-stale in-memory copy. Without this, a refund that lands between
+  // the status check and the earnings write would leave earnings that reverseEarningsForOrder
+  // already ran on (and found nothing), so they'd be paid out at month end.
+  if (D1_ENABLED) {
+    try {
+      const rows0 = await d1Query<{ status?: string }>(
+        `SELECT json_extract(data,'$.status') AS status FROM orders WHERE json_extract(data,'$.order_id')=?`,
+        [order.order_id],
+      );
+      const live = rows0[0]?.status;
+      if (live === "refunded" || live === "disputed") return;
+    } catch {
+      /* fall through to the in-memory check below */
+    }
+  }
+  if (order.status === "refunded" || order.status === "disputed") return;
+
   const rows: EarningRecord[] = [];
   let created = 0;
   for (const [i, li] of (order.items ?? []).entries()) {
     if (!li.royalty_cents || li.royalty_cents <= 0 || !li.creator_id) continue;
+    // M-11: 创作者自购自己的设计不产生 royalty —— 否则钱从左兜进右兜，平台白让出
+    // 这部分 margin，还会污染创作者收益报表。
+    if (li.creator_id === order.user_id) continue;
     const rec: EarningRecord = {
       id: newId("earn"),
       order_id: order.order_id,
@@ -376,20 +599,34 @@ export async function recordOrderEarnings(order: OrderRecord): Promise<void> {
     created++;
   }
   if (created === 0) return;
-  for (const r of rows) earningsStore().set(r.id, r);
+  // 内存层幂等：同一 (order_id, line_index) 已存在则保留首次写入的结果（与 D1 的
+  // INSERT OR IGNORE 语义一致），confirm 重试 / webhook 并发不会留下第二套记录。
+  const mem = earningsStore();
+  let memExisting: (r: EarningRecord) => boolean = () => false;
+  for (const r of rows) {
+    const dupe = [...mem.values()].some((v) => v.order_id === r.order_id && v.line_index === r.line_index);
+    if (dupe) memExisting = () => true;
+  }
+  if (!memExisting(rows[0])) {
+    for (const r of rows) mem.set(r.id, r);
+  }
   if (!D1_ENABLED) return;
   try {
-    // 先删除该订单已有的 pending 记录，避免重复入账（幂等）。
-    await d1Query(`DELETE FROM creator_earnings WHERE order_id = ?`, [order.order_id]);
+    // H-2: 不再「先 DELETE 再 INSERT」——该序列非原子，confirm 与 webhook 并发时
+    // 两者都会越过 status 守卫并各写一份，月结时分成翻倍打款。现在依赖
+    // UNIQUE(order_id, line_index)（见 db.ts ensureUniqueIndex）+ INSERT OR IGNORE：
+    // 首次写入胜出，重复写入被数据库静默忽略，天然幂等且不会覆盖已 reversed 的退款行。
     for (const r of rows) {
       await d1Query(
-        `INSERT INTO creator_earnings (id, order_id, line_index, design_slug, creator_id, royalty_rate, net_cents, royalty_cents, status, created_at, paid_at)
+        `INSERT OR IGNORE INTO creator_earnings (id, order_id, line_index, design_slug, creator_id, royalty_rate, net_cents, royalty_cents, status, created_at, paid_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [r.id, r.order_id, r.line_index, r.design_slug, r.creator_id, r.royalty_rate, r.net_cents, r.royalty_cents, r.status, r.created_at, r.paid_at],
       );
     }
   } catch (e) {
+    // H-9: 收益是钱。写入失败必须抛出让调用方告警，绝不能只打日志后当作成功。
     console.error("[db] recordOrderEarnings failed:", e instanceof Error ? e.message : e);
+    throw e;
   }
 }
 
@@ -403,6 +640,7 @@ export async function getEarningsForUser(userId: string): Promise<{
 }> {
   const acc = { pending_cents: 0, paid_cents: 0, total_cents: 0, pending_count: 0, paid_count: 0 };
   const tally = (r: EarningRecord) => {
+    if (r.status === "reversed") return; // refunded / clawed back — excluded from all totals
     acc.total_cents += r.royalty_cents;
     if (r.status === "pending") { acc.pending_cents += r.royalty_cents; acc.pending_count++; }
     else { acc.paid_cents += r.royalty_cents; acc.paid_count++; }
@@ -417,6 +655,7 @@ export async function getEarningsForUser(userId: string): Promise<{
       // D1 为权威；以 D1 结果覆盖内存聚合（避免跨实例内存遗漏）。
       const reset = { pending_cents: 0, paid_cents: 0, total_cents: 0, pending_count: 0, paid_count: 0 };
       for (const r of rows) {
+        if (r.status === "reversed") continue;
         const c = r.royalty_cents ?? 0;
         reset.total_cents += c;
         if (r.status === "paid") { reset.paid_cents += c; reset.paid_count++; }
@@ -446,9 +685,297 @@ export async function listEarningsForUser(userId: string, limit = 25): Promise<E
          FROM creator_earnings WHERE creator_id = ? ORDER BY created_at DESC LIMIT ?`,
       [userId, limit],
     );
-    return rows.map((r) => ({ ...r, status: r.status === "paid" ? "paid" : "pending" }));
+    return rows.map((r) => ({ ...r, status: r.status }));
   } catch (e) {
     console.error("[db] listEarningsForUser failed:", e instanceof Error ? e.message : e);
+    return local;
+  }
+}
+
+// ────────────────────────── M-UGC: 推荐分成（referral_earnings） ──────────────────────────
+
+/**
+ * 一笔订单行的推荐分成记录。当推荐人通过分享链接（dm_ref cookie）或注册记忆
+ * （referred_by）带来一笔成交时，在支付成功后由 /api/payments/confirm 写入，
+ * status 初始为 "pending"，月结时与创作者分成一起翻转（decision #6）。
+ *
+ * 推荐费率固定 7%（终身低费率，病毒系数高）。
+ */
+export const REFERRAL_RATE = 0.07;
+
+/** P1: hard ceiling on referral commission paid to a single referrer per calendar month (cents). */
+export const REFERRAL_MONTHLY_CAP_CENTS = 5000;
+
+export type ReferralEarningRecord = {
+  id: string;
+  order_id: string;
+  line_index: number;
+  referrer_id: string;
+  referred_user_id: string;
+  source_design_slug: string;
+  commission_rate: number;
+  base_cents: number;
+  commission_cents: number;
+  status: "pending" | "paid" | "reversed";
+  created_at: string;
+  paid_at: string | null;
+};
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __dm_referral_earnings: Map<string, ReferralEarningRecord> | undefined;
+}
+
+export function referralEarningsStore(): Map<string, ReferralEarningRecord> {
+  if (!globalThis.__dm_referral_earnings) globalThis.__dm_referral_earnings = new Map();
+  return globalThis.__dm_referral_earnings;
+}
+
+/**
+ * 把订单中带 referrer_id 的行写入 referral_earnings（status=pending）。幂等：同
+ * order_id 先清后写。推荐人即带来成交者，被推荐人即下单买家；佣金基数取与该行
+ * 创作者分成相同的 net_cents（与目的地/税费无关），commission = round(net × 0.07)。
+ * 反自推（referrer == buyer 或 referrer == 该行设计 owner）已在下单时置空，
+ * 这里再兜底一次。
+ */
+export async function recordReferralEarnings(order: OrderRecord): Promise<void> {
+  if (!order.referrer_id) return;
+  // M-10: same out-of-order-refund guard as recordOrderEarnings (see note there).
+  if (D1_ENABLED) {
+    try {
+      const rows0 = await d1Query<{ status?: string }>(
+        `SELECT json_extract(data,'$.status') AS status FROM orders WHERE json_extract(data,'$.order_id')=?`,
+        [order.order_id],
+      );
+      const live = rows0[0]?.status;
+      if (live === "refunded" || live === "disputed") return;
+    } catch {
+      /* fall through to the in-memory check below */
+    }
+  }
+  if (order.status === "refunded" || order.status === "disputed") return;
+  // P1 (referral anti-fraud): only payout to email-verified referrers and cap the
+  // total monthly commission, so an unlimited army of throwaway accounts can't farm
+  // the 7% lifetime rate. Both checks are D1-backed; when D1 is off they degrade to
+  // "allow" so local/dev flows still work.
+  // H-14 (fail-closed): the referrer must be *proven* verified. Previously this
+  // defaulted to true, so any D1 error — or D1 being disabled in production —
+  // silently paid unverified referrers. Now: dev (no D1) allows, production requires
+  // proof, and any lookup failure denies.
+  let referrerVerified = !D1_ENABLED;
+  let monthStartIso = "";
+  if (D1_ENABLED) {
+    try {
+      const u = await d1Query<{ email_verified?: number }>(`SELECT email_verified FROM users WHERE id = ?`, [order.referrer_id]);
+      referrerVerified = Boolean(u[0]?.email_verified);
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      monthStart.setUTCHours(0, 0, 0, 0);
+      monthStartIso = monthStart.toISOString();
+    } catch (e) {
+      // Fail closed: do not pay commission we cannot verify.
+      referrerVerified = false;
+      console.error("[db] recordReferralEarnings gate failed:", e instanceof Error ? e.message : e);
+    }
+  }
+  if (!referrerVerified) return;
+  const rows: ReferralEarningRecord[] = [];
+  let created = 0;
+  // Running total used only for the in-memory mirror; D1 enforces the cap in SQL.
+  let memMonthCents = 0;
+  for (const [i, li] of (order.items ?? []).entries()) {
+    if (!li.referrer_id || !li.net_cents || li.net_cents <= 0) continue;
+    // 兜底：推荐人不应是买家本人，也不应是该设计 owner（后者走创作者分成，不重复计推荐）。
+    if (li.referrer_id === order.user_id) continue;
+    if (li.creator_id && li.referrer_id === li.creator_id) continue;
+    const commission = Math.round(li.net_cents * REFERRAL_RATE);
+    if (commission <= 0) continue;
+    // P1: monthly hard cap. For the in-memory mirror we approximate with a running
+    // total; the authoritative check for D1 is embedded in the INSERT statement
+    // below (H-14), which removes the read-then-write TOCTOU race that previously
+    // let two concurrent orders both slip past the ceiling.
+    if (memMonthCents >= REFERRAL_MONTHLY_CAP_CENTS) continue;
+    memMonthCents += commission;
+    const rec: ReferralEarningRecord = {
+      id: newId("ref"),
+      order_id: order.order_id,
+      line_index: i,
+      referrer_id: li.referrer_id,
+      referred_user_id: order.user_id,
+      source_design_slug: li.listing_slug || li.listing_id,
+      commission_rate: REFERRAL_RATE,
+      base_cents: li.net_cents,
+      commission_cents: commission,
+      status: "pending",
+      created_at: new Date().toISOString(),
+      paid_at: null,
+    };
+    rows.push(rec);
+    created++;
+  }
+  if (created === 0) return;
+  const refMem = referralEarningsStore();
+  for (const r of rows) {
+    const dupe = [...refMem.values()].some((v) => v.order_id === r.order_id && v.line_index === r.line_index);
+    if (!dupe) refMem.set(r.id, r);
+  }
+  if (!D1_ENABLED) return;
+  try {
+    // H-2 + H-14: single atomic statement per line.
+    //  - INSERT OR IGNORE + UNIQUE(order_id, line_index) replaces the old non-atomic
+    //    DELETE-then-INSERT, so a concurrent confirm/webhook cannot double-pay.
+    //  - The monthly cap check is embedded in the WHERE clause, so the read of the
+    //    running total and the write happen inside one statement — no TOCTOU window.
+    //  - `status != 'reversed'` stops refunded rows from consuming the referrer's quota.
+    for (const r of rows) {
+      await d1Query(
+        `INSERT OR IGNORE INTO referral_earnings (id, order_id, line_index, referrer_id, referred_user_id, source_design_slug, commission_rate, base_cents, commission_cents, status, created_at, paid_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+         WHERE (
+           SELECT COALESCE(SUM(commission_cents), 0) FROM referral_earnings
+           WHERE referrer_id = ? AND created_at >= ? AND status != 'reversed'
+         ) < ?`,
+        [r.id, r.order_id, r.line_index, r.referrer_id, r.referred_user_id, r.source_design_slug, r.commission_rate, r.base_cents, r.commission_cents, r.status, r.created_at, r.paid_at,
+         r.referrer_id, monthStartIso, REFERRAL_MONTHLY_CAP_CENTS],
+      );
+    }
+  } catch (e) {
+    // H-9: referral commission is money — surface the failure instead of swallowing it.
+    console.error("[db] recordReferralEarnings failed:", e instanceof Error ? e.message : e);
+    throw e;
+  }
+}
+
+/**
+ * P0-5: roll back pending creator + referral earnings for a refunded / disputed
+ * order so they are never paid out. Set status='reversed' (the monthly settle only
+ * flips 'pending'→'paid', so reversed rows are skipped by design). Idempotent.
+ */
+export async function reverseEarningsForOrder(orderId: string): Promise<{ reversed: number; alreadyPaid: number }> {
+  const now = new Date().toISOString();
+  const summary = { reversed: 0, alreadyPaid: 0 };
+  for (const e of earningsStore().values()) {
+    if (e.order_id === orderId && (e.status === "pending" || e.status === "paid")) {
+      if (e.status === "paid") summary.alreadyPaid++;
+      e.status = "reversed";
+      e.paid_at = now;
+      summary.reversed++;
+    }
+  }
+  for (const e of referralEarningsStore().values()) {
+    if (e.order_id === orderId && (e.status === "pending" || e.status === "paid")) {
+      if (e.status === "paid") summary.alreadyPaid++;
+      e.status = "reversed";
+      e.paid_at = now;
+      summary.reversed++;
+    }
+  }
+  if (!D1_ENABLED) return summary;
+  try {
+    // H-3: previously this only touched 'pending', so once admin/settle had flipped a
+    // row to 'paid' a later refund was silently ignored and the money was gone. We now
+    // reverse paid rows too and report how many need manual recovery (clawback).
+    for (const table of ["creator_earnings", "referral_earnings"]) {
+      const paidRows = await d1Query<{ c?: number }>(
+        `SELECT COUNT(*) AS c FROM ${table} WHERE order_id = ? AND status = 'paid'`,
+        [orderId],
+      );
+      const paidCount = paidRows[0]?.c ?? 0;
+      const changed = await d1Run(
+        `UPDATE ${table} SET status='reversed', paid_at=? WHERE order_id=? AND status IN ('pending','paid')`,
+        [now, orderId],
+      );
+      summary.reversed += changed;
+      summary.alreadyPaid += paidCount;
+    }
+  } catch (e) {
+    // H-9: a failed reversal means refunded orders may still be paid out at month end.
+    console.error("[db] reverseEarningsForOrder failed:", e instanceof Error ? e.message : e);
+    throw e;
+  }
+  return summary;
+}
+
+/** Find an order by its Stripe PaymentIntent id (D1-backed, in-memory fallback). Used by the refund webhook. */
+export async function getOrderByPaymentIntent(paymentIntentId: string): Promise<OrderRecord | undefined> {
+  if (!paymentIntentId) return undefined;
+  for (const o of ordersStore().values()) {
+    if (o.payment?.payment_intent_id === paymentIntentId) return o;
+  }
+  if (!D1_ENABLED) return undefined;
+  try {
+    const rows = await d1Query<{ data: string }>(
+      `SELECT data FROM orders WHERE json_extract(data, '$.payment.payment_intent_id') = ?`,
+      [paymentIntentId],
+    );
+    for (const r of rows) {
+      try {
+        const o = JSON.parse(r.data) as OrderRecord;
+        if (o.payment?.payment_intent_id === paymentIntentId) return o;
+      } catch {
+        /* ignore malformed row */
+      }
+    }
+  } catch (e) {
+    console.error("[db] getOrderByPaymentIntent failed:", e instanceof Error ? e.message : e);
+  }
+  return undefined;
+}
+
+/** 读取某推荐人的推荐分成汇总（pending / paid / total），跨实例需回源 D1。 */
+export async function getReferralEarningsForUser(userId: string): Promise<{
+  pending_cents: number;
+  paid_cents: number;
+  total_cents: number;
+  pending_count: number;
+  paid_count: number;
+}> {
+  const acc = { pending_cents: 0, paid_cents: 0, total_cents: 0, pending_count: 0, paid_count: 0 };
+  const tally = (r: ReferralEarningRecord) => {
+    if (r.status === "reversed") return; // refunded / clawed back — excluded from all totals
+    acc.total_cents += r.commission_cents;
+    if (r.status === "pending") { acc.pending_cents += r.commission_cents; acc.pending_count++; }
+    else { acc.paid_cents += r.commission_cents; acc.paid_count++; }
+  };
+  for (const r of referralEarningsStore().values()) if (r.referrer_id === userId) tally(r);
+  if (D1_ENABLED) {
+    try {
+      const rows = await d1Query<{ status: string; commission_cents: number }>(
+        `SELECT status, commission_cents FROM referral_earnings WHERE referrer_id = ?`,
+        [userId],
+      );
+      const reset = { pending_cents: 0, paid_cents: 0, total_cents: 0, pending_count: 0, paid_count: 0 };
+      for (const r of rows) {
+        if (r.status === "reversed") continue;
+        const c = r.commission_cents ?? 0;
+        reset.total_cents += c;
+        if (r.status === "paid") { reset.paid_cents += c; reset.paid_count++; }
+        else { reset.pending_cents += c; reset.pending_count++; }
+      }
+      return reset;
+    } catch (e) {
+      console.error("[db] getReferralEarningsForUser failed:", e instanceof Error ? e.message : e);
+    }
+  }
+  return acc;
+}
+
+/** 推荐人分成明细（最近 N 条），D1 为权威。 */
+export async function listReferralEarningsForUser(userId: string, limit = 25): Promise<ReferralEarningRecord[]> {
+  const local = Array.from(referralEarningsStore().values())
+    .filter((e) => e.referrer_id === userId)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .slice(0, limit);
+  if (!D1_ENABLED) return local;
+  try {
+    const rows = await d1Query<ReferralEarningRecord>(
+      `SELECT id, order_id, line_index, referrer_id, referred_user_id, source_design_slug, commission_rate, base_cents, commission_cents, status, created_at, paid_at
+         FROM referral_earnings WHERE referrer_id = ? ORDER BY created_at DESC LIMIT ?`,
+      [userId, limit],
+    );
+    return rows.map((r) => ({ ...r, status: r.status }));
+  } catch (e) {
+    console.error("[db] listReferralEarningsForUser failed:", e instanceof Error ? e.message : e);
     return local;
   }
 }

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sparkles, Upload, Wand2, Image as ImageIcon, Eraser, Maximize2, RefreshCw, Loader2, ArrowRight, Download, Plus, History } from "lucide-react";
 import { Artwork, artworkSvg } from "@/components/Artwork";
+import { ShareSheet } from "@/components/ShareSheet";
 import { STYLE_PRESETS as SERVER_PALETTES } from "@/lib/presets";
 import { ensureSession } from "@/lib/client-session";
 import { useUser } from "@/lib/use-user";
@@ -176,6 +177,9 @@ export default function StudioPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<number | null>(null);
+  // M-UGC: after a successful publish, surface a share/earn modal instead of
+  // navigating away immediately, so creators can amplify their new listing.
+  const [justPublished, setJustPublished] = useState<{ slug: string; title: string } | null>(null);
   // Upload-mode state
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadDataUrl, setUploadDataUrl] = useState<string | null>(null);
@@ -381,7 +385,8 @@ export default function StudioPage() {
         throw new Error(err.error?.message || "Publish failed");
       }
       const data = (await res.json()) as { slug: string };
-      router.push(`/listing/${data.slug}`);
+      setJustPublished({ slug: data.slug, title: prompt.trim().slice(0, 80) || "My design" });
+      setPublishing(null);
     } catch (err) {
       if (!alive.current) return;
       setError(err instanceof Error ? err.message : "Publish failed");
@@ -447,7 +452,8 @@ export default function StudioPage() {
         throw new Error(err.error?.message || "Publish failed");
       }
       const data = (await res.json()) as { slug: string };
-      router.push(`/listing/${data.slug}`);
+      setJustPublished({ slug: data.slug, title: upTitle.trim().slice(0, 80) || "My upload" });
+      setUpLoading(false);
     } catch (err) {
       if (!alive.current) return;
       setError(err instanceof Error ? err.message : "Publish failed");
@@ -587,7 +593,7 @@ export default function StudioPage() {
 
                   {(state === "queued" || state === "running") && (
                     <div>
-                      <div className="bar"><i style={{ width: `${progress}%`, background: "var(--color-signal)" }} /></div>
+                      <div className="bar"><i style={{ width: `${progress}%`, background: "var(--color-ink)" }} /></div>
                       <div className="tiny mono mt-2" style={{ color: "var(--color-tx-3)" }}>
                         {state === "queued" ? "Queued…" : `Generating preview — ${progress}%`}
                       </div>
@@ -595,7 +601,7 @@ export default function StudioPage() {
                   )}
 
                   {state === "failed" && error && (
-                    <div className="tiny" style={{ color: "var(--color-signal)" }}>{error}</div>
+                    <div className="tiny" style={{ color: "var(--color-ink)", fontWeight: 500 }}>{error}</div>
                   )}
 
                   <div className="hr" />
@@ -708,7 +714,7 @@ export default function StudioPage() {
                     {upLoading ? <><Loader2 size={18} className="animate-spin" /> Publishing…</> : <>Publish <ArrowRight size={18} /></>}
                   </button>
 
-                  {error && <div className="tiny" style={{ color: "var(--color-signal)" }}>{error}</div>}
+                  {error && <div className="tiny" style={{ color: "var(--color-ink)", fontWeight: 500 }}>{error}</div>}
                 </>
               )}
             </div>
@@ -718,7 +724,7 @@ export default function StudioPage() {
           <div>
             {mode === "upload" ? (
               uploadDataUrl ? (
-                <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 22 }}>
+                <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 2 }}>
                   <div style={{ aspectRatio: "1", position: "relative" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={uploadDataUrl} alt={upTitle || "uploaded design"} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
@@ -857,6 +863,35 @@ export default function StudioPage() {
           </div>
         </div>
       </section>
+
+      {justPublished && user?.handle && (
+        <div
+          className="modal-backdrop"
+          style={{ position: "fixed", inset: 0, background: "rgba(12,12,13,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+          onClick={() => setJustPublished(null)}
+        >
+          <div
+            className="card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 460, width: "100%", padding: 28, position: "relative" }}
+          >
+            <span className="eyebrow eyebrow-dot">Published</span>
+            <h2 className="h3 mt-2 mb-1">Your design is live</h2>
+            <p className="small muted mb-5">Share it to start earning. Anyone who buys through your link earns you a <b>7% referral commission</b>.</p>
+            <div className="stack gap-3">
+              <ShareSheet handle={user.handle} designSlug={justPublished.slug} title={justPublished.title} label="Share this design" />
+              <div className="row gap-3">
+                <button className="btn btn-outline flex-1" onClick={() => { const s = justPublished.slug; setJustPublished(null); router.push(`/listing/${s}`); }}>
+                  View listing
+                </button>
+                <button className="btn btn-ghost flex-1" onClick={() => setJustPublished(null)}>
+                  Keep creating
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

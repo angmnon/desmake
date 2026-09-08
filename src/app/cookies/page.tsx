@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Cookie Policy", description: "How and why Desmake uses cookies." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/cookies",
+  title: "Desmake cookie policy — how and why we use cookies",
+  description:
+    "How and why Desmake uses cookies — the essentials, analytics and preference cookies we use, and how to manage them.",
+});
 
 export default function CookiesPage() {
   return (

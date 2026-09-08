@@ -166,5 +166,55 @@ export default async function VersusPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const d = DATA[slug];
   if (!d) notFound();
-  return <ContentPage eyebrow="Versus" title={d.title} intro={d.intro} sections={d.sections} cta={d.cta} />;
+
+  // AEO: a real side-by-side comparison table + FAQ, generated per competitor.
+  const compareRows: [string, string, string][] = [
+    ["Setup", "One design is auto-adapted across six manufacturing methods and listed automatically", `${d.name} requires you to build and configure each product/SKU by hand`],
+    ["Agent commerce", "MCP/API layer — AI agents can search, publish and fulfil orders", `${d.name} has no agent-commerce surface (manual storefront or generic API)`],
+    ["Mockups & copy", "Generated automatically — mockups, titles, descriptions and SEO", `${d.name} leaves merchandising to you`],
+    ["Pricing", "Transparent: manufacturing cost + your margin + retail, shown per order", "Similar royalty model, with less live cost transparency"],
+    ["Inventory", "On demand, no minimums, no upfront cost", "On demand, no minimums, no upfront cost"],
+  ];
+  const sections = [
+    {
+      layout: "table" as const,
+      heading: `Desmake vs ${d.name}: side by side`,
+      intro: "The same design, far less manual work — here is where the two diverge.",
+      columns: ["", "Desmake", d.name],
+      rows: compareRows,
+    },
+    ...d.sections,
+  ];
+  const faq = [
+    { q: `How is Desmake different from ${d.name}?`, a: d.intro },
+    {
+      q: "Do I have to build each product myself?",
+      a: "No. On Desmake a single uploaded or AI-generated design is automatically adapted into posters, apparel, stickers, phone cases, business cards and 3D prints, then listed with generated mockups, copy and pricing.",
+    },
+    {
+      q: "Can AI agents sell my designs?",
+      a: "Yes. Desmake is MCP/API-first: an agent with a scoped key can search the catalogue, publish designs and place orders on your behalf.",
+    },
+    {
+      q: "What does it cost to start?",
+      a: "Publishing is free — no subscription, no listing fees, no inventory. You pay the real manufacturing cost only when something sells, and keep the margin you set.",
+    },
+  ];
+  const breadcrumb = [
+    { name: "Home", href: "/" },
+    { name: "Compare", href: "/explore" },
+    { name: `Desmake vs ${d.name}`, href: `/vs/${slug}` },
+  ];
+
+  return (
+    <ContentPage
+      eyebrow="Versus"
+      title={d.title}
+      intro={d.intro}
+      sections={sections}
+      cta={d.cta}
+      faq={faq}
+      breadcrumb={breadcrumb}
+    />
+  );
 }

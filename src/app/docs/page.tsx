@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Docs", description: "Developer documentation for the Desmake API, MCP server, and webhooks." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/docs",
+  title: "Desmake docs — API, MCP server & webhooks",
+  description:
+    "Developer documentation for the Desmake API, MCP server and webhooks. Search, generate, publish and order products programmatically or via AI agents.",
+});
 
 export default function DocsPage() {
   return (

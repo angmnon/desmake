@@ -1,5 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
+// B1 migration: blog markdown is inlined at build time into `blogContent.generated.ts`
+// (see scripts/gen-blog-content.mjs) and bundled with the Worker, so the runtime needs
+// no `node:fs` / `process.cwd()` (both unavailable on Cloudflare Workers).
+import { BLOG_CONTENT } from "./blogContent.generated";
 
 export type BlogPostMeta = {
   slug: string;
@@ -15,6 +17,61 @@ export type BlogPostMeta = {
 type Raw = BlogPostMeta & { file: string };
 
 const RAW: Raw[] = [
+  {
+    slug: "how-much-designers-earn-per-sale",
+    title: "How Much Do You Actually Earn Per Sale? POD Royalties Explained With Real Numbers",
+    excerpt:
+      "A 30% royalty on a $15 item is not $4.50. A transparent breakdown of royalty bases, freight costs and real per-item earnings using data from a 43-product catalog.",
+    date: "2026-09-08",
+    readingMinutes: 8,
+    tags: ["royalties", "creators", "pricing", "print on demand"],
+    author: "Desmake",
+    file: "how-much-designers-earn-per-sale.md",
+  },
+  {
+    slug: "passive-income-selling-ai-art",
+    title: "How to Make Passive Income Selling AI Art (Step-by-Step, 2026)",
+    excerpt:
+      "Selling AI art can be genuinely passive — if the merchandising is automated. A practical playbook for building a hands-off royalty stream.",
+    date: "2026-08-10",
+    readingMinutes: 6,
+    tags: ["AI art", "passive income", "creators"],
+    author: "Desmake",
+    file: "passive-income-selling-ai-art.md",
+  },
+  {
+    slug: "mcp-commerce-explained",
+    title: "MCP Commerce Explained: How AI Agents Buy and Sell for You (2026)",
+    excerpt:
+      "What the Model Context Protocol means for commerce, why agent commerce needs scoped keys, and how Desmake is built MCP-first for autonomous selling.",
+    date: "2026-08-10",
+    readingMinutes: 5,
+    tags: ["agent commerce", "MCP"],
+    author: "Desmake",
+    file: "mcp-commerce-explained.md",
+  },
+  {
+    slug: "ai-art-copyright-legal-guide",
+    title: "AI Art Copyright & Selling: What Creators Need to Know (2026)",
+    excerpt:
+      "Is AI-generated art copyrightable? Can you sell it commercially? A practical legal guide to owning, licensing and protecting AI art you create.",
+    date: "2026-08-10",
+    readingMinutes: 5,
+    tags: ["AI art", "copyright", "legal"],
+    author: "Desmake",
+    file: "ai-art-copyright-legal-guide.md",
+  },
+  {
+    slug: "best-print-on-demand-services-2026",
+    title: "Best Print-on-Demand Services for AI Artists in 2026 (Compared)",
+    excerpt:
+      "Manual POD backends vs AI-native design-to-manufacture — how Printful, Printify, Redbubble and Desmake compare for creators generating art with AI.",
+    date: "2026-08-10",
+    readingMinutes: 6,
+    tags: ["print on demand", "comparison", "creators"],
+    author: "Desmake",
+    file: "best-print-on-demand-services-2026.md",
+  },
   {
     slug: "how-to-sell-ai-art-without-inventory",
     title: "How to Sell AI Art Without Inventory: A Complete Guide (2026)",
@@ -83,19 +140,14 @@ const RAW: Raw[] = [
   },
 ];
 
-const DIR = path.join(process.cwd(), "src/content/blog");
-
 export type BlogPost = BlogPostMeta & { body: string };
 
 export function getPost(slug: string): BlogPost | undefined {
   const meta = RAW.find((r) => r.slug === slug);
   if (!meta) return undefined;
-  try {
-    const body = fs.readFileSync(path.join(DIR, meta.file), "utf8");
-    return { ...meta, body };
-  } catch {
-    return undefined;
-  }
+  const body = BLOG_CONTENT[meta.file];
+  if (!body) return undefined;
+  return { ...meta, body };
 }
 
 export function getAllPosts(): BlogPostMeta[] {
@@ -104,4 +156,19 @@ export function getAllPosts(): BlogPostMeta[] {
 
 export function getSlugs(): string[] {
   return RAW.map((r) => r.slug);
+}
+
+/** Extract Q/A pairs from a post's `## FAQ` markdown section, for FAQPage JSON-LD.
+ *  Matches the existing `**Question?** Answer.` line format used across posts. */
+export function parseFaq(body: string): { q: string; a: string }[] {
+  const m = body.match(/##\s*FAQ([\s\S]*?)(?:\n##\s|$)/i);
+  if (!m) return [];
+  const out: { q: string; a: string }[] = [];
+  for (const line of m[1].split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    const mm = t.match(/^\*\*(.+?)\*\*\s*(.*)$/);
+    if (mm) out.push({ q: mm[1].trim(), a: mm[2].trim() });
+  }
+  return out;
 }

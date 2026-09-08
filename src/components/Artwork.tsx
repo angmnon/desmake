@@ -140,9 +140,34 @@ function generateArt(seed: string, palette: [string, string, string], shape: num
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" shape-rendering="geometricPrecision">${shapes.join("")}</svg>`;
 }
 
+// generateArt builds a few hundred SVG nodes as a string. It is pure, so the result
+// can be cached by (seed|palette|shape). With a virtualized grid the same card is
+// mounted/unmounted repeatedly while scrolling — without this, every remount paid
+// the full generation cost again. Bounded so a 4.5k-item catalogue can't leak.
+const ART_CACHE = new Map<string, string>();
+const ART_CACHE_MAX = 600;
+
+function cachedArt(seed: string, palette: [string, string, string], shape: number): string {
+  const key = `${seed}|${palette[0]}|${palette[1]}|${palette[2]}|${shape}`;
+  const hit = ART_CACHE.get(key);
+  if (hit !== undefined) {
+    // refresh recency (Map preserves insertion order → cheap LRU)
+    ART_CACHE.delete(key);
+    ART_CACHE.set(key, hit);
+    return hit;
+  }
+  const svg = generateArt(seed, palette, shape);
+  if (ART_CACHE.size >= ART_CACHE_MAX) {
+    const oldest = ART_CACHE.keys().next().value;
+    if (oldest !== undefined) ART_CACHE.delete(oldest);
+  }
+  ART_CACHE.set(key, svg);
+  return svg;
+}
+
 // Server/Client-safe deterministic component (no useMemo needed since function is pure)
 export function Artwork({ seed, palette, shape, className = "", rounded = true }: ArtworkProps) {
-  const svg = generateArt(seed, palette, shape);
+  const svg = cachedArt(seed, palette, shape);
   return (
     <div
       className={`art-canvas ${rounded ? "rounded-[18px]" : ""} ${className}`}

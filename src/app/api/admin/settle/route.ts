@@ -1,17 +1,37 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { d1Query, D1_ENABLED } from "@/lib/db";
-import { earningsStore } from "@/lib/stores";
+import { earningsStore, referralEarningsStore } from "@/lib/stores";
+import { rateLimit } from "@/lib/ratelimit";
 
-// 月结手动打款端点：运营用 ADMIN_TOKEN 触发，把 creator_earnings 的 pending → paid。
-// 不对外暴露，仅运营后台使用。
+// 月结手动打款端点：运营用 ADMIN_TOKEN 触发，把 creator_earnings + referral_earnings
+// 的 pending → paid。不对外暴露，仅运营后台使用。
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "";
 
+// M-14: constant-time comparison so the token check doesn't leak length/character
+// timing. `!ADMIN_TOKEN` keeps the endpoint fail-closed when the secret is unset.
+function safeTokenEqual(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 export async function POST(request: NextRequest) {
+  // M-1: this is a money-moving admin endpoint with no rate limit historically — throttle it.
+  const rl = rateLimit(`admin-settle`, 20);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many requests" } },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
   const auth = request.headers.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
-  if (!ADMIN_TOKEN || token !== ADMIN_TOKEN) {
+  if (!ADMIN_TOKEN || !safeTokenEqual(token, ADMIN_TOKEN)) {
     return NextResponse.json({ error: { code: "forbidden", message: "Admin token required" } }, { status: 403 });
   }
 
@@ -24,29 +44,47 @@ export async function POST(request: NextRequest) {
   const creatorId = typeof body.creator_id === "string" ? body.creator_id : null;
 
   const now = new Date().toISOString();
-  let settled = 0;
+  let settledCreators = 0;
+  let settledReferrals = 0;
 
-  // 内存层更新
+  // 内存层更新（创作者分成）
   for (const e of earningsStore().values()) {
     if (e.status !== "pending") continue;
     if (creatorId && e.creator_id !== creatorId) continue;
     e.status = "paid";
     e.paid_at = now;
-    settled++;
+    settledCreators++;
+  }
+  // 内存层更新（推荐分成）
+  for (const e of referralEarningsStore().values()) {
+    if (e.status !== "pending") continue;
+    if (creatorId && e.referrer_id !== creatorId) continue;
+    e.status = "paid";
+    e.paid_at = now;
+    settledReferrals++;
   }
 
   // D1 持久层更新（幂等）
   if (D1_ENABLED) {
     try {
-      const sql = creatorId
+      const creatorSql = creatorId
         ? `UPDATE creator_earnings SET status='paid', paid_at=? WHERE status='pending' AND creator_id=?`
         : `UPDATE creator_earnings SET status='paid', paid_at=? WHERE status='pending'`;
-      const params = creatorId ? [now, creatorId] : [now];
-      await d1Query(sql, params);
+      await d1Query(creatorSql, creatorId ? [now, creatorId] : [now]);
+
+      const refSql = creatorId
+        ? `UPDATE referral_earnings SET status='paid', paid_at=? WHERE status='pending' AND referrer_id=?`
+        : `UPDATE referral_earnings SET status='paid', paid_at=? WHERE status='pending'`;
+      await d1Query(refSql, creatorId ? [now, creatorId] : [now]);
     } catch (e) {
       return NextResponse.json({ error: { code: "db_error", message: String(e) } }, { status: 500 });
     }
   }
 
-  return NextResponse.json({ ok: true, settled, settled_at: now });
+  return NextResponse.json({
+    ok: true,
+    settled_creators: settledCreators,
+    settled_referrals: settledReferrals,
+    settled_at: now,
+  });
 }

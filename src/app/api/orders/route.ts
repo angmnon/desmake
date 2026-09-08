@@ -17,8 +17,23 @@ import {
   freightCents as skuFreightCents,
 } from "@/lib/pricing";
 import { findListingByIdAsync } from "@/lib/catalog";
-import { ordersStore, newId, persistOrder, findPublishedDesignByIdAsync } from "@/lib/stores";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import {
+  ordersStore,
+  newId,
+  persistOrder,
+  findPublishedDesignByIdAsync,
+  listOrdersForUserAsync,
+} from "@/lib/stores";
+import {
+  getSessionAsync,
+  SESSION_COOKIE,
+  resolveHandleToUserIdAsync,
+  getUserByIdAsync,
+  isEmailVerificationSatisfied,
+  runDurable,
+} from "@/lib/session";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
+import { readAttributionFromRequest } from "@/lib/tracking";
 
 // NOTE: no `export const runtime = "edge"`. These handlers read the in-memory session
 // and order stores off `globalThis`; on the edge runtime every function gets its own
@@ -41,14 +56,53 @@ type LineItem = {
   royalty_rate?: number;
   net_cents?: number;
   royalty_cents?: number;
+  referrer_id?: string;
 };
 
 export async function POST(request: NextRequest) {
   // Order creation writes PII and money — require an authenticated session.
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  // C-2 fix: use the D1-backed async session so `emailVerified` reflects the live
+  // record. The synchronous getSession() reads the value frozen into the token at
+  // sign-in, so a buyer who verified their email was still rejected with 403 until
+  // they logged in again — an action C-1 had made impossible.
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to place an order" } }, { status: 401 });
   }
+  // H-8: require a verified email before placing an order (when the flag is on).
+  if (!isEmailVerificationSatisfied(user)) {
+    return NextResponse.json(
+      { error: { code: "email_unverified", message: "Please verify your email address to place an order." } },
+      { status: 403 },
+    );
+  }
+
+  // WAF-style throttle on order creation (per authenticated account).
+  const ordRl = rateLimit(`${user.id}:orders`, 20);
+  if (!ordRl.ok) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many orders — please slow down" } },
+      { status: 429, headers: { "Retry-After": String(ordRl.retryAfter) } },
+    );
+  }
+
+  // M-UGC: referral attribution. The dm_ref cookie (set by /api/ref from a share
+  // link) wins as last-click within 30 days; if absent, fall back to the buyer's
+  // lifetime referred_by (set at registration via ?ref=). Anti-self-referral: a
+  // person can never earn a commission by "referring" themselves.
+  let referrerId: string | undefined;
+  const refCookie = request.cookies.get("dm_ref")?.value;
+  // C-1 fix: these lookups must reach D1 or referral attribution silently dies.
+  if (refCookie) referrerId = await resolveHandleToUserIdAsync(refCookie);
+  if (!referrerId) {
+    const buyer = await getUserByIdAsync(user.id);
+    // `referredBy` already stores the referrer's internal user id (register resolves
+    // the ?ref= handle at sign-up), so it must NOT be run through the handle
+    // resolver — that always returned undefined and silently killed this fallback.
+    // Re-check the id still maps to a live account before trusting it.
+    if (buyer?.referredBy && (await getUserByIdAsync(buyer.referredBy))) referrerId = buyer.referredBy;
+  }
+  if (referrerId === user.id) referrerId = undefined;
 
   let body: Record<string, unknown> = {};
   try {
@@ -69,10 +123,21 @@ export async function POST(request: NextRequest) {
   const rejected: Array<{ index: number; reason: string }> = [];
 
   // 目的地 → 税率档位（EU 19% / US 7% / 其他 0%）。平台代缴，计入售价，不进分成基数。
-  const regionRaw = typeof (body as { region?: unknown }).region === "string" ? (body as { region: string }).region : "";
-  const countryRaw = typeof (body as { country?: unknown }).country === "string" ? (body as { country: string }).country : "";
-  const region: Region =
-    regionRaw === "EU" || regionRaw === "US" ? (regionRaw as Region) : regionFromCountry(countryRaw);
+  //
+  // H-7 fix: 税率档位此前完全由客户端 body 决定（`region` 字段被直接采信），买家只要
+  // 不传或乱填 country 就会落到 DEFAULT(0%)，EU 订单因此漏收 19% 增值税（平台代缴却
+  // 没收到钱，同时带来合规风险）。现在一律由「结构化收货国家 → Cloudflare GeoIP」
+  // 推导，客户端传的 region 仅作无国家时的兼容兜底，不再能指定税率。
+  const shipCountryRaw = (body.shipping as { country?: unknown } | undefined)?.country;
+  const countryRaw =
+    typeof (body as { country?: unknown }).country === "string"
+      ? (body as { country: string }).country
+      : typeof shipCountryRaw === "string"
+        ? shipCountryRaw
+        : "";
+  const cfCountry = (request.headers.get("cf-ipcountry") || "").trim().toUpperCase();
+  const country = (countryRaw || "").trim().toUpperCase() || cfCountry;
+  const region: Region = regionFromCountry(country);
 
   // 跨实例解析：先把本次订单涉及的 listing 一次性解析好（内存未命中回落 D1），
   // 否则 max_instances=3 时「刚发布的设计下单报 unknown listing_id」。
@@ -121,6 +186,14 @@ export async function POST(request: NextRequest) {
     }
 
     const pub = hit?.pub;
+
+    // ── M-8: 仅允许已上架(published)的设计被购买 ──
+    // draft / archived / sold_out 等状态必须拒绝下单；种子商品与未带 status 的
+    // 旧数据视为 published（向后兼容，不影响现有在售商品）。
+    if (pub && pub.status && pub.status !== "published") {
+      rejected.push({ index, reason: "this design is not available for purchase" });
+      return;
+    }
 
     // ── M3: 解析 SKU（具体商品） ──
     // 允许的商品集合 = 发布时勾选的 selectedProducts，或旧数据由 adapters 推导的 family 默认 SKU。
@@ -189,6 +262,7 @@ export async function POST(request: NextRequest) {
       royalty_rate: rate,
       net_cents: net,
       royalty_cents: royaltyCentsVal,
+      referrer_id: referrerId,
     });
   });
 
@@ -215,8 +289,74 @@ export async function POST(request: NextRequest) {
   );
 
   const customerRaw = (body.customer ?? {}) as { email?: unknown; name?: unknown };
-  const shippingRaw = (body.shipping ?? {}) as { address?: unknown; method?: unknown };
+  const shippingRaw = (body.shipping ?? {}) as {
+    address?: unknown;
+    method?: unknown;
+    line1?: unknown;
+    line2?: unknown;
+    city?: unknown;
+    state?: unknown;
+    postalCode?: unknown;
+    postal_code?: unknown;
+    phone?: unknown;
+  };
   const now = Date.now();
+
+  // H-6: 结构化收货信息。此前只有一个 address 字符串且被硬截到 300 字符（长地址会把
+  // 邮编/国家整段砍掉），也没有独立国家、城市、电话字段，国际订单无法报关与派送。
+  // 旧客户端仍可只传 address 单串，这里会原样保留。
+  const safeStr = (v: unknown, max: number): string | null =>
+    typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null;
+  const shipLine1 = safeStr(shippingRaw.line1, 200);
+  const shipLine2 = safeStr(shippingRaw.line2, 200);
+  const shipCity = safeStr(shippingRaw.city, 120);
+  const shipState = safeStr(shippingRaw.state, 120);
+  const shipPostal = safeStr(shippingRaw.postalCode ?? shippingRaw.postal_code, 40);
+  const shipPhone = safeStr(shippingRaw.phone, 40);
+  const legacyAddress = safeStr(shippingRaw.address, 600);
+  const shipCountryFinal = country || null;
+  const composedAddress =
+    [shipLine1, shipLine2, shipCity, shipState, shipPostal, shipCountryFinal].filter(Boolean).join(", ") ||
+    legacyAddress;
+
+  // P0-2: attach paid-acquisition attribution (UTM / click ids) to the order so
+  // revenue can be tied back to the campaign that drove it.
+  const attrib = readAttributionFromRequest(request);
+  const acquisition = attrib.utm_source
+    ? {
+        source: attrib.utm_source,
+        medium: attrib.utm_medium,
+        campaign: attrib.utm_campaign,
+        gclid: attrib.gclid,
+        fbclid: attrib.fbclid,
+        landing: attrib.landing_path,
+      }
+    : null;
+
+  // M-9: 幂等键 —— 网络抖动或用户双击会创建多笔独立 pending 订单，若两笔都进入
+  // 支付流程就是两笔真实扣款。带同一个 key 的重试直接回放首次创建的订单。
+  const idempotencyKey =
+    (request.headers.get("idempotency-key") || "").trim() ||
+    (typeof (body as { idempotency_key?: unknown }).idempotency_key === "string"
+      ? ((body as { idempotency_key: string }).idempotency_key || "").trim()
+      : "");
+  if (idempotencyKey) {
+    for (const existing of ordersStore().values()) {
+      if (existing.user_id === user.id && existing.idempotency_key === idempotencyKey) {
+        return NextResponse.json(
+          {
+            order_id: existing.order_id,
+            payment_ref: existing.payment?.ref ?? null,
+            status: existing.status,
+            total: existing.pricing?.total_cents ?? 0,
+            created_at: existing.created_at,
+            idempotent_replay: true,
+          },
+          { status: 200 },
+        );
+      }
+    }
+  }
 
   const order = {
     order_id: newId("ord"),
@@ -237,7 +377,14 @@ export async function POST(request: NextRequest) {
       name: typeof customerRaw.name === "string" && customerRaw.name ? customerRaw.name.slice(0, 120) : user.name,
     },
     shipping: {
-      address: typeof shippingRaw.address === "string" ? shippingRaw.address.slice(0, 300) : null,
+      address: composedAddress ? composedAddress.slice(0, 600) : null,
+      line1: shipLine1,
+      line2: shipLine2,
+      city: shipCity,
+      state: shipState,
+      postal_code: shipPostal,
+      country: shipCountryFinal,
+      phone: shipPhone,
       method: shippingRaw.method === "express" ? "express" : "standard",
       cost_cents: totals.shippingCents,
       region,
@@ -260,13 +407,19 @@ export async function POST(request: NextRequest) {
     created_at: new Date(now).toISOString(),
     updated_at: new Date(now).toISOString(),
     _created_ts: now,
+    referrer_id: referrerId ?? null,
+    idempotency_key: idempotencyKey || null,
+    acquisition,
     history: [
       { status: "pending", note: "Order created — awaiting payment", ts: new Date(now).toISOString() },
     ],
   };
 
   ordersStore().set(order.order_id, order);
-  void persistOrder(order).catch(() => {});
+  // H-9: register the write with the Workers runtime so it survives the response.
+  // A bare `void persistOrder().catch(() => {})` is cancelled the moment the response
+  // is returned, which is how orders could exist in one isolate's memory only.
+  runDurable("persistOrder", persistOrder(order));
 
   return NextResponse.json(
     {
@@ -281,22 +434,22 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to view orders" } }, { status: 401 });
   }
 
-  const mine = Array.from(ordersStore().values())
-    .filter((o) => o.user_id === user.id)
-    .sort((a, b) => (b._created_ts || 0) - (a._created_ts || 0))
-    .map((o) => ({
-      order_id: o.order_id,
-      status: o.status === "pending" ? "pending" : (o.manufacturing?.status ?? o.status),
-      payment_ref: o.payment?.ref ?? null,
-      total_cents: o.pricing?.total_cents ?? 0,
-      items: o.items,
-      created_at: o.created_at,
-    }));
+  // H-1: read through D1. The previous implementation iterated the in-memory store
+  // only, so orders created (and paid) on another isolate never appeared here.
+  const all = await listOrdersForUserAsync(user.id);
+  const mine = all.map((o) => ({
+    order_id: o.order_id,
+    status: o.status === "pending" ? "pending" : (o.manufacturing?.status ?? o.status),
+    payment_ref: o.payment?.ref ?? null,
+    total_cents: o.pricing?.total_cents ?? 0,
+    items: o.items,
+    created_at: o.created_at,
+  }));
 
   return NextResponse.json({ orders: mine }, { headers: { "Cache-Control": "no-store" } });
 }

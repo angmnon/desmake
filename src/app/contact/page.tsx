@@ -1,6 +1,13 @@
 import { ContentPage } from "@/components/ContentPage";
 
-export const metadata = { title: "Contact", description: "Get in touch with the Desmake team — support, creators, press, and partnerships." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/contact",
+  title: "Contact Desmake — support, creators, press & partnerships",
+  description:
+    "Get in touch with the Desmake team — support, creator care, press and partnerships. Most messages are answered within one business day.",
+});
 
 export default function ContactPage() {
   return (

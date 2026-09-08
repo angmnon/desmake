@@ -2,21 +2,37 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, ArrowRight } from "lucide-react";
-import { CREATORS, creatorByHandle, designsByCreator, compact } from "@/lib/data";
+import { CREATORS, creatorByHandle, designsByCreator, compact, type Creator, type Design } from "@/lib/data";
+import { creatorViewFromUser, designsForUser } from "@/lib/creators";
+import { getUserByHandle } from "@/lib/session";
 import { DesignCard } from "@/components/DesignCard";
 import { Artwork } from "@/components/Artwork";
 import { JsonLd, SITE_URL } from "@/components/JsonLd";
 
-export function generateStaticParams() {
-  return CREATORS.map((c) => ({ handle: c.handle }));
+/**
+ * Resolve a creator profile + their works. Real registered users win over the
+ * static `CREATORS` seed (which is retained as an editorial "Desmake Select"
+ * layer). An unknown handle still returns the seed creator when one matches, so
+ * legacy `/creators/<seed>` URLs keep returning 200.
+ */
+async function resolveCreator(handle: string): Promise<{ creator: Creator; works: Design[] } | null> {
+  const user = getUserByHandle(handle);
+  if (user) {
+    const works = await designsForUser(user.id);
+    return { creator: creatorViewFromUser(user, works.length), works };
+  }
+  const seed = creatorByHandle(handle);
+  if (seed) return { creator: seed, works: designsByCreator(seed.handle) };
+  return null;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
-  const creator = creatorByHandle(handle);
-  if (!creator) return { title: "Creator not found", robots: { index: false, follow: true } };
+  const resolved = await resolveCreator(handle);
+  if (!resolved) return { title: "Creator not found", robots: { index: false, follow: true } };
+  const creator = resolved.creator;
   const title = `${creator.name} (@${creator.handle})`;
-  const description = `${creator.bio} — ${creator.works} works, ${compact(creator.followers)} followers. Shop original ${creator.role.toLowerCase()} designs by ${creator.name} from ${creator.city}, made on demand and shipped worldwide by Desmake.`;
+  const description = `${creator.bio} — ${creator.works} works${creator.city ? ` from ${creator.city}` : ""}. Shop original ${creator.role.toLowerCase()} designs by ${creator.name}, made on demand and shipped worldwide by Desmake.`;
   const canonical = `/creators/${encodeURIComponent(creator.handle)}`;
   return {
     title,
@@ -36,12 +52,9 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 
 export default async function CreatorProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const creator = creatorByHandle(handle);
-  // creatorByHandle returns undefined for unknown handles. notFound() returns `never`,
-  // which narrows `creator` to Creator for the rest of the render.
-  if (!creator) notFound();
-
-  const works = designsByCreator(creator.handle);
+  const resolved = await resolveCreator(handle);
+  if (!resolved) notFound();
+  const { creator, works } = resolved;
 
   const personLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -67,7 +80,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
             <div>
               <div className="row gap-2">
                 <h1 className="h1 balance">{creator.name}</h1>
-                {creator.verified && <BadgeCheck size={24} style={{ color: "var(--color-cobalt)", marginTop: 8 }} />}
+                {creator.verified && <BadgeCheck size={24} style={{ color: "var(--color-ink)", marginTop: 8 }} />}
               </div>
               <div className="row gap-2 small mono" style={{ color: "var(--color-tx-3)", marginTop: 4 }}>
                 <span>@{creator.handle}</span><span>·</span><span>{creator.city}</span><span>·</span><span>{creator.role}</span>

@@ -1,13 +1,24 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createUser, createSession, findUserByEmail, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { createUser, createSession, findUserByEmailAsync, resolveHandleToUserIdAsync, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 import { createVerificationToken } from "@/lib/verify";
 import { sendVerificationEmail } from "@/lib/email";
 import { getSiteBaseUrl } from "@/lib/url";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
+import { readAttributionFromRequest } from "@/lib/tracking";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function POST(request: NextRequest) {
+  // WAF-style throttle on account creation (brute-force / enumeration defense).
+  const rl = rateLimit(`${clientIp(request)}:register`, 10);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many sign-up attempts — please try again later." } },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
   let body: unknown = {};
   try {
     body = await request.json();
@@ -26,33 +37,75 @@ export async function POST(request: NextRequest) {
   if (!password || password.length < 6 || password.length > 128) {
     return NextResponse.json({ error: { code: "validation", message: "Password must be 6–128 characters" } }, { status: 400 });
   }
-  if (findUserByEmail(email)) {
+  // M-6: avoid account enumeration — use a generic message that does not confirm
+  // whether the email is already registered.
+  // C-1/H-8 fix: the duplicate check must hit D1 too. Checking only the in-memory
+  // map let a second registration with an existing email slip through, and the
+  // upsert then rewrote the row's `id`, orphaning that account's past orders.
+  if (await findUserByEmailAsync(email)) {
     return NextResponse.json(
-      { error: { code: "conflict", message: "An account with this email already exists — sign in instead" } },
+      { error: { code: "conflict", message: "Unable to complete registration with this email. If you already have an account, sign in instead." } },
       { status: 409 },
     );
   }
 
+  // M-UGC: attribution at sign-up. A `?ref=<handle>` query param (from a share
+  // link) records a lifetime `referred_by` relationship — the referrer earns a
+  // commission on this user's future purchases even if the dm_ref cookie expires.
+  const refParam = request.nextUrl.searchParams.get("ref");
+  const referredBy = refParam ? await resolveHandleToUserIdAsync(refParam) : undefined;
+
+  // P0-2: capture paid-acquisition attribution (UTM / gclid / fbclid) from the
+  // first-party dm_attrib cookie and persist it on the user for campaign ROI.
+  const attrib = readAttributionFromRequest(request);
+  const acquisition = attrib.utm_source
+    ? {
+        source: attrib.utm_source,
+        medium: attrib.utm_medium,
+        campaign: attrib.utm_campaign,
+        gclid: attrib.gclid,
+        fbclid: attrib.fbclid,
+        landing: attrib.landing_path,
+      }
+    : null;
+
   try {
-    const user = createUser(email, name, password);
-    const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role, emailVerified: user.emailVerified };
+    const user = await createUser(email, name, password, { referredBy: referredBy ?? null, acquisition });
+    const sessionUser = { id: user.id, email: user.email, name: user.name, handle: user.handle, role: user.role, emailVerified: user.emailVerified, sessionEpoch: user.sessionEpoch ?? 0 };
     const token = createSession(sessionUser);
 
     // Email confirmation: create a verification token and send it. When no email
     // provider is configured we surface the link in the response so the flow is
     // still testable (dev only — never log tokens in production).
     let verificationLink: string | undefined;
+    let verificationSent = false;
     try {
       const vtoken = await createVerificationToken(user.id);
       const baseUrl = getSiteBaseUrl(request);
       const sent = await sendVerificationEmail(baseUrl, user.email, vtoken);
-      if (!sent.delivered) verificationLink = sent.link;
+      verificationSent = Boolean(sent.delivered);
+      // M-12: never surface the raw verification link in a production response — it would
+      // let anyone who can trigger registration harvest valid tokens. Only expose it in
+      // non-production where the email provider isn't wired up for manual testing.
+      if (!sent.delivered && process.env.NODE_ENV !== "production") verificationLink = sent.link;
+      if (!sent.delivered && process.env.NODE_ENV === "production") {
+        // C-3: fail loud. A silent failure here is invisible to the buyer but blocks
+        // every order behind the email-verification gate.
+        console.error("[register] CRITICAL: verification email NOT delivered in production for", user.email);
+      }
     } catch (e) {
       console.error("[register] verification email failed:", e instanceof Error ? e.message : e);
     }
 
     const res = NextResponse.json(
-      { user: sessionUser, email_verification_link: verificationLink },
+      {
+        user: sessionUser,
+        email_verification_link: verificationLink,
+        // M-3: let the UI tell the buyer to check their inbox instead of silently
+        // letting them walk into a 403 at the final checkout step.
+        verification_required: !user.emailVerified,
+        verification_sent: verificationSent,
+      },
       { status: 201 },
     );
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());

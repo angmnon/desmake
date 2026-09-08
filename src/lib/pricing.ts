@@ -83,7 +83,7 @@ export const PRODUCT_SKUS: ProductSku[] = [
 
   // ── card（纸品文具） ──
   { sku: "office-notebook", family: "card", name: "Notebook A5 (Custom Cover)", process: "Digital print + perfect binding", weightClass: "medium", costRMB_q1: 9, costRMB_q50: 6.5, costRMB_q200: 5, costRMB_q1000: 4 },
-  { sku: "office-stickersheet", family: "card", name: "Sticker Sheet Set (5 sheets)", process: "UV print + die-cut", weightClass: "light", costRMB_q1: 3, costRMB_q50: 1.8, costRMB_q200: 1.2, costRMB_q1000: 0.8 },
+  { sku: "office-stickersheet", family: "sticker", name: "Sticker Sheet Set (5 sheets)", process: "UV print + die-cut", weightClass: "light", costRMB_q1: 3, costRMB_q50: 1.8, costRMB_q200: 1.2, costRMB_q1000: 0.8 },
   { sku: "collect-puzzle", family: "card", name: "Jigsaw Puzzle (500 pieces)", process: "Digital print + die-cut + box", weightClass: "medium", costRMB_q1: 22, costRMB_q50: 16, costRMB_q200: 13, costRMB_q1000: 10 },
   { sku: "collect-bookmark", family: "card", name: "Bookmark (Acrylic / Metal)", process: "UV print / laser engraving", weightClass: "light", costRMB_q1: 3, costRMB_q50: 1.8, costRMB_q200: 1.2, costRMB_q1000: 0.8 },
   { sku: "collect-playingcards", family: "card", name: "Playing Cards (54 + gift box)", process: "Digital print + box assembly", weightClass: "medium", costRMB_q1: 12, costRMB_q50: 8, costRMB_q200: 6, costRMB_q1000: 4.5 },

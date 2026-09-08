@@ -1,6 +1,7 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { findListingBySlug, publishedToDesign } from "@/lib/catalog";
-import { allPublishedDesigns } from "@/lib/stores";
+import { findPublishedBySlug } from "@/lib/catalogIndex";
 import { CREATORS, money, type Design } from "@/lib/data";
 import { JsonLd, SITE_URL } from "@/components/JsonLd";
 
@@ -13,16 +14,19 @@ import { JsonLd, SITE_URL } from "@/components/JsonLd";
  * runtime behaviour is unchanged.
  */
 
-async function resolveDesign(slug: string): Promise<Design | undefined> {
-  let design = findListingBySlug(slug);
+// P0/P2: was `(await allPublishedDesigns()).find(...)` — a full 5.15 MB D1 scan +
+// JSON.parse, executed TWICE per product view (generateMetadata + the layout body).
+// Now an O(1) lookup in the cached design index, and React.cache() collapses the two
+// calls in the same render pass into one.
+const resolveDesign = cache(async (slug: string): Promise<Design | undefined> => {
   try {
-    const fresh = (await allPublishedDesigns()).find((p) => p.slug === slug);
-    if (fresh) design = publishedToDesign(fresh);
+    const fresh = await findPublishedBySlug(slug);
+    if (fresh) return publishedToDesign(fresh);
   } catch {
-    /* D1 disabled — keep seed/in-memory result */
+    /* D1 disabled — fall through to the seed/in-memory result */
   }
-  return design;
-}
+  return findListingBySlug(slug);
+});
 
 function ogImageFor(design?: Design): string {
   const img = design?.imageUrl;

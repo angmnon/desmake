@@ -18,7 +18,7 @@ export async function GET() {
       agnes_image: AGNES_IMAGE_ENABLED,
       openai_image: OPENAI_IMAGE_ENABLED,
       stripe: STRIPE_ENABLED,
-      email: EMAIL_ENABLED,
+      email: EMAIL_ENABLED(),
     },
     errors_last_hour: errors1h,
     endpoints: [

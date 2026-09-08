@@ -336,7 +336,37 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const d = DATA[slug];
   if (!d) notFound();
+
+  const catName = CATEGORIES.find((c) => c.id === slug)?.name ?? slug;
+  const faq = [
+    {
+      q: `What products can I make with ${catName} designs?`,
+      a: "Posters, apparel, stickers, phone cases, business cards and 3D prints — one design adapts across six manufacturing methods automatically.",
+    },
+    {
+      q: "How much does it cost to publish?",
+      a: "Publishing is free. Products start around $5 (stickers) and $7 (posters); you keep a royalty you set between 10% and 50% per sale.",
+    },
+    {
+      q: "Do I need inventory?",
+      a: "No — every item is produced on demand and shipped from the node closest to the buyer across 34 countries.",
+    },
+  ];
+  const breadcrumb = [
+    { name: "Home", href: "/" },
+    { name: "Explore", href: "/explore" },
+    { name: catName, href: `/categories/${slug}` },
+  ];
+
   return (
-    <ContentPage eyebrow="Categories" title={d.title} intro={d.intro} sections={d.sections} cta={d.cta} />
+    <ContentPage
+      eyebrow="Categories"
+      title={d.title}
+      intro={d.intro}
+      sections={d.sections}
+      cta={d.cta}
+      faq={faq}
+      breadcrumb={breadcrumb}
+    />
   );
 }

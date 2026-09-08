@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getSession, SESSION_COOKIE } from "@/lib/session";
 import { uploadToR2, R2_ENABLED } from "@/lib/r2";
 import { newId } from "@/lib/stores";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 // Node runtime — uses Buffer + the S3 client (aws4) for R2 uploads.
 export const runtime = "nodejs";
@@ -20,6 +21,15 @@ export async function POST(request: NextRequest) {
   const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to upload" } }, { status: 401 });
+  }
+
+  // M-1: throttle uploads — they write bytes to R2 and cost money per call.
+  const rl = rateLimit(`${user.id}:upload`, 30);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: { code: "rate_limited", message: "Too many uploads — slow down" } },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
   }
 
   let body: { image?: string };

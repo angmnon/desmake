@@ -1,7 +1,14 @@
 import { ContentPage } from "@/components/ContentPage";
 import Link from "next/link";
 
-export const metadata = { title: "About", description: "Desmake is the AI-native design marketplace connecting creators with a global on-demand manufacturing network." };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  path: "/about",
+  title: "About Desmake — AI-native design-to-manufacture marketplace",
+  description:
+    "Desmake is the AI-native design-to-manufacture marketplace connecting creators with a global on-demand manufacturing network. Publish once; the network makes and ships it on demand.",
+});
 
 export default function AboutPage() {
   return (

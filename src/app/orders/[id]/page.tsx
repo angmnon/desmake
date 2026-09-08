@@ -114,7 +114,7 @@ export default function OrderDetailPage() {
                   const now = i === currentIdx;
                   return (
                     <div key={s.id} className="row gap-3" style={{ padding: "10px 0", opacity: done ? 1 : 0.4 }}>
-                      <div className="center" style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: done ? "var(--color-moss)" : "var(--color-paper-2)", color: done ? "#fff" : "var(--color-tx-3)" }}>
+                      <div className="center" style={{ width: 26, height: 26, borderRadius: "50%", flexShrink: 0, background: done ? "var(--color-ink)" : "var(--color-paper-2)", color: done ? "#fff" : "var(--color-tx-3)" }}>
                         {done ? <Check size={14} strokeWidth={3} /> : <span className="tiny mono">{i + 1}</span>}
                       </div>
                       <div className="flex-1">
