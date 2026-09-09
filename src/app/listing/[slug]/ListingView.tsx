@@ -78,7 +78,10 @@ export default function ListingView({ design }: { design: Design }) {
             return s ? { sku: s } : undefined;
           })
           .filter((x): x is SelectedProduct => Boolean(x));
-  const [activeSku, setActiveSku] = useState(products[0]?.sku ?? "");
+  // 强制先选：默认不预选任何商品（此前默认 products[0]=poster → 默认 variant=A3，
+  // 导致每一款设计一打开就停在「Poster · A3」，直接加购即得到 A3 海报，造成
+  // 「所有产品都变成 A3 明信片」的假象）。买家必须先点选一个商品才能加入购物车。
+  const [activeSku, setActiveSku] = useState("");
   const [qty, setQty] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
@@ -96,12 +99,14 @@ export default function ListingView({ design }: { design: Design }) {
         : { name: design.creator, handle: design.creator, verified: false },
     [design.creator, creatorData],
   );
+  const hasSelection = Boolean(activeSku);
   const adapter = adapterById(adapterIdForSku(activeSku) ?? "");
   const variants = variantsForSku(activeSku);
   const currentVariant = selectedVariant && variants.includes(selectedVariant) ? selectedVariant : variants[0];
   const unit = unitPriceForSku(activeSku, currentVariant);
   const cart = useCart();
-  const canBuy = unit !== null && adapter !== undefined;
+  // 未选商品时不允许加购（强制先选）。选中后仍以服务端口径校验 unit 是否为有效价。
+  const canBuy = hasSelection && unit !== null && adapter !== undefined;
 
   // M-UGC: current viewer (for the share/earn affordance) + passive view event.
   const { user } = useUser();
@@ -303,10 +308,16 @@ export default function ListingView({ design }: { design: Design }) {
               </span>
             </div>
 
-            <div className="h2 tnum" style={{ marginBottom: 8 }}>
-              {unit === null ? "Unavailable" : money(unit)}
-            </div>
-            {unit !== null && (
+            {!hasSelection ? (
+              <div className="h2 tnum" style={{ marginBottom: 8 }}>
+                Select a product
+              </div>
+            ) : (
+              <div className="h2 tnum" style={{ marginBottom: 8 }}>
+                {unit === null ? "Unavailable" : money(unit)}
+              </div>
+            )}
+            {hasSelection && unit !== null && (
               <p className="tiny muted" style={{ marginBottom: 12 }}>
                 Excl. tax — calculated at checkout based on your destination.
               </p>
@@ -324,7 +335,9 @@ export default function ListingView({ design }: { design: Design }) {
 
             {/* M3: 具体商品（SKU）选择器 */}
             <div className="mb-6">
-              <div className="label">Product</div>
+              <div className="label">
+                Product{!hasSelection && <span style={{ color: "var(--color-ink)", marginLeft: 6 }}>— choose one</span>}
+              </div>
               <div className="grid" style={{ gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
                 {products.map((p) => {
                   const sku = SKU_BY_ID[p.sku];
@@ -387,7 +400,7 @@ export default function ListingView({ design }: { design: Design }) {
                 onClick={addToCart}
                 disabled={!canBuy}
               >
-                {added ? <><Check size={18} strokeWidth={2} /> Added to bag</> : <><ShoppingBag size={18} strokeWidth={1.8} /> {canBuy ? "Add to cart" : "Unavailable"}</>}
+                {added ? <><Check size={18} strokeWidth={2} /> Added to bag</> : <><ShoppingBag size={18} strokeWidth={1.8} /> {canBuy ? "Add to cart" : hasSelection ? "Unavailable" : "Select a product"}</>}
               </button>
               <button className="btn btn-outline" style={{ height: 52, width: 52, padding: 0, color: liked ? "var(--color-ink)" : undefined }} aria-label="Save" onClick={() => { setLiked(!liked); trackEvent(design.slug, "save"); }}>
                 <Heart size={18} strokeWidth={1.8} fill={liked ? "currentColor" : "none"} />
