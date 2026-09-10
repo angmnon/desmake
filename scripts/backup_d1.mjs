@@ -6,18 +6,39 @@
 
 import { writeFile, mkdir } from "node:fs/promises";
 
-const ACCOUNT_ID = process.env.D1_ACCOUNT_ID || "ceb1001d1ab2a3f36b40aa34ca3b6db5";
-const DATABASE_ID = process.env.D1_DATABASE_ID || "39a994b2-f353-4ee3-a1ff-6288963a1339";
+const ACCOUNT_ID = process.env.D1_ACCOUNT_ID;
+const DATABASE_ID = process.env.D1_DATABASE_ID;
 const TOKEN = process.env.D1_CF_API_TOKEN;
 
-if (!TOKEN) {
-  console.error("D1_CF_API_TOKEN is required (export it or use --env-file=.env)");
+// R2-Low: no hardcoded account/database ids. They used to be baked in as fallbacks,
+// so a run without env vars would silently back up (or read from) whichever account
+// the repo happened to name — wrong-tenant risk. Require them explicitly.
+const missing = [
+  !TOKEN && "D1_CF_API_TOKEN",
+  !ACCOUNT_ID && "D1_ACCOUNT_ID",
+  !DATABASE_ID && "D1_DATABASE_ID",
+].filter(Boolean);
+if (missing.length) {
+  console.error(`Missing required env: ${missing.join(", ")} (export them or use --env-file=.env)`);
   process.exit(1);
 }
 
-// Tables to back up. `email_verifications` may not exist until the server has
-// booted once after the schema change — the script tolerates a missing table.
-const TABLES = ["users", "sessions", "orders", "designs", "generation_jobs", "email_verifications"];
+// Tables to back up. Missing tables are tolerated (a fresh DB may not have them yet).
+const TABLES = [
+  "users",
+  "sessions",
+  "orders",
+  "designs",
+  "generation_jobs",
+  "email_verifications",
+  "creator_earnings",
+  "referral_earnings",
+  "design_events",
+  "cms_posts",
+  "catalog_meta",
+  "settle_audit",
+  "consent_log",
+];
 
 async function query(sql, params = []) {
   const res = await fetch(

@@ -67,7 +67,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <Link href={`/listing/${it.slug}`} className="h5 block truncate" style={{ marginBottom: 4 }}>{it.title}</Link>
-                  <div className="tiny mono" style={{ color: "var(--color-tx-2)", marginBottom: 8 }}>{adapterName(it.adapter)} / {it.variant}</div>
+                  <div className="tiny mono" style={{ color: "var(--color-tx-2)", marginBottom: 8 }}>{adapterName(it.adapter)}{it.variant ? ` / ${it.variant}` : ""}</div>
                   <div className="row gap-2" style={{ fontSize: "0.75rem" }}>
                     <span className="tag"><Truck size={11} /> Ships in 5–7d</span>
                     <span className="tag"><Shield size={11} /> Buyer protection</span>

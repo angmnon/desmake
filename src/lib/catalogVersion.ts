@@ -65,6 +65,13 @@ export async function bumpDesignIndex(): Promise<void> {
     localMirror = await readSharedVersion();
     lastRead = Date.now();
   } catch (e) {
+    // R2: do NOT swallow. A failed bump means every other instance keeps serving a stale
+    // index and the just-published design stays invisible until the NEXT successful bump
+    // (potentially permanent). Force this instance to re-read (drop the mirror/TTL) and
+    // rethrow so the caller can log/alert.
+    localMirror = null;
+    lastRead = 0;
     console.error("[db] bumpDesignIndex failed:", e instanceof Error ? e.message : e);
+    throw e;
   }
 }

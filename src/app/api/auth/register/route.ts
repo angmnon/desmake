@@ -6,6 +6,7 @@ import { sendVerificationEmail } from "@/lib/email";
 import { getSiteBaseUrl } from "@/lib/url";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { readAttributionFromRequest } from "@/lib/tracking";
+import { redact } from "@/lib/monitor";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -37,14 +38,15 @@ export async function POST(request: NextRequest) {
   if (!password || password.length < 6 || password.length > 128) {
     return NextResponse.json({ error: { code: "validation", message: "Password must be 6–128 characters" } }, { status: 400 });
   }
-  // M-6: avoid account enumeration — use a generic message that does not confirm
-  // whether the email is already registered.
+  // M-6 / R2: avoid account enumeration — do NOT confirm whether the email exists in
+  // the error text (the previous wording said "…with this email", which is a loud oracle).
+  // The status code stays 409 for the client to branch on, but the message is generic.
   // C-1/H-8 fix: the duplicate check must hit D1 too. Checking only the in-memory
   // map let a second registration with an existing email slip through, and the
   // upsert then rewrote the row's `id`, orphaning that account's past orders.
   if (await findUserByEmailAsync(email)) {
     return NextResponse.json(
-      { error: { code: "conflict", message: "Unable to complete registration with this email. If you already have an account, sign in instead." } },
+      { error: { code: "conflict", message: "Registration could not be completed. If you already have an account, sign in instead." } },
       { status: 409 },
     );
   }
@@ -84,17 +86,18 @@ export async function POST(request: NextRequest) {
       const baseUrl = getSiteBaseUrl(request);
       const sent = await sendVerificationEmail(baseUrl, user.email, vtoken);
       verificationSent = Boolean(sent.delivered);
-      // M-12: never surface the raw verification link in a production response — it would
-      // let anyone who can trigger registration harvest valid tokens. Only expose it in
-      // non-production where the email provider isn't wired up for manual testing.
-      if (!sent.delivered && process.env.NODE_ENV !== "production") verificationLink = sent.link;
-      if (!sent.delivered && process.env.NODE_ENV === "production") {
+      // M-12 / R2: never surface the raw verification link outside an explicit
+      // `development` build (previously "not production" — any staging/unset runtime
+      // would leak valid tokens). Fail-safe default: hidden.
+      if (!sent.delivered && process.env.NODE_ENV === "development") verificationLink = sent.link;
+      if (!sent.delivered && process.env.NODE_ENV !== "development") {
         // C-3: fail loud. A silent failure here is invisible to the buyer but blocks
-        // every order behind the email-verification gate.
-        console.error("[register] CRITICAL: verification email NOT delivered in production for", user.email);
+        // every order behind the email-verification gate. Log the user id, never the
+        // email address (PII in logs).
+        console.error("[register] CRITICAL: verification email NOT delivered for user", user.id);
       }
     } catch (e) {
-      console.error("[register] verification email failed:", e instanceof Error ? e.message : e);
+      console.error("[register] verification email failed:", redact(e instanceof Error ? e.message : String(e)));
     }
 
     const res = NextResponse.json(
@@ -111,8 +114,11 @@ export async function POST(request: NextRequest) {
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
     return res;
   } catch (err) {
+    // R2: never echo the internal error text to the client (it could contain a duplicate-
+    // email oracle or an internal message). Log server-side, return a generic conflict.
+    console.error("[register] failed:", redact(err instanceof Error ? err.message : String(err)));
     return NextResponse.json(
-      { error: { code: "conflict", message: err instanceof Error ? err.message : "Registration failed" } },
+      { error: { code: "conflict", message: "Registration could not be completed. If you already have an account, sign in instead." } },
       { status: 409 },
     );
   }

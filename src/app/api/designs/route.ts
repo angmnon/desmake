@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
-import { designsStore, newId, persistDesign, DEFAULT_PALETTE, type PublishedDesign } from "@/lib/stores";
-import { getSession, SESSION_COOKIE, getUserById } from "@/lib/session";
+import { designsStore, listDesignsForUserAsync, newId, persistDesign, DEFAULT_PALETTE, type PublishedDesign } from "@/lib/stores";
+import { getSessionAsync, SESSION_COOKIE, getUserById } from "@/lib/session";
 import { uploadToR2, R2_ENABLED } from "@/lib/r2";
 import { rateLimit } from "@/lib/ratelimit";
 import { ADAPTERS, DESIGNS, CATEGORIES, adapterDefaultSku, adapterIdForSku, type SelectedProduct } from "@/lib/data";
@@ -87,15 +87,47 @@ function isSameOriginCdnPath(raw: string): boolean {
   }
 }
 
+/**
+ * D5-Low: reject IP-literal hosts that point at private / link-local / loopback
+ * ranges (including the cloud metadata endpoint 169.254.169.254). The host
+ * allowlist already excludes these in practice, but defending in depth here
+ * means a future allowlist entry (or a DNS-rebinding name) cannot turn the
+ * server-side fetch into an internal-network probe.
+ */
+function isPrivateOrMetadataHost(host: string): boolean {
+  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal") || h.endsWith(".local")) return true;
+
+  // IPv4 literal?
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (a === 10) return true; // 10/8
+    if (a === 127) return true; // loopback
+    if (a === 169 && b === 254) return true; // link-local + cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16/12
+    if (a === 192 && b === 168) return true; // 192.168/16
+    if (a === 0) return true; // "this network"
+    if (a >= 224) return true; // multicast / reserved
+    return false;
+  }
+
+  // IPv6 literal? Reject loopback, unique-local (fc00::/7) and link-local (fe80::/10).
+  if (h.includes(":")) {
+    if (h === "::1" || h === "::") return true;
+    if (h.startsWith("fc") || h.startsWith("fd")) return true;
+    if (/^fe[89ab]/.test(h)) return true;
+    return false;
+  }
+  return false;
+}
+
 function isAllowedImageUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
     if (u.protocol !== "https:" && u.protocol !== "http:") return false;
     const host = u.host.toLowerCase();
-    // Reject obvious internal/loopback targets even if they somehow end up allowlisted.
-    if (host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host.endsWith(".internal") || host.endsWith(".local")) {
-      return false;
-    }
+    if (isPrivateOrMetadataHost(host)) return false;
     return allowedImageHosts().has(host);
   } catch {
     return false;
@@ -168,7 +200,7 @@ async function resolveAiImage(raw: unknown): Promise<string | undefined> {
  * the whole generate → publish → sell loop dead-ended at step one.
  */
 export async function POST(request: NextRequest) {
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to publish a design" } }, { status: 401 });
   }
@@ -197,6 +229,7 @@ export async function POST(request: NextRequest) {
   let imageUrl: string | undefined;
   const prompt = typeof body.prompt === "string" ? body.prompt.trim().slice(0, 500) : "";
   let aiGenerated = true;
+  let isPreview = false;
 
   if (source === "upload") {
     // Uploaded designs carry a real raster image — seed/palette/shape are optional.
@@ -234,6 +267,14 @@ export async function POST(request: NextRequest) {
     }
     palette = body.palette;
     shape = shapeRaw;
+    // M-9: the client tells us whether this came from a real AI job or the
+    // deterministic placeholder path (no provider configured). A placeholder is
+    // NOT AI-generated — record it as a preview so listings/creator pages don't
+    // misrepresent it.
+    if (body.isPreview === true) {
+      isPreview = true;
+      aiGenerated = false;
+    }
     // Persist the real Agnes raster (re-hosted to R2 for durability) so the
     // marketplace shows the actual generated art, not a procedural placeholder.
     imageUrl = await resolveAiImage(body.imageUrl);
@@ -321,7 +362,9 @@ export async function POST(request: NextRequest) {
     title,
     category,
     tags: designTags,
-    creator: user.email.split("@")[0].slice(0, 40) || "you",
+    // D7-6: public creator identity is the handle, never the email local part
+    // (email-derived ids leak PII and collide across domains).
+    creator: user.handle || "you",
     creatorName: user.name || "You",
     creatorHandle: user.handle,
     creatorVerified: Boolean(getUserById(user.id)?.verified),
@@ -332,6 +375,7 @@ export async function POST(request: NextRequest) {
     premiumCents,
     priceCents: baseAdapter.retailCents + premiumCents,
     aiGenerated,
+    isPreview,
     prompt,
     description,
     source,
@@ -361,29 +405,31 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to view your designs" } }, { status: 401 });
   }
-  const mine = Array.from(designsStore().values())
-    .filter((d) => d.user_id === user.id)
-    .map((d) => ({
-      id: d.id,
-      slug: d.slug,
-      title: d.title,
-      price_cents: d.priceCents,
-      seed: d.seed,
-      palette: d.palette,
-      shape: d.shape,
-      category: d.category,
-      adapters: d.adapters,
-      premium_cents: d.premiumCents,
-      ai_generated: d.aiGenerated,
-      source: d.source,
-      image_url: d.imageUrl,
-      description: d.description,
-      tags: d.tags,
-      created_at: d.created_at,
-    }));
+  // R2: read from D1 (durable, cross-instance), not just this isolate's memory.
+  // The old in-memory-only read made "My designs" empty whenever the request
+  // landed on an instance that had not handled the publish.
+  const mine = (await listDesignsForUserAsync(user.id)).map((d) => ({
+    id: d.id,
+    slug: d.slug,
+    title: d.title,
+    price_cents: d.priceCents,
+    seed: d.seed,
+    palette: d.palette,
+    shape: d.shape,
+    category: d.category,
+    adapters: d.adapters,
+    premium_cents: d.premiumCents,
+    ai_generated: d.aiGenerated,
+    is_preview: Boolean((d as PublishedDesign & { isPreview?: boolean }).isPreview),
+    source: d.source,
+    image_url: d.imageUrl,
+    description: d.description,
+    tags: d.tags,
+    created_at: d.created_at,
+  }));
   return NextResponse.json({ designs: mine }, { headers: { "Cache-Control": "no-store" } });
 }

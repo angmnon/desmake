@@ -66,7 +66,9 @@ export async function GET(request: Request) {
           adapters: d.adapters,
           price_cents: d.priceCents,
           tags: d.tags,
-          stats: { sales: d.sales, likes: d.likes, views: d.views, rating: d.rating, reviews: d.reviews },
+          // R2-Low: the `stats` block was removed. sales/likes/views/rating/reviews
+          // are hardcoded 0 in the catalog mapper (no real signal exists yet), so
+          // publishing them advertised fabricated engagement metrics to API clients.
           ai_generated: d.aiGenerated,
           is_new: d.isNew,
           created: d.created,

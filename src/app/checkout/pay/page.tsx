@@ -130,7 +130,7 @@ function PayPage() {
           <div className="stack gap-3 mb-4">
             {order.items.map((it, i) => (
               <div key={i} className="row-between small">
-                <span className="truncate">{it.title} <span className="faint">· {adapterName(it.adapter)} {it.variant} ×{it.quantity}</span></span>
+                <span className="truncate">{it.title} <span className="faint">· {adapterName(it.adapter)}{it.variant ? ` ${it.variant}` : ""} ×{it.quantity}</span></span>
                 <span className="mono">{money(it.unit_price_cents * it.quantity)}</span>
               </div>
             ))}

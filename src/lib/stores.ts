@@ -13,6 +13,7 @@ import type { SelectedProduct } from "@/lib/data";
 // Cache-version module is intentionally dependency-free so importing it here cannot
 // create a cycle (stores -> catalogVersion, catalogIndex -> stores + catalogVersion).
 import { bumpDesignIndex } from "@/lib/catalogVersion";
+import { recordError, notifyAlert } from "@/lib/monitor";
 
 export type GenOutput = {
   seed: string;
@@ -166,6 +167,12 @@ export type PublishedDesign = {
   premiumCents: number;
   priceCents: number;
   aiGenerated: boolean;
+  /**
+   * M-9: true when the published image is a deterministic placeholder (no AI
+   * provider configured) rather than a real AI generation. Lets the UI badge it
+   * honestly instead of presenting a placeholder as "AI-generated".
+   */
+  isPreview?: boolean;
   prompt?: string;
   description?: string;
   /** "ai" = generated in Studio; "upload" = creator supplied their own image. */
@@ -319,7 +326,8 @@ export async function catalogIndexRows(): Promise<PublishedDesign[]> {
          json_extract(data,'$.royaltyRate')       AS royaltyRate,
          json_extract(data,'$.selectedProducts')  AS selectedProducts,
          json_extract(data,'$.created_at')        AS created_at,
-         json_extract(data,'$.imageUrl')          AS imageUrl
+         json_extract(data,'$.imageUrl')          AS imageUrl,
+         json_extract(data,'$.status')            AS pstatus
        FROM designs`,
     );
     for (const r of rows) {
@@ -370,11 +378,40 @@ export async function catalogIndexRows(): Promise<PublishedDesign[]> {
 import { d1Query, d1Run, D1_ENABLED } from "@/lib/db";
 export async function persistOrder(o: OrderRecord): Promise<void> {
   if (!D1_ENABLED) return;
+  // R2: also mirror the hot lookup keys into indexed columns (idempotency replay +
+  // refund-webhook PaymentIntent lookup) so those queries are index seeks, not blob scans.
   await d1Query(
-    `INSERT INTO orders (order_id, user_id, data, created_ts) VALUES (?, ?, ?, ?)
-     ON CONFLICT(order_id) DO UPDATE SET data=excluded.data, user_id=excluded.user_id`,
-    [o.order_id, o.user_id, JSON.stringify(o), o._created_ts],
+    `INSERT INTO orders (order_id, user_id, data, created_ts, idempotency_key, payment_intent_id)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(order_id) DO UPDATE SET
+        data=excluded.data, user_id=excluded.user_id,
+        idempotency_key=excluded.idempotency_key, payment_intent_id=excluded.payment_intent_id`,
+    [o.order_id, o.user_id, JSON.stringify(o), o._created_ts, o.idempotency_key ?? null, o.payment?.payment_intent_id ?? null],
   );
+}
+
+/**
+ * R2/M-1: cross-instance idempotency. Look an order up by (user_id, idempotency_key) in
+ * D1 (the durable store) so a retry that lands on a different isolate replays the original
+ * order instead of creating a second pending order.
+ */
+export async function findOrderByIdempotencyKey(userId: string, key: string): Promise<OrderRecord | undefined> {
+  if (!key) return undefined;
+  for (const o of ordersStore().values()) {
+    if (o.user_id === userId && o.idempotency_key === key) return o;
+  }
+  if (!D1_ENABLED) return undefined;
+  try {
+    const rows = await d1Query<{ data: string }>(
+      `SELECT data FROM orders WHERE user_id = ? AND idempotency_key = ? LIMIT 1`,
+      [userId, key],
+    );
+    if (rows.length === 0) return undefined;
+    return JSON.parse(rows[0].data) as OrderRecord;
+  } catch (e) {
+    console.error("[db] findOrderByIdempotencyKey failed:", e instanceof Error ? e.message : e);
+    return undefined;
+  }
 }
 
 /**
@@ -435,9 +472,99 @@ export async function persistDesign(d: PublishedDesign): Promise<void> {
   );
   // Invalidate the cached design index so the next read rebuilds and picks up this
   // design immediately (cross-instance visibility without a container restart).
-  await bumpDesignIndex();
-  // M-3: also drop the allPublishedDesigns() result cache so the merged list updates now.
+  // R2: clear the local caches BEFORE the bump so a bump failure can't leave this
+  // instance serving a stale list either.
   __cachedAllDesigns = null;
+  try {
+    await bumpDesignIndex();
+  } catch (e) {
+    // The row is written and the publish itself succeeded — do not fail it. Surface the
+    // cross-instance visibility risk instead of swallowing it (previously a silent swallow
+    // could leave the design invisible everywhere but the publishing instance).
+    recordError("persistDesign.bumpDesignIndex", e);
+    void notifyAlert(
+      "Design index version bump FAILED",
+      `design ${d.slug} may stay invisible on other instances until the next successful publish`,
+    );
+  }
+}
+
+/**
+ * List a single user's published designs from D1 (durable, cross-instance).
+ *
+ * Previously the "my designs" endpoint read only this isolate's in-memory map,
+ * so the account page showed an empty list whenever the request landed on an
+ * instance that had not seen the publish (up to max_instances). Memory is used
+ * only as a fallback when D1 is unavailable.
+ */
+export async function listDesignsForUserAsync(userId: string, limit = 200): Promise<PublishedDesign[]> {
+  if (D1_ENABLED) {
+    try {
+      const rows = await d1Query<{ data: string }>(
+        `SELECT data FROM designs WHERE user_id = ? ORDER BY created_ts DESC LIMIT ?`,
+        [userId, limit],
+      );
+      const out: PublishedDesign[] = [];
+      for (const r of rows) {
+        try {
+          out.push(JSON.parse(r.data) as PublishedDesign);
+        } catch {
+          /* skip corrupt row */
+        }
+      }
+      return out;
+    } catch (e) {
+      recordError("listDesignsForUserAsync", e);
+    }
+  }
+  return Array.from(designsStore().values())
+    .filter((d) => d.user_id === userId)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .slice(0, limit);
+}
+
+/**
+ * R2-M-8: delete a design the caller owns. Returns the removed record (so the
+ * caller can also delete its R2 image and avoid orphans), or null when the
+ * design does not exist OR is not owned by `userId` — the caller cannot
+ * distinguish the two, so this is not an existence oracle.
+ */
+export async function deleteDesignForUserAsync(slug: string, userId: string): Promise<PublishedDesign | null> {
+  const mem = designsStore().get(slug);
+  let existing: PublishedDesign | null = mem && mem.user_id === userId ? mem : null;
+  if (!existing && D1_ENABLED) {
+    try {
+      const rows = await d1Query<{ data: string }>(
+        `SELECT data FROM designs WHERE slug = ? AND user_id = ?`,
+        [slug, userId],
+      );
+      if (rows.length) {
+        try {
+          existing = JSON.parse(rows[0].data) as PublishedDesign;
+        } catch {
+          existing = null;
+        }
+      }
+    } catch (e) {
+      recordError("deleteDesignForUserAsync.read", e);
+    }
+  }
+  if (!existing) return null;
+
+  if (D1_ENABLED) {
+    // Loud on failure: a swallowed error would leave the listing purchasable
+    // after the creator believes they deleted it.
+    await d1Run(`DELETE FROM designs WHERE slug = ? AND user_id = ?`, [slug, userId]);
+  }
+  designsStore().delete(slug);
+  __cachedAllDesigns = null;
+  try {
+    await bumpDesignIndex();
+  } catch (e) {
+    recordError("deleteDesignForUserAsync.bump", e);
+    void notifyAlert("Design delete: index bump FAILED", `slug ${slug} may linger in other instances' index`);
+  }
+  return existing;
 }
 
 /**
@@ -570,7 +697,7 @@ export async function recordOrderEarnings(order: OrderRecord): Promise<void> {
   if (D1_ENABLED) {
     try {
       const rows0 = await d1Query<{ status?: string }>(
-        `SELECT json_extract(data,'$.status') AS status FROM orders WHERE json_extract(data,'$.order_id')=?`,
+        `SELECT json_extract(data,'$.status') AS status FROM orders WHERE order_id=?`,
         [order.order_id],
       );
       const live = rows0[0]?.status;
@@ -605,16 +732,12 @@ export async function recordOrderEarnings(order: OrderRecord): Promise<void> {
     created++;
   }
   if (created === 0) return;
-  // 内存层幂等：同一 (order_id, line_index) 已存在则保留首次写入的结果（与 D1 的
-  // INSERT OR IGNORE 语义一致），confirm 重试 / webhook 并发不会留下第二套记录。
+  // 内存层幂等：逐行判断（R2 修正——此前只要批次中任意一行已存在就整批跳过，会漏掉
+  // 同批中确实缺失的其他行），与 D1 的 INSERT OR IGNORE 语义保持一致。
   const mem = earningsStore();
-  let memExisting: (r: EarningRecord) => boolean = () => false;
   for (const r of rows) {
     const dupe = [...mem.values()].some((v) => v.order_id === r.order_id && v.line_index === r.line_index);
-    if (dupe) memExisting = () => true;
-  }
-  if (!memExisting(rows[0])) {
-    for (const r of rows) mem.set(r.id, r);
+    if (!dupe) mem.set(r.id, r);
   }
   if (!D1_ENABLED) return;
   try {
@@ -750,7 +873,7 @@ export async function recordReferralEarnings(order: OrderRecord): Promise<void> 
   if (D1_ENABLED) {
     try {
       const rows0 = await d1Query<{ status?: string }>(
-        `SELECT json_extract(data,'$.status') AS status FROM orders WHERE json_extract(data,'$.order_id')=?`,
+        `SELECT json_extract(data,'$.status') AS status FROM orders WHERE order_id=?`,
         [order.order_id],
       );
       const live = rows0[0]?.status;
@@ -840,9 +963,9 @@ export async function recordReferralEarnings(order: OrderRecord): Promise<void> 
          WHERE (
            SELECT COALESCE(SUM(commission_cents), 0) FROM referral_earnings
            WHERE referrer_id = ? AND created_at >= ? AND status != 'reversed'
-         ) < ?`,
+         ) + ? <= ?`,
         [r.id, r.order_id, r.line_index, r.referrer_id, r.referred_user_id, r.source_design_slug, r.commission_rate, r.base_cents, r.commission_cents, r.status, r.created_at, r.paid_at,
-         r.referrer_id, monthStartIso, REFERRAL_MONTHLY_CAP_CENTS],
+         r.referrer_id, monthStartIso, r.commission_cents, REFERRAL_MONTHLY_CAP_CENTS],
       );
     }
   } catch (e) {
@@ -910,10 +1033,18 @@ export async function getOrderByPaymentIntent(paymentIntentId: string): Promise<
   }
   if (!D1_ENABLED) return undefined;
   try {
-    const rows = await d1Query<{ data: string }>(
-      `SELECT data FROM orders WHERE json_extract(data, '$.payment.payment_intent_id') = ?`,
+    // R2: hit the indexed `payment_intent_id` column first (index seek). The JSON scan is
+    // only a back-compat fallback for rows written before the column existed.
+    let rows = await d1Query<{ data: string }>(
+      `SELECT data FROM orders WHERE payment_intent_id = ? LIMIT 1`,
       [paymentIntentId],
     );
+    if (rows.length === 0) {
+      rows = await d1Query<{ data: string }>(
+        `SELECT data FROM orders WHERE json_extract(data, '$.payment.payment_intent_id') = ? LIMIT 1`,
+        [paymentIntentId],
+      );
+    }
     for (const r of rows) {
       try {
         const o = JSON.parse(r.data) as OrderRecord;

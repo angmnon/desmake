@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listCmsPosts, createCmsPost, CMS_TYPES, type CmsType, type CmsPostInput } from "@/lib/cms";
-import { getCmsKeyFromRequest, cmsKeyValid, unauthorized } from "@/lib/cmsAuth";
+import { getCmsKeyFromRequest, cmsKeyValid, unauthorized, cmsThrottled } from "@/lib/cmsAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const throttled = cmsThrottled(req);
+  if (throttled) return throttled;
   if (!cmsKeyValid(getCmsKeyFromRequest(req))) return unauthorized();
 
   const sp = req.nextUrl.searchParams;
@@ -23,6 +25,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const throttled = cmsThrottled(req);
+  if (throttled) return throttled;
   if (!cmsKeyValid(getCmsKeyFromRequest(req))) return unauthorized();
 
   let body: Record<string, unknown>;

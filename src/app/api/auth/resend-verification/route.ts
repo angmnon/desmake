@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       delivered: sent.delivered,
-      // M-12: never hand the raw token back in production.
-      link: process.env.NODE_ENV === "production" ? undefined : sent.link,
+      // M-12 / R2: never hand the raw token back outside an explicit `development` build.
+      link: process.env.NODE_ENV === "development" ? sent.link : undefined,
     });
   } catch (e) {
     console.error("[resend-verification] failed:", e instanceof Error ? e.message : e);

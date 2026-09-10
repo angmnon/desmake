@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { d1Query, D1_ENABLED } from "@/lib/db";
-import { earningsStore, referralEarningsStore } from "@/lib/stores";
+import { d1Query, d1Run, D1_ENABLED } from "@/lib/db";
+import { earningsStore, referralEarningsStore, newId } from "@/lib/stores";
 import { rateLimit } from "@/lib/ratelimit";
 
 // 月结手动打款端点：运营用 ADMIN_TOKEN 触发，把 creator_earnings + referral_earnings
@@ -47,38 +47,46 @@ export async function POST(request: NextRequest) {
   let settledCreators = 0;
   let settledReferrals = 0;
 
-  // 内存层更新（创作者分成）
-  for (const e of earningsStore().values()) {
-    if (e.status !== "pending") continue;
-    if (creatorId && e.creator_id !== creatorId) continue;
-    e.status = "paid";
-    e.paid_at = now;
-    settledCreators++;
-  }
-  // 内存层更新（推荐分成）
-  for (const e of referralEarningsStore().values()) {
-    if (e.status !== "pending") continue;
-    if (creatorId && e.referrer_id !== creatorId) continue;
-    e.status = "paid";
-    e.paid_at = now;
-    settledReferrals++;
-  }
-
-  // D1 持久层更新（幂等）
+  // R2 fix: write D1 FIRST (source of truth) and mirror to memory only afterwards. The
+  // previous order (memory → D1) left the two diverged forever if the D1 UPDATE threw.
+  // The D1 UPDATEs are idempotent (`WHERE status='pending'`), so a re-run can't double-pay.
   if (D1_ENABLED) {
     try {
       const creatorSql = creatorId
         ? `UPDATE creator_earnings SET status='paid', paid_at=? WHERE status='pending' AND creator_id=?`
         : `UPDATE creator_earnings SET status='paid', paid_at=? WHERE status='pending'`;
-      await d1Query(creatorSql, creatorId ? [now, creatorId] : [now]);
+      settledCreators = await d1Run(creatorSql, creatorId ? [now, creatorId] : [now]);
 
       const refSql = creatorId
         ? `UPDATE referral_earnings SET status='paid', paid_at=? WHERE status='pending' AND referrer_id=?`
         : `UPDATE referral_earnings SET status='paid', paid_at=? WHERE status='pending'`;
-      await d1Query(refSql, creatorId ? [now, creatorId] : [now]);
+      settledReferrals = await d1Run(refSql, creatorId ? [now, creatorId] : [now]);
+
+      // Audit trail: record who settled what, and when. Previously a month-end payout
+      // left no record of the actor or the counts.
+      await d1Query(
+        `INSERT INTO settle_audit (id, actor, scope, creators, referrals, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+        [newId("settle"), "admin-token", creatorId ?? "all", settledCreators, settledReferrals, now],
+      );
     } catch (e) {
       return NextResponse.json({ error: { code: "db_error", message: String(e) } }, { status: 500 });
     }
+  }
+
+  // Memory mirror — only flips rows the D1 statement just settled.
+  for (const e of earningsStore().values()) {
+    if (e.status !== "pending") continue;
+    if (creatorId && e.creator_id !== creatorId) continue;
+    e.status = "paid";
+    e.paid_at = now;
+    if (!D1_ENABLED) settledCreators++;
+  }
+  for (const e of referralEarningsStore().values()) {
+    if (e.status !== "pending") continue;
+    if (creatorId && e.referrer_id !== creatorId) continue;
+    e.status = "paid";
+    e.paid_at = now;
+    if (!D1_ENABLED) settledReferrals++;
   }
 
   return NextResponse.json({

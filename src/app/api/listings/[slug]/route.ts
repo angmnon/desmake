@@ -36,7 +36,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       price_cents: design.priceCents,
       ai_generated: design.aiGenerated,
       created: design.created,
-      stats: { sales: design.sales, likes: design.likes, views: design.views, rating: design.rating, reviews: design.reviews },
+      // R2-Low: `stats` removed — these counters are hardcoded 0 in the catalog
+      // mapper (no real engagement signal exists), so exposing them claimed
+      // fabricated sales/likes/views to API consumers.
       creator: creator ? {
         handle: creator.handle,
         name: creator.name,

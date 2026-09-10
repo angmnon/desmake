@@ -372,7 +372,7 @@ export default function CheckoutPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="small font-semibold truncate">{it.title}</div>
-                        <div className="tiny mono" style={{ color: "var(--color-tx-3)" }}>{adapterName(it.adapter)} · {it.variant} × {it.qty}</div>
+                        <div className="tiny mono" style={{ color: "var(--color-tx-3)" }}>{adapterName(it.adapter)}{it.variant ? ` · ${it.variant}` : ""} × {it.qty}</div>
                       </div>
                       <div className="small mono">{money(it.priceCents * it.qty)}</div>
                     </div>
@@ -439,7 +439,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="small font-semibold truncate">{it.title}</div>
-                    <div className="tiny mono" style={{ color: "var(--color-tx-3)" }}>{adapterName(it.adapter)} · {it.variant} × {it.qty}</div>
+                    <div className="tiny mono" style={{ color: "var(--color-tx-3)" }}>{adapterName(it.adapter)}{it.variant ? ` · ${it.variant}` : ""} × {it.qty}</div>
                   </div>
                   <div className="small mono">{money(it.priceCents * it.qty)}</div>
                 </div>

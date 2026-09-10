@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
 import { getSiteBaseUrl } from "@/lib/url";
 
 // No edge runtime — reads the session store (R2/C1).
@@ -12,7 +12,7 @@ import { getSiteBaseUrl } from "@/lib/url";
  *  - `profile_link`: the public creator profile URL.
  */
 export async function GET(request: NextRequest) {
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to view share links" } }, { status: 401 });
   }

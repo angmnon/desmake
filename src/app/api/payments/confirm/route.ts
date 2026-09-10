@@ -184,7 +184,9 @@ export async function POST(request: NextRequest) {
   // ── No gateway configured ──
   // In production a verified gateway is mandatory. Allowing a free markPaid here would
   // let anyone confirm their own order without paying (P0-4). Refuse and alert.
-  if (process.env.NODE_ENV === "production") {
+  // R2 hardening: treat everything except an explicit `development` build as production,
+  // so the free path can never be reached by a non-"production" runtime value.
+  if (process.env.NODE_ENV !== "development") {
     recordError("/api/payments/confirm", "stripe disabled in production — refusing markPaid");
     void notifyAlert("Payment gateway unavailable", `order ${orderId} cannot be confirmed: Stripe not enabled in production`);
     return NextResponse.json(

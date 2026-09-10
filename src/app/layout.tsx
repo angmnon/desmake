@@ -11,13 +11,13 @@ import CookieConsent from '@/components/CookieConsent';
 
 // H-SEO/P0: render content & SEO pages via ISR instead of force-dynamic.
 // force-dynamic sent `no-store` on every route and killed all edge caching —
-// every request hit the origin container (worst-case TTFB, needless container
-// load). With `revalidate`, Next emits `Cache-Control: s-maxage=600,
-// stale-while-revalidate`, so Cloudflare's edge serves cached HTML for 10 min
-// and revalidates in the background. Routes that truly need a per-request render
-// keep their own `force-dynamic` (listing, explore, dashboard, cdn, robots,
-// sitemap, llms). A deploy still reflects immediately: we purge the CDN cache
-// right after `wrangler deploy`, so a stale page never survives a release.
+// every request hit the origin Worker (worst-case TTFB, needless load). With
+// `revalidate`, Next emits `Cache-Control: s-maxage=600, stale-while-revalidate`,
+// so Cloudflare's edge serves cached HTML for 10 min and revalidates in the
+// background. Routes that truly need a per-request render keep their own
+// `force-dynamic` (listing, explore, dashboard, cdn, robots, sitemap, llms). A
+// deploy still reflects immediately: we purge the CDN cache right after
+// `wrangler deploy`, so a stale page never survives a release.
 export const revalidate = 600;
 
 // Self-hosted webfonts (next/font/google). Downloaded at build time and served

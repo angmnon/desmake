@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { getSession } from "@/lib/session";
+import { getSessionAsync } from "@/lib/session";
 
 // B1 migration: replaces the auth fast-path that used to live in proxy.ts
 // (Next 16's Node.js middleware, which OpenNext does not support). This layout
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OrdersLayout({ children }: { children: ReactNode }) {
   const token = (await cookies()).get("dm_session")?.value;
-  const session = getSession(token);
+  const session = await getSessionAsync(token);
   if (!session) redirect("/auth?next=/orders");
   return <>{children}</>;
 }

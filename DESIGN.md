@@ -18,10 +18,11 @@
 - 紫罗兰 `violet`：#6b3df5（已发货）
 
 ### 字体
-- 主字体无衬线：**Inter** (300–800) — UI 正文/标题
-- 衬线点缀：**Instrument Serif** (italic 400) — 大标题中"anywhere""geometry"等斜体诗意词
-- 等宽字体：**JetBrains Mono** (400,500) — eyebrow/标签/订单号/时间戳/数据
-- 字体引入：通过 globals.css 顶部 @import 引入 Google Fonts（CN 环境可使用 fonts.googleapis.cn）
+- 主字体无衬线：**Jost** (300–600) — UI 正文/标签/数据（含 `.mono` 大写小标签）
+- 衬线点缀：**Cormorant Garamond** (italic 400) — `.h1`/`.display` 与斜体诗意词
+- 字体引入：`next/font/google` **构建期自托管**（`src/app/layout.tsx` 的 `Jost`/`Cormorant_Garamond`），
+  产物从同源 `/_next/static` 提供；`globals.css` 仅消费 `--font-sans` / `--font-serif`。
+  **不要**改回 globals.css 顶部 `@import` 外链（渲染阻塞 + 境外访问不稳，且已被 CSP 收紧）。
 
 ### 圆角
 - xs: 4px, sm: 8px, md: 14px, lg: 22px, xl: 32px, full: 999px

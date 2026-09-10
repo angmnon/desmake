@@ -1,13 +1,20 @@
 // Client-side analytics + first-party attribution helpers for Desmake.
 //
-// Two independent concerns:
-//   1. Consent-gated third-party tracking (GA4 / Meta Pixel / Google Ads). The
-//      `track()` function only fires when the visitor has granted consent
-//      (see consent.ts) and after the analytics scripts have loaded (see the
-//      `Analytics` component). Early events are buffered and flushed on ready.
+// Two independent concerns, both consent-gated:
+//   1. Third-party tracking (GA4 / Meta Pixel / Google Ads). The `track()`
+//      function only fires when the visitor has granted consent (see consent.ts)
+//      and after the analytics scripts have loaded (see the `Analytics`
+//      component). Early events are buffered and flushed on ready.
 //   2. First-party attribution capture (UTM / gclid / fbclid / ref). Stored in a
-//      same-site `dm_attrib` cookie so we can attribute sign-ups and orders to
-//      the paid campaign that drove them — independent of any consent state.
+//      same-site `dm_attrib` cookie so we can attribute sign-ups and orders to the
+//      campaign that drove them.
+//
+// R2-M-6: attribution capture is ALSO gated on consent. The dm_attrib cookie is a
+// persistent (90-day) identifier used for marketing attribution, so under
+// ePrivacy/GDPR it needs consent just like the third-party pixels. Note the
+// *functional* referral cookie `dm_ref` (set server-side by /api/ref) and the
+// `?ref=` signup param are separate and unaffected — paying creators their
+// referral commission does not depend on marketing consent.
 //
 // This module is imported by both client components and server routes (only the
 // `readAttributionFromRequest` export is used server-side; all window/document
@@ -105,9 +112,17 @@ export type Attribution = {
   ts?: number;
 };
 
-/** Capture UTM / click-id params from the URL into a first-party cookie. */
+/**
+ * Capture UTM / click-id params from the URL into a first-party cookie.
+ *
+ * R2-M-6: no-op unless the visitor has granted consent — this cookie is a
+ * persistent marketing identifier, so writing it before consent violates
+ * ePrivacy/GDPR. Called again when consent flips to "granted" so a visitor who
+ * accepts a moment after landing still has their landing params captured.
+ */
 export function captureAttribution(): void {
   if (typeof window === "undefined") return;
+  if (readConsent() !== "granted") return;
   const params = new URLSearchParams(window.location.search);
   const data: Record<string, string> = {};
   let has = false;

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSession, SESSION_COOKIE, updateCreatorProfile } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE, updateCreatorProfile } from "@/lib/session";
 import { rateLimit } from "@/lib/ratelimit";
 
 // No edge runtime — updateCreatorProfile writes the user store / D1 (R2/C1).
 
 export async function PATCH(request: NextRequest) {
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to edit your profile" } }, { status: 401 });
   }

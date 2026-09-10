@@ -140,7 +140,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const base = p.type === "news" ? "/news" : p.type === "faq" ? "/faq" : "/blog";
       entries.push({
         url: `${BASE}${base}/${p.slug}`,
-        lastModified: new Date(p.published_at),
+        // D7-10: CMS `published_at` is an epoch number that can be absent/NaN on
+        // legacy rows — a bare `new Date(...)` yielded an Invalid Date and could
+        // break the whole sitemap. Route it through the same safe parser.
+        lastModified: safeLastModified(p.published_at),
         changeFrequency: "weekly",
         priority: 0.6,
       });

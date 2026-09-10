@@ -23,6 +23,7 @@ import {
   persistOrder,
   findPublishedDesignByIdAsync,
   listOrdersForUserAsync,
+  findOrderByIdempotencyKey,
 } from "@/lib/stores";
 import {
   getSessionAsync,
@@ -136,7 +137,10 @@ export async function POST(request: NextRequest) {
         ? shipCountryRaw
         : "";
   const cfCountry = (request.headers.get("cf-ipcountry") || "").trim().toUpperCase();
-  const country = (countryRaw || "").trim().toUpperCase() || cfCountry;
+  // R2/M-3: GeoIP is authoritative; the client-supplied country is only a fallback for when
+  // Cloudflare provides none (e.g. local dev). Previously the client value won, so a buyer
+  // could declare a low/zero-tax destination to dodge destination VAT.
+  const country = cfCountry || (countryRaw || "").trim().toUpperCase();
   const region: Region = regionFromCountry(country);
 
   // 跨实例解析：先把本次订单涉及的 listing 一次性解析好（内存未命中回落 D1），
@@ -197,15 +201,29 @@ export async function POST(request: NextRequest) {
 
     // ── M3: 解析 SKU（具体商品） ──
     // 允许的商品集合 = 发布时勾选的 selectedProducts，或旧数据由 adapters 推导的 family 默认 SKU。
-    const allowedSkus = pub && pub.selectedProducts && pub.selectedProducts.length > 0
-      ? pub.selectedProducts.map((p) => p.sku)
+    const hasCurated = Boolean(pub && pub.selectedProducts && pub.selectedProducts.length > 0);
+    const allowedSkus = hasCurated
+      ? (pub?.selectedProducts ?? []).map((p) => p.sku)
       : listing.adapters.map((a) => adapterDefaultSku(a) ?? "").filter(Boolean);
 
     let sku = typeof it.sku === "string" ? it.sku : "";
     if (!sku || !allowedSkus.includes(sku)) {
-      // 兼容旧下单：传 adapter 不传 sku → 用 family 默认 SKU
       const reqAdapter = typeof it.adapter === "string" ? it.adapter : "";
-      sku = adapterDefaultSku(reqAdapter) ?? allowedSkus[0] ?? "";
+      // R2/M-2: when the listing curates `selectedProducts`, the adapter's family-default
+      // SKU is NOT necessarily offered. The old fallback blindly used it, so a client could
+      // send an adapter (valid per listing.adapters) and buy a cheaper SKU outside the
+      // published set. Only accept the family default if it is actually allowed; otherwise
+      // reject rather than silently substituting a different product.
+      const familyDefault = adapterDefaultSku(reqAdapter) ?? "";
+      if (familyDefault && allowedSkus.includes(familyDefault)) {
+        sku = familyDefault;
+      } else if (!hasCurated && allowedSkus.length > 0) {
+        // Legacy shape (no curated set): keep adapter-only orders working.
+        sku = allowedSkus[0];
+      } else {
+        rejected.push({ index, reason: "unknown product" });
+        return;
+      }
     }
     if (!sku || !SKU_BY_ID[sku]) {
       rejected.push({ index, reason: "unknown product" });
@@ -222,9 +240,19 @@ export async function POST(request: NextRequest) {
 
     const variant = typeof it.variant === "string" ? it.variant : "";
     const allowedVariants = variantsForSku(sku);
-    if (allowedVariants.length > 0 && !allowedVariants.includes(variant)) {
-      rejected.push({ index, reason: `variant must be one of: ${allowedVariants.join(", ")}` });
-      return;
+    if (variant) {
+      // R2-Low: a SKU with NO variants (e.g. the `home` family — mugs, blankets)
+      // must reject any supplied variant. The old guard only checked membership
+      // when the list was non-empty, so a client could send a 3D-print variant
+      // (e.g. "PLA · Ivory") against a mug and be overcharged its delta.
+      if (allowedVariants.length === 0) {
+        rejected.push({ index, reason: "this product has no selectable variants" });
+        return;
+      }
+      if (!allowedVariants.includes(variant)) {
+        rejected.push({ index, reason: `variant must be one of: ${allowedVariants.join(", ")}` });
+        return;
+      }
     }
 
     // 价格始终服务端计算：售价 = SKU 建议零售价(含运费×1.15) + variant 增量；
@@ -341,20 +369,21 @@ export async function POST(request: NextRequest) {
       ? ((body as { idempotency_key: string }).idempotency_key || "").trim()
       : "");
   if (idempotencyKey) {
-    for (const existing of ordersStore().values()) {
-      if (existing.user_id === user.id && existing.idempotency_key === idempotencyKey) {
-        return NextResponse.json(
-          {
-            order_id: existing.order_id,
-            payment_ref: existing.payment?.ref ?? null,
-            status: existing.status,
-            total: existing.pricing?.total_cents ?? 0,
-            created_at: existing.created_at,
-            idempotent_replay: true,
-          },
-          { status: 200 },
-        );
-      }
+    // R2/M-1: consult D1 (the durable store) so a retry that lands on a different isolate
+    // replays the original order instead of creating a second pending order (double charge).
+    const existing = await findOrderByIdempotencyKey(user.id, idempotencyKey);
+    if (existing) {
+      return NextResponse.json(
+        {
+          order_id: existing.order_id,
+          payment_ref: existing.payment?.ref ?? null,
+          status: existing.status,
+          total: existing.pricing?.total_cents ?? 0,
+          created_at: existing.created_at,
+          idempotent_replay: true,
+        },
+        { status: 200 },
+      );
     }
   }
 

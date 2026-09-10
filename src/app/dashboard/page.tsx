@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
 import { DashboardClient } from "./DashboardClient";
 
 // Reads the session cookie → must render per request. The root layout is now ISR
@@ -16,7 +16,7 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  const user = getSession(token);
+  const user = await getSessionAsync(token);
   if (!user) redirect("/auth?next=/dashboard");
 
   return <DashboardClient handle={user.handle} name={user.name} />;

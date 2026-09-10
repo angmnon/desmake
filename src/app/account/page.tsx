@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, LogOut, Package, ImagePlus, Wallet } from "lucide-react";
+import { ArrowRight, LogOut, Package, ImagePlus, Wallet, Download, Trash2, Loader2 } from "lucide-react";
 import type { Design } from "@/lib/data";
 import { money } from "@/lib/data";
 import { DesignCard } from "@/components/DesignCard";
@@ -16,7 +16,7 @@ type EarningsSummary = {
   paid_count: number;
 };
 
-type User = { id: string; email: string; name: string; role: string };
+type User = { id: string; email: string; name: string; role: string; handle?: string };
 
 type MineDesign = {
   id: string; slug: string; title: string; price_cents: number;
@@ -51,7 +51,7 @@ export default function AccountPage() {
           slug: m.slug,
           seed: m.seed || m.slug,
           title: m.title,
-          creator: user.email.split("@")[0].slice(0, 40),
+          creator: user.handle || "you",
           category: m.category || "art",
           adapters: m.adapters || ["poster", "tshirt", "sticker"],
           premiumCents: m.premium_cents || 0,
@@ -84,6 +84,79 @@ export default function AccountPage() {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     router.refresh();
+  };
+
+  // R2-M-7: DSAR — data export + account deletion, surfaced in the UI so the
+  // promise made in /privacy ("from your account settings") is actually reachable.
+  const [dataBusy, setDataBusy] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [delPassword, setDelPassword] = useState("");
+  const [delError, setDelError] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
+
+  const exportData = async () => {
+    setDataBusy(true);
+    try {
+      const r = await fetch("/api/account/export");
+      if (!r.ok) throw new Error("export failed");
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "desmake-data-export.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDelError("We could not prepare your export — please try again.");
+    } finally {
+      setDataBusy(false);
+    }
+  };
+
+  // R2-M-8: delete one of my own listings (removes the D1 row + its R2 image).
+  const [removingSlug, setRemovingSlug] = useState<string | null>(null);
+  const removeDesign = async (slug: string) => {
+    if (!window.confirm("Delete this listing? This removes it from the marketplace and cannot be undone.")) return;
+    setRemovingSlug(slug);
+    try {
+      const r = await fetch(`/api/designs/${encodeURIComponent(slug)}`, { method: "DELETE" });
+      if (!r.ok) {
+        const d = (await r.json().catch(() => ({}))) as { error?: { message?: string } };
+        setDelError(d?.error?.message || "Could not delete the listing.");
+        return;
+      }
+      setMyDesigns((list) => list.filter((d) => d.slug !== slug));
+    } catch {
+      setDelError("Network error — please try again.");
+    } finally {
+      setRemovingSlug(null);
+    }
+  };
+
+  const deleteAccount = async () => {
+    setDelBusy(true);
+    setDelError("");
+    try {
+      const r = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE", password: delPassword }),
+      });
+      const d = (await r.json().catch(() => ({}))) as { error?: { message?: string } };
+      if (!r.ok) {
+        setDelError(d?.error?.message || "We could not delete your account.");
+        return;
+      }
+      setUser(null);
+      router.push("/");
+      router.refresh();
+    } catch {
+      setDelError("Network error — please try again.");
+    } finally {
+      setDelBusy(false);
+    }
   };
 
   if (loaded && !user) {
@@ -173,9 +246,107 @@ export default function AccountPage() {
             </div>
           ) : (
             <div className="grid g-4">
-              {myDesigns.map((d) => <DesignCard key={d.id} design={d} />)}
+              {myDesigns.map((d) => (
+                <div key={d.id} style={{ position: "relative" }}>
+                  <DesignCard design={d} />
+                  <button
+                    onClick={() => removeDesign(d.slug)}
+                    disabled={removingSlug === d.slug}
+                    aria-label={`Delete ${d.title}`}
+                    title="Delete listing"
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      zIndex: 3,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 30,
+                      height: 30,
+                      borderRadius: 9,
+                      border: "1px solid var(--color-line, #e2e0da)",
+                      background: "rgba(247,246,243,0.92)",
+                      color: "var(--color-tx-1, #0c0c0d)",
+                      cursor: removingSlug === d.slug ? "default" : "pointer",
+                    }}
+                  >
+                    {removingSlug === d.slug ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  </button>
+                </div>
+              ))}
             </div>
           )}
+        </div>
+
+        {/* Privacy & data (GDPR Art.15 / Art.17) */}
+        <div className="mt-10">
+          <h2 className="h3 mb-5">Privacy &amp; data</h2>
+          <div className="stack gap-3">
+            <div className="card flex items-center gap-4" style={{ padding: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--color-paper-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Download size={20} />
+              </div>
+              <div className="flex-1">
+                <div className="h5">Export my data</div>
+                <div className="tiny" style={{ color: "var(--color-tx-3)" }}>Download everything we hold about your account as JSON</div>
+              </div>
+              <button onClick={exportData} disabled={dataBusy} className="btn btn-outline btn-sm">
+                {dataBusy ? "Preparing…" : "Download"}
+              </button>
+            </div>
+
+            <div className="card" style={{ padding: 20, borderColor: "var(--color-danger, #e6b3b3)" }}>
+              <div className="flex items-center gap-4">
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--color-paper-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Trash2 size={20} />
+                </div>
+                <div className="flex-1">
+                  <div className="h5">Delete my account</div>
+                  <div className="tiny" style={{ color: "var(--color-tx-3)" }}>
+                    Removes your profile and published listings. Orders already in production are kept for tax records.
+                  </div>
+                </div>
+                {!showDelete && (
+                  <button onClick={() => { setShowDelete(true); setDelError(""); }} className="btn btn-outline btn-sm">Delete</button>
+                )}
+              </div>
+
+              {showDelete && (
+                <div className="mt-4" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <p className="small" style={{ margin: 0 }}>
+                    This is permanent. Enter your password to confirm — <strong>this cannot be undone.</strong>
+                  </p>
+                  <input
+                    type="password"
+                    value={delPassword}
+                    onChange={(e) => setDelPassword(e.target.value)}
+                    placeholder="Your password"
+                    autoComplete="current-password"
+                    style={{ padding: "10px 12px", borderRadius: 10, border: "1px solid var(--color-line, #ddd)", background: "var(--color-paper-2)", color: "var(--color-tx-1)" }}
+                  />
+                  {delError && <div className="small" style={{ color: "var(--color-danger, #b3261e)" }}>{delError}</div>}
+                  <div className="row gap-2">
+                    <button
+                      onClick={deleteAccount}
+                      disabled={delBusy || !delPassword}
+                      className="btn btn-sm"
+                      style={{ background: "var(--color-danger, #b3261e)", color: "#fff", border: "none" }}
+                    >
+                      {delBusy ? "Deleting…" : "Permanently delete my account"}
+                    </button>
+                    <button
+                      onClick={() => { setShowDelete(false); setDelPassword(""); setDelError(""); }}
+                      className="btn btn-outline btn-sm"
+                      disabled={delBusy}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </section>

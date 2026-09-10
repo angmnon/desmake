@@ -74,12 +74,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const status = currentStatus(age);
     if (status !== order.manufacturing.status) {
       order.manufacturing.status = status;
-      if (["in_production", "quality_check", "shipped", "delivered"].includes(status)) {
-        order.manufacturing.facility_id = order.manufacturing.facility_id || "fac_us-west-03";
-      }
-      if (["shipped", "delivered"].includes(status)) {
-        order.manufacturing.tracking = order.manufacturing.tracking || "1Z999AA10123456784";
-      }
+      // R2-Low: do NOT fabricate a facility id or a carrier tracking number.
+      // This block used to stamp the literal "fac_us-west-03" and UPS-style
+      // "1Z999AA10123456784" onto every real order once it aged past a threshold,
+      // presenting made-up logistics data to a paying customer. facility_id and
+      // tracking are populated only by a real fulfillment integration; until one
+      // exists they stay null and the UI shows "pending carrier assignment".
       order.updated_at = new Date().toISOString();
       order.history = buildHistory(age);
     }

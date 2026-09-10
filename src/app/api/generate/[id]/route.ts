@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getJob, persistJob, type GenOutput, type GenJob } from "@/lib/stores";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
 import { STYLE_PRESETS } from "@/lib/presets";
 
 // R2/M13: the requested aspect ratio must actually shape the artifact. It used to be
@@ -18,7 +18,7 @@ const ASPECT_DIMENSIONS: Record<string, { width: number; height: number }> = {
 // POST /api/generate, which created the job (R2/C1).
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = getSession(req.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(req.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to view generation" } }, { status: 401 });
   }

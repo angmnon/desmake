@@ -16,8 +16,9 @@ const GA_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "";
  * injected imperatively (not via next/script) so we keep full control over the
  * on-load handshake that flips `__dmAnalyticsReady` and flushes buffered events.
  *
- * Also captures first-party attribution (UTM) on every load, independent of
- * consent — that cookie is first-party and used only for our own attribution.
+ * Also captures first-party attribution (UTM) — but only once consent is
+ * granted (R2-M-6): the dm_attrib cookie is a marketing identifier, so it is
+ * written on accept, or re-attempted the moment consent flips to granted.
  */
 export default function Analytics() {
   const [consent, setConsent] = useState<"unset" | "granted" | "denied">("unset");
@@ -26,8 +27,12 @@ export default function Analytics() {
   useEffect(() => {
     captureAttribution();
     setConsent(readConsent());
-    const onChanged = (e: Event) =>
-      setConsent((e as CustomEvent).detail as "granted" | "denied");
+    const onChanged = (e: Event) => {
+      const detail = (e as CustomEvent).detail as "granted" | "denied";
+      // Consent just granted on a later tick — capture the landing params now.
+      if (detail === "granted") captureAttribution();
+      setConsent(detail);
+    };
     window.addEventListener("dm-consent-changed", onChanged as EventListener);
     return () =>
       window.removeEventListener("dm-consent-changed", onChanged as EventListener);

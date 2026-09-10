@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getOrder, ordersStore, persistOrder, recordOrderEarnings, recordReferralEarnings, getOrderByPaymentIntent, reverseEarningsForOrder } from "@/lib/stores";
 import { stripe, STRIPE_ENABLED, STRIPE_WEBHOOK_SECRET } from "@/lib/stripe";
 import { recordError, notifyAlert } from "@/lib/monitor";
+import { runDurable } from "@/lib/session";
 
 // No edge runtime — needs the raw request body to verify the Stripe signature.
 
@@ -56,11 +57,25 @@ export async function POST(request: NextRequest) {
         ];
         order.manufacturing.status = "routing";
         ordersStore().set(order.order_id, order);
-        void persistOrder(order).catch(() => {});
+        // R2-H-3: use runDurable so these survive the response, and ALERT on failure
+        // instead of silently swallowing — a lost earnings write is lost money.
+        runDurable("wh.persistOrder", persistOrder(order));
         // P0-5: record earnings here too, so they are captured regardless of whether the
         // client /confirm or this webhook was the path that marked the order paid. Idempotent.
-        void recordOrderEarnings(order).catch(() => {});
-        void recordReferralEarnings(order).catch(() => {});
+        runDurable(
+          "wh.recordOrderEarnings",
+          recordOrderEarnings(order).catch((err) => {
+            recordError("webhook.recordOrderEarnings", err);
+            void notifyAlert("Creator earnings write FAILED (webhook)", `order ${order.order_id} — royalties were not recorded`);
+          }),
+        );
+        runDurable(
+          "wh.recordReferralEarnings",
+          recordReferralEarnings(order).catch((err) => {
+            recordError("webhook.recordReferralEarnings", err);
+            void notifyAlert("Referral earnings write FAILED (webhook)", `order ${order.order_id} — referral commission was not recorded`);
+          }),
+        );
       }
     }
   }
@@ -80,8 +95,29 @@ export async function POST(request: NextRequest) {
         { status: newStatus, note: `Stripe ${event.type}`, ts: order.updated_at },
       ];
       ordersStore().set(order.order_id, order);
-      void persistOrder(order).catch(() => {});
-      void reverseEarningsForOrder(order.order_id).catch(() => {});
+      runDurable("wh.persistOrder", persistOrder(order));
+      // R2-H-3: surface reversal failures AND the manual-clawback signal (alreadyPaid).
+      // A swallowed reversal failure means a refunded order can still be paid out at
+      // month end; a dropped alreadyPaid means funds already sent are never recovered.
+      runDurable(
+        "wh.reverseEarningsForOrder",
+        reverseEarningsForOrder(order.order_id)
+          .then((res) => {
+            if (res.alreadyPaid > 0) {
+              void notifyAlert(
+                "Refund clawback required",
+                `order ${order.order_id} (${newStatus}) — ${res.alreadyPaid} already-paid earning row(s) reversed; recover the paid-out funds manually.`,
+              );
+            }
+          })
+          .catch((err) => {
+            recordError("webhook.reverseEarningsForOrder", err);
+            void notifyAlert(
+              "Earnings reversal FAILED (webhook)",
+              `order ${order.order_id} (${newStatus}) — earnings may still be payable despite the refund.`,
+            );
+          }),
+      );
       void notifyAlert(`Order ${newStatus}`, `order ${order.order_id} (Stripe ${event.type})`);
     }
   }

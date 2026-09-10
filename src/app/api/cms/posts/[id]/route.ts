@@ -5,7 +5,7 @@ import {
   deleteCmsPost,
   type CmsPostInput,
 } from "@/lib/cms";
-import { getCmsKeyFromRequest, cmsKeyValid, unauthorized } from "@/lib/cmsAuth";
+import { getCmsKeyFromRequest, cmsKeyValid, unauthorized, cmsThrottled } from "@/lib/cmsAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +14,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const throttled = cmsThrottled(req);
+  if (throttled) return throttled;
   if (!cmsKeyValid(getCmsKeyFromRequest(req))) return unauthorized();
   const { id } = await params;
   const post = await getCmsPostById(id);
@@ -25,6 +27,8 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const throttled = cmsThrottled(req);
+  if (throttled) return throttled;
   if (!cmsKeyValid(getCmsKeyFromRequest(req))) return unauthorized();
   const { id } = await params;
 
@@ -60,6 +64,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const throttled = cmsThrottled(req);
+  if (throttled) return throttled;
   if (!cmsKeyValid(getCmsKeyFromRequest(req))) return unauthorized();
   const { id } = await params;
   const ok = await deleteCmsPost(id);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jobsStore, newId, persistJob, type GenJob } from "@/lib/stores";
-import { getSession, SESSION_COOKIE, consumeGenerationQuota, isEmailVerificationSatisfied } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE, consumeGenerationQuota, isEmailVerificationSatisfied } from "@/lib/session";
 import { STYLE_PRESETS } from "@/lib/presets";
 import { generateImage, imageProviderEnabled } from "@/lib/ai";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
@@ -13,7 +13,7 @@ const ASPECTS = ["1:1", "3:4", "4:3", "16:9"] as const;
 
 export async function POST(request: NextRequest) {
   // Generation creates a server-side job (a write) — require auth.
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to generate designs" } }, { status: 401 });
   }

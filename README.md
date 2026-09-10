@@ -67,15 +67,17 @@ src/
 ├── lib/                     # 领域逻辑
 │   ├── data.ts              # Seed 数据 + 唯一价格源 unitPriceCents()/computeTotals()
 │   ├── catalog.ts           # seed 设计 + Studio 已发布设计的统一查找层
-│   ├── stores.ts            # globalThis 内存存储 + CSPRNG id/token
-│   ├── session.ts           # 会话（httpOnly cookie，7 天 TTL）
+│   ├── stores.ts            # 持久化存储：D1 为真源，globalThis Map 仅作热缓存
+│   ├── db.ts                # D1 绑定封装 + 幂等 schema bootstrap
+│   ├── session.ts           # 会话（httpOnly cookie，7 天 TTL，D1 兜底）
 │   └── cart.tsx             # 购物车 Provider（localStorage）
 ├── hooks/                   # 自定义 React Hooks
-├── proxy.ts                 # Next 16 proxy（原 middleware.ts）——仅 UX 跳转，非安全边界
-└── server.ts                # 自定义服务器入口（构建产物为 dist/server.js）
+└── (无 server.ts / proxy.ts / middleware.ts —— 均为已删除架构的残留描述)
 ```
 
-> 没有独立的 `server/` 目录。服务器入口是 `src/server.ts`，由 `scripts/build.sh` 用 tsup 打包为 `dist/server.js`，`scripts/start.sh` 再以 `node dist/server.js` 启动。
+> 没有独立的 `server/` 目录，也**没有自定义 Node 服务器**。B1 迁移后构建产物是
+> `.open-next/worker.js`（OpenNext → Cloudflare Workers），入口文件即 `wrangler.jsonc`
+> 的 `main`。`scripts/build.sh` 跑 `next build`，`pnpm deploy` 再经 OpenNext 转换并发布。
 
 ## 核心开发规范
 
@@ -359,18 +361,26 @@ export const useStore = create<Store>((set) => ({
 }));
 ```
 
-### 集成数据库
+### 数据库与存储
 
-当前 MVP **不依赖数据库**：订单、生成任务与用户会话均存于进程内存（见 `src/lib/stores.ts`、`src/lib/session.ts`），生产环境应迁移到 Cloudflare KV/D1/R2 + 真实用户库。若后续引入 ORM，建议在 `src/lib/db.ts` 中配置，并补充相应的 schema 迁移。
+生产环境使用 **Cloudflare D1（真源）+ R2（对象存储）**，均为原生 Worker 绑定：
+
+- `users` / `orders` / `designs` / `generation_jobs` / `creator_earnings` / `referral_earnings` /
+  `design_events` / `cms_posts` / `catalog_meta` / `settle_audit` / `consent_log`
+- 每个 isolate 的 `globalThis` Map 只是**热缓存**；读取一律回落 D1，写入先落 D1 再清缓存。
+  绝不把 `globalThis` 当作跨实例共享状态（多 isolate 下会静默失效）。
+- schema 由 `src/lib/db.ts` 的 `ensureSchema()` 幂等 bootstrap（`PRAGMA` 探测后建表/列/索引）。
+- 图片存 R2，经 `/cdn/<key>` 输出；`/cdn-cgi/image/...` 走 Cloudflare Image Resizing。
 
 ## 技术栈
 
-- **框架**: Next.js 16.1.1 (App Router) + 自定义 Node 服务器（`src/server.ts` → tsup → `dist/server.js`）
+- **框架**: Next.js 16 (App Router) + `@opennextjs/cloudflare` → Cloudflare Workers（无自定义服务器）
+- **数据**: Cloudflare D1 + R2 + Image Resizing（原生绑定）
 - **UI**: 手写设计系统（`src/app/globals.css`）+ Tailwind CSS v4。无组件库
 - **表单**: 原生受控组件（未安装 React Hook Form / Zod）
 - **图标**: Lucide React
-- **字体**: Inter / Instrument Serif / JetBrains Mono（经 `fonts.googleapis.cn` 引入，CSP 已放行 `fonts.gstatic.cn`）
-- **包管理器**: pnpm 9+
+- **字体**: Jost / Cormorant Garamond 等 —— 经 `next/font/google` **构建期自托管**（运行时无 Google Fonts 外链，见 `src/app/layout.tsx`）
+- **包管理器**: pnpm 9+（`preinstall` 钩子强制，见 `scripts/check-pm.mjs`）
 - **TypeScript**: 5.x（strict）
 
 ## 参考文档

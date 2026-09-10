@@ -11,7 +11,7 @@
 // isolates do not share globalThis.
 
 import { newId } from "@/lib/stores";
-import { d1Query, D1_ENABLED } from "@/lib/db";
+import { d1Query, d1Run, D1_ENABLED } from "@/lib/db";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "node:crypto";
 
@@ -66,7 +66,10 @@ export function sessionCookieOptions() {
     httpOnly: true,
     sameSite: "lax" as const,
     path: "/",
-    secure: process.env.NODE_ENV === "production",
+    // R2 hardening: Secure unless this is an explicit `development` build. Relying on
+    // `=== "production"` meant any other runtime value ("staging"/unset) silently
+    // dropped the Secure flag and allowed the session cookie over plain HTTP.
+    secure: process.env.NODE_ENV !== "development",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   };
 }
@@ -126,6 +129,19 @@ export function verifyPassword(password: string, stored: string): boolean {
 }
 
 // ────────────────────────── account ops ──────────────────────────
+
+/**
+ * R2-Low: login timing-oracle mitigation. When an email does not resolve to a
+ * user, the caller runs one scrypt verification against this fixed dummy hash so
+ * that the "unknown email" and "wrong password" branches cost the same. Without
+ * it, latency alone (instant vs ~scrypt) enumerates registered emails.
+ */
+const DUMMY_PASSWORD_HASH = `scrypt$${SCRYPT_COST}$${"0".repeat(32)}$${"0".repeat(SCRYPT_KEYLEN * 2)}`;
+
+/** Burn one scrypt round so an unknown-account login takes as long as a real compare. */
+export function equalizePasswordTiming(password: string): void {
+  verifyPassword(password, DUMMY_PASSWORD_HASH);
+}
 
 /**
  * H-9 fix: run a durability write without blocking the response, but **keep it
@@ -354,7 +370,7 @@ function deriveLegacyHandle(baseName: string, userId: string): string {
 }
 
 /** Create a brand-new password account. Throws if the email is taken. */
-export function createUser(
+export async function createUser(
   email: string,
   name: string,
   password: string,
@@ -369,7 +385,7 @@ export function createUser(
       landing?: string;
     } | null;
   },
-): UserRecord {
+): Promise<UserRecord> {
   const key = email.toLowerCase();
   if (users().has(key)) throw new Error("An account with this email already exists");
   const displayName = name || key.split("@")[0];
@@ -392,26 +408,22 @@ export function createUser(
     acquisitionFbclid: opts?.acquisition?.fbclid ?? null,
     acquisitionLanding: opts?.acquisition?.landing ?? null,
   };
+  // R2: race-safe, authoritative insert. The previous `ON CONFLICT(email) DO UPDATE`
+  // meant a concurrent first-time registration of the same email could overwrite the
+  // winner's name/handle/bio/referred_by/acquisition_* (a referral-attribution hijack).
+  // `DO NOTHING` + affected-row check makes the loser fail instead of clobbering.
+  await persistNewUser(user);
   users().set(key, user);
-  runDurable("persistUser", persistUser(user));
   return user;
 }
 
-async function persistUser(u: UserRecord): Promise<void> {
+/** Insert a brand-new user row; throws when the email already exists (race-safe). */
+async function persistNewUser(u: UserRecord): Promise<void> {
   if (!D1_ENABLED) return;
-  await d1Query(
+  const changed = await d1Run(
     `INSERT INTO users (id, email, name, password_hash, role, created_at, email_verified, session_epoch, gen_used_month, gen_month, handle, bio, avatar_seed, city, role_tag, verified, referred_by, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_gclid, acquisition_fbclid, acquisition_landing)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(email) DO UPDATE SET
-        name=excluded.name, role=excluded.role,
-        email_verified=excluded.email_verified, session_epoch=excluded.session_epoch,
-        gen_used_month=excluded.gen_used_month, gen_month=excluded.gen_month,
-        handle=excluded.handle, bio=excluded.bio,
-        avatar_seed=excluded.avatar_seed, city=excluded.city, role_tag=excluded.role_tag,
-        verified=excluded.verified, referred_by=excluded.referred_by,
-        acquisition_source=excluded.acquisition_source, acquisition_medium=excluded.acquisition_medium,
-        acquisition_campaign=excluded.acquisition_campaign, acquisition_gclid=excluded.acquisition_gclid,
-        acquisition_fbclid=excluded.acquisition_fbclid, acquisition_landing=excluded.acquisition_landing`,
+     ON CONFLICT(email) DO NOTHING`,
     [
       u.id, u.email, u.name, u.passwordHash, u.role, u.createdAt, u.emailVerified ? 1 : 0, u.sessionEpoch ?? 0, u.gen_used_month ?? 0, u.gen_month ?? null,
       u.handle, u.bio ?? null, u.avatarSeed ?? null, u.city ?? null, u.roleTag ?? null,
@@ -420,6 +432,7 @@ async function persistUser(u: UserRecord): Promise<void> {
       u.acquisitionGclid ?? null, u.acquisitionFbclid ?? null, u.acquisitionLanding ?? null,
     ],
   );
+  if (changed === 0) throw new Error("An account with this email already exists");
 }
 
 /**
@@ -482,12 +495,18 @@ export async function markUserVerified(userId: string): Promise<UserRecord | und
 // warning never breaks `next build` (the secret is only required at runtime).
 const SESSION_SECRET = process.env.SESSION_SECRET || "desmake-dev-insecure-session-secret";
 const __isBuild = process.env.NEXT_PHASE === "phase-production-build";
-if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET && !__isBuild) {
+// R2 hardening: previously gated on `NODE_ENV === "production"`. Next inlines NODE_ENV
+// at build time so this worked, but keying a security gate on one exact string is a
+// foot-gun — any non-"production" runtime value (staging/undefined) silently accepted
+// the public dev secret. Now anything that is not an explicit `development` build is
+// treated as production-grade and refuses to boot without a real secret.
+const __isDev = process.env.NODE_ENV === "development";
+if (!__isDev && !process.env.SESSION_SECRET && !__isBuild) {
   throw new Error(
-    "[session] FATAL: SESSION_SECRET is required in production. Set it via `wrangler secret put SESSION_SECRET`.",
+    "[session] FATAL: SESSION_SECRET is required outside development. Set it via `wrangler secret put SESSION_SECRET`.",
   );
 }
-if (process.env.NODE_ENV === "development" && !process.env.SESSION_SECRET) {
+if (__isDev && !process.env.SESSION_SECRET) {
   console.warn(
     "[session] WARNING: SESSION_SECRET not set — using an insecure dev default. Never use this in production.",
   );
@@ -522,9 +541,11 @@ export function getSession(token: string | undefined | null): SessionUser | null
   try {
     const obj = JSON.parse(b64urlDecode(payload)) as { u: SessionUser; exp: number; e?: number };
     if (!obj.u || typeof obj.exp !== "number" || obj.exp <= Date.now()) return null;
-    // H-7: reject tokens issued before the user's session epoch was bumped (logout /
-    // password change / account deletion). Fail-open: if this isolate hasn't loaded the
-    // user record we skip the check rather than mass-logout valid users on a cold instance.
+    // R2-H-1: DO NOT use this synchronous function to authorize a request. The session
+    // epoch (logout / password-change invalidation) can only be verified against the live
+    // user row, which is a D1 read — so here it is a BEST-EFFORT check against the
+    // per-isolate memory cache and is skipped on a cache miss (fail-open). Every route
+    // that authorizes MUST call getSessionAsync() instead, which resolves the live row.
     const rec = getUserById(obj.u.id);
     if (rec && (rec.sessionEpoch ?? 0) > (obj.u.sessionEpoch ?? 0)) return null;
     return obj.u;
@@ -546,8 +567,10 @@ export function getSession(token: string | undefined | null): SessionUser | null
  *    the user, so `bumpSessionEpoch` invalidates previously issued tokens instead of
  *    silently failing open.
  *
- * Use this on money paths (orders / payments). Read-only routes can keep using the
- * synchronous `getSession()` for cheap signature + expiry validation.
+ * R2-H-1: ALL authorization uses this. The synchronous `getSession()` cannot verify the
+ * session epoch against D1 (see its note), so any route that authorizes must resolve the
+ * live row here — otherwise a logged-out token keeps working on isolates that lack the
+ * in-memory user record.
  */
 export async function getSessionAsync(token: string | undefined | null): Promise<SessionUser | null> {
   const base = getSession(token);
@@ -600,16 +623,69 @@ export function destroySession(token: string | undefined | null): void {
 }
 
 /**
- * H-10: enforce a per-user monthly generation quota to cap AI/compute cost and blunt
- * abuse (especially when combined with unverified throwaway accounts). Returns whether
- * the user is under the cap and how many generations remain this month.
+ * H-10 / R2-H-2: enforce a per-user monthly generation quota to cap AI/compute cost and
+ * blunt abuse (especially when combined with unverified throwaway accounts).
  *
- * This is a WAF-level, per-isolate counter (mirrored to D1 for durability): under
- * Cloudflare's multi-instance model a single user's requests may hit different isolates,
- * so the effective ceiling is roughly cap × instance-count. For a hard global ceiling,
- * back this with a transactional D1 counter (single source of truth).
+ * R2 fix: the earlier implementation looked the user up ONLY in the per-isolate
+ * in-memory map — and `hydrateUsersAndSessions()` has zero call sites — so any isolate
+ * that had not already touched the user returned `{ ok: true }` unconditionally, i.e.
+ * the quota was effectively unlimited. D1 is now the authoritative, atomic counter:
+ * a single conditional UPDATE bumps the counter only while under the cap, so the limit
+ * is a real global ceiling (not cap × instance-count) and is race-free.
+ *
+ * Fail-closed: an unknown user or a D1 error DENIES the generation rather than allowing it.
  */
 export const GEN_MONTHLY_CAP = Number(process.env.GEN_MONTHLY_CAP_PER_USER || 200);
+
+export async function consumeGenerationQuota(userId: string): Promise<{ ok: boolean; remaining: number }> {
+  const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
+  if (!D1_ENABLED) {
+    // Dev-only in-memory fallback (no D1 binding).
+    let target: UserRecord | undefined;
+    for (const u of users().values()) if (u.id === userId) { target = u; break; }
+    if (!target) return { ok: true, remaining: GEN_MONTHLY_CAP };
+    if (target.gen_month !== monthKey) { target.gen_month = monthKey; target.gen_used_month = 0; }
+    const used = target.gen_used_month ?? 0;
+    if (used >= GEN_MONTHLY_CAP) return { ok: false, remaining: 0 };
+    target.gen_used_month = used + 1;
+    return { ok: true, remaining: GEN_MONTHLY_CAP - (used + 1) };
+  }
+  // Load the user from D1 (also warms the per-isolate cache). Unknown → deny.
+  let rec: UserRecord | undefined;
+  try {
+    rec = await getUserByIdAsync(userId);
+  } catch (e) {
+    console.error("[db] consumeGenerationQuota lookup failed:", e instanceof Error ? e.message : e);
+    return { ok: false, remaining: 0 }; // fail-closed
+  }
+  if (!rec) return { ok: false, remaining: 0 };
+  try {
+    // Atomic conditional increment: on a new month reset to 1, otherwise +1 — but only
+    // when the current month's usage is still below the cap. `changes === 0` means the
+    // user is at/over the cap (or the row vanished), which denies the request.
+    const changed = await d1Run(
+      `UPDATE users
+         SET gen_used_month = CASE WHEN gen_month = ? THEN COALESCE(gen_used_month, 0) + 1 ELSE 1 END,
+             gen_month = ?
+       WHERE id = ?
+         AND (gen_month IS NULL OR gen_month != ? OR COALESCE(gen_used_month, 0) < ?)`,
+      [monthKey, monthKey, userId, monthKey, GEN_MONTHLY_CAP],
+    );
+    if (changed === 0) {
+      rec.gen_month = monthKey;
+      rec.gen_used_month = GEN_MONTHLY_CAP;
+      return { ok: false, remaining: 0 };
+    }
+    const sel = await d1Query<{ gen_used_month?: number }>(`SELECT gen_used_month FROM users WHERE id = ?`, [userId]);
+    const used = Number(sel[0]?.gen_used_month) || 1;
+    rec.gen_month = monthKey;
+    rec.gen_used_month = used;
+    return { ok: true, remaining: Math.max(0, GEN_MONTHLY_CAP - used) };
+  } catch (e) {
+    console.error("[db] consumeGenerationQuota failed:", e instanceof Error ? e.message : e);
+    return { ok: false, remaining: 0 }; // fail-closed
+  }
+}
 
 /**
  * H-8: gate sensitive, costly, or abuse-prone operations (generation, orders, payouts)
@@ -622,34 +698,6 @@ export const REQUIRE_EMAIL_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION
 
 export function isEmailVerificationSatisfied(user: SessionUser): boolean {
   return !REQUIRE_EMAIL_VERIFICATION || Boolean(user.emailVerified);
-}
-
-export async function consumeGenerationQuota(userId: string): Promise<{ ok: boolean; remaining: number }> {
-  const monthKey = new Date().toISOString().slice(0, 7); // YYYY-MM
-  let target: UserRecord | undefined;
-  for (const u of users().values()) if (u.id === userId) { target = u; break; }
-  if (!target) return { ok: true, remaining: GEN_MONTHLY_CAP }; // unknown user (dev) → allow
-  // Roll the window over on a new month.
-  if (target.gen_month !== monthKey) {
-    target.gen_month = monthKey;
-    target.gen_used_month = 0;
-  }
-  const used = target.gen_used_month ?? 0;
-  if (used >= GEN_MONTHLY_CAP) return { ok: false, remaining: 0 };
-  target.gen_used_month = used + 1;
-  if (D1_ENABLED) {
-    try {
-      // Only bump when the month still matches (avoids double-counting right after a rollover
-      // observed on a different isolate). A mismatch is reconciled on the next hydrate.
-      await d1Query(
-        `UPDATE users SET gen_used_month = COALESCE(gen_used_month, 0) + 1, gen_month = ? WHERE id = ? AND (gen_month IS NULL OR gen_month = ?)`,
-        [monthKey, userId, monthKey],
-      );
-    } catch (e) {
-      console.error("[db] consumeGenerationQuota failed:", e instanceof Error ? e.message : e);
-    }
-  }
-  return { ok: true, remaining: GEN_MONTHLY_CAP - (used + 1) };
 }
 
 // ────────────────────────── D1 hydrate ──────────────────────────

@@ -59,18 +59,22 @@ AI-native design marketplace that connects creators with a global on-demand manu
 │   │   └── DesignCard.tsx        # Marketplace 网格卡（链接到 /creators/[handle]）
 │   ├── lib/
 │   │   ├── data.ts               # Seed 数据 + 单一价格源 unitPriceCents()/computeTotals()/money()
-│   │   ├── stores.ts             # 内存存储 + newId()（TS_WIDTH=9，时间戳解析无歧义）
-│   │   ├── session.ts            # 会话模块（upsertUser/createSession/getSession/destroySession）
+│   │   ├── stores.ts             # 持久化层：D1 为真源，globalThis Map 仅热缓存 + newId()
+│   │   ├── db.ts                 # D1 绑定封装 + d1Query/d1Run + 幂等 ensureSchema()
+│   │   ├── session.ts            # 会话模块（getSession/getSessionAsync/createSession/destroySession）
 │   │   ├── presets.ts            # STYLE_PRESETS（从 generate 路由抽离，避免非法 route export）
 │   │   ├── client-session.ts     # ensureSession() 客户端助手（演示登录）
 │   │   └── cart.tsx              # 购物车 CartProvider（localStorage 持久化，按 listing+adapter+variant 合并）
 │   │   └── catalog.ts            # 商品解析层：seed 设计 + Studio 已发布设计统一按 slug/id 查找
-│   ├── proxy.ts                  # Next 16 proxy（原 middleware.ts）：仅 /orders、/account 的 UX 快捷跳转，**非安全边界**
-│   └── server.ts                 # 自定义服务器入口（COZE_PROJECT_ENV=PROD 切生产模式）
-├── scripts/                     # build.sh / dev.sh / start.sh
+├── scripts/                     # build.sh / dev.sh / start.sh / deploy.sh / backup_d1.mjs
 ├── DESIGN.md
 └── .env.example
 ```
+
+> **无自定义服务器、无 proxy/middleware。** B1 迁移后构建产物是 `.open-next/worker.js`
+> （OpenNext → Cloudflare Workers，见 `wrangler.jsonc` 的 `main`）。仓库中**不存在**
+> `src/server.ts`、`src/proxy.ts`、`middleware.ts`、`Dockerfile`、`wrangler.toml`、
+> `worker.mjs` —— 旧文档对它们的描述已删除。部署见 `DEPLOY.md` 与 `B1_DEPLOY_RUNBOOK.html`。
 
 ## 核心设计与数据约定
 
@@ -141,19 +145,23 @@ AI-native design marketplace that connects creators with a global on-demand manu
 1. **新增 seed 数据**：在 `src/lib/data.ts` 的 `RAW_DESIGNS`/`RAW_CREATORS` 中添加条目，`DESIGNS`/`CREATORS` 会自动派生。
 2. **新增适配器/变体加价**：改 `ADAPTERS` 与 `variantDeltaCents()`。
 3. **新增 API**：**不要**声明 `export const runtime = "edge"`。内存存储（`globalThis` Map）在 Edge Runtime 下每个隔离实例各持一份，会话与订单会随机丢失——R2/C1 已把全部 12 处 edge 声明移除，保持 Node runtime 默认值。响应通过 `NextResponse.json()`；写操作需 `import { getSession } from "@/lib/session"` 校验会话并做归属校验（`row.user_id !== user.id` → 404/403）。
-4. **新增受保护路由**：真正的鉴权写在 route handler 里（`getSession()`）。`src/proxy.ts` 只是页面级 UX 快捷跳转，**不能当作安全边界**，也不匹配 `/api/*`。
+4. **新增受保护路由**：鉴权一律用 `getSessionAsync()`（查 D1，跨 isolate 可靠）。**不要**用同步的 `getSession()` 做授权——它只查本 isolate 的内存缓存，未命中即 fail-open（多 isolate 下会静默放行）。仓库没有 proxy/middleware，**不要**把页面级跳转当成安全边界；受保护页面必须在 page/layout 里自行校验会话。
 5. **新增页面**：默认英文 UI；保持 Swiss editorial 风格——大标题（`.display`/`.h1`）+ mono 小标签（`.eyebrow`）+ 卡片圆角 22px + 信号色 sparingly。
 6. **Cart 状态**：使用 `useCart()` hook 访问/修改购物车，会自动 localStorage 持久化并广播 `cart-updated` 事件；同一 `listing+adapter+variant` 行自动合并。
 
 ## 构建与运行
 
 ```bash
-pnpm install        # 安装依赖（仅 pnpm）
-pnpm dev            # 开发（HMR）
-pnpm build          # 生产构建
-pnpm start          # 生产运行（scripts/start.sh 设 NODE_ENV=production + COZE_PROJECT_ENV=PROD）
-pnpm validate       # tsc + eslint(build) + stylelint 并行校验
+pnpm install        # 安装依赖（preinstall 钩子强制 pnpm；见 scripts/check-pm.mjs）
+pnpm dev            # 开发（next dev + OpenNext dev shim，端口 5000）
+pnpm build          # next build（OpenNext 的 build 步骤）
+pnpm preview        # 本地以 Workers 运行时预览生产构建（opennextjs-cloudflare preview）
+pnpm deploy         # 构建并发布到 Cloudflare Workers（需 CLOUDFLARE_API_TOKEN/ACCOUNT_ID）
+pnpm validate       # tsc + eslint(build) + stylelint
 ```
+
+> `node_modules` 必须在 Linux 环境内生成（Windows 软链 OpenNext 无法遍历）。部署统一走
+> `DEPLOY.md` 的容器化命令，不要在本机直接 `pnpm deploy`。
 
 端口通过环境变量 `PORT` / `DEPLOY_RUN_PORT` 注入，禁止硬编码。
 

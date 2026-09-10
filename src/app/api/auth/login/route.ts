@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createSession, findUserByEmailAsync, verifyPassword, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { createSession, findUserByEmailAsync, verifyPassword, equalizePasswordTiming, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -37,7 +37,17 @@ export async function POST(request: NextRequest) {
   // synchronous lookup only saw users created in this very isolate, so every
   // returning customer got "Incorrect email or password" and could never order.
   const user = await findUserByEmailAsync(email);
-  if (!user || !verifyPassword(password, user.passwordHash)) {
+  if (!user) {
+    // R2-Low: constant-time-ish failure. An unknown email must not return
+    // measurably faster than a wrong password, or the endpoint becomes an
+    // account-enumeration oracle. Burn one scrypt round before the generic 401.
+    equalizePasswordTiming(password);
+    return NextResponse.json(
+      { error: { code: "unauthorized", message: "Incorrect email or password" } },
+      { status: 401 },
+    );
+  }
+  if (!verifyPassword(password, user.passwordHash)) {
     return NextResponse.json(
       { error: { code: "unauthorized", message: "Incorrect email or password" } },
       { status: 401 },

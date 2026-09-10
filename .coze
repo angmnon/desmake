@@ -13,5 +13,5 @@ deps = [ "git" ]
 
 [deploy]
 build = [ "bash", "./scripts/build.sh" ]
-run = [ "bash", "./scripts/start.sh" ]
+run = [ "bash", "./scripts/deploy.sh" ]
 deps = [ "git" ]

@@ -12,7 +12,7 @@ import { CATEGORIES, PRODUCT_SKUS, FAMILY_LABELS, unitPriceForSku, adapterDefaul
 import { netCentsForSku, SKU_BY_ID } from "@/lib/pricing";
 
 type GenState = "idle" | "queued" | "running" | "succeeded" | "failed";
-type GenResult = { seed: string; palette: [string, string, string]; shape: number; imageUrl?: string };
+type GenResult = { seed: string; palette: [string, string, string]; shape: number; imageUrl?: string; isPreview?: boolean };
 
 const STYLE_PRESETS = [
   { id: "minimal", name: "Minimal", palette: ["#0c0c0d", "#f7f6f3", "#f1efea"] as [string, string, string], shape: 0 },
@@ -37,6 +37,8 @@ type PollResponse = {
   prompt?: string;
   outputs?: ApiOutput[];
   error?: { message?: string } | string | null;
+  /** M-9: true when no AI provider is configured and the outputs are placeholders. */
+  is_preview?: boolean;
 };
 
 /** Compress an uploaded image file to a JPEG data URL (max 1280px, q0.82). */
@@ -278,6 +280,9 @@ export default function StudioPage() {
             palette: o.palette || palette,
             shape: typeof o.shape === "number" ? o.shape : i % 6,
             imageUrl: o.imageUrl,
+            // M-9: carry the preview flag onto each result so the UI can label it
+            // and so publishing marks it as a preview (not as AI-generated).
+            isPreview: Boolean(data.is_preview),
           }));
           setResults((r) => [...newResults, ...r]);
           setState("succeeded");
@@ -376,6 +381,8 @@ export default function StudioPage() {
           prompt: prompt.trim(),
           title: prompt.trim().slice(0, 80),
           imageUrl: r.imageUrl,
+          // M-9: a placeholder result must not be published as "AI-generated".
+          isPreview: Boolean(r.isPreview),
           selectedProducts: selSkus.map((sku) => ({ sku })),
           royaltyRate: royalty / 100,
         }),
@@ -794,10 +801,28 @@ export default function StudioPage() {
                     ))}
                   </div>
                 )}
+                {/* M-9: no AI provider configured → outputs are deterministic placeholders.
+                    Say so plainly instead of implying a real AI image was generated. */}
+                {results.length > 0 && results.every((r) => r.isPreview) && (
+                  <div className="card" style={{ padding: "12px 16px", background: "var(--color-paper-2)", borderStyle: "dashed" }}>
+                    <p className="small" style={{ margin: 0 }}>
+                      <strong>Preview mode.</strong> No image model is configured, so these are deterministic
+                      placeholders you can still publish — they&apos;ll be labelled as a preview, not as AI-generated art.
+                    </p>
+                  </div>
+                )}
                 {results.length > 0 && (
                   <div className="grid g-2">
                     {results.slice(0, 4).map((r, i) => (
                       <div key={i} className="card card-hover" style={{ position: "relative", padding: 0, overflow: "hidden" }}>
+                        {r.isPreview && (
+                          <span
+                            className="badge badge-outline"
+                            style={{ position: "absolute", top: 10, left: 10, zIndex: 2, fontSize: "0.5625rem", background: "rgba(12,12,13,0.72)", color: "#f7f6f3", borderColor: "transparent" }}
+                          >
+                            Preview
+                          </span>
+                        )}
                         <div style={{ aspectRatio: aspect.replace(":", "/") }}>
                           {r.imageUrl ? (
                             // Real AI-generated image

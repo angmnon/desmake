@@ -9,8 +9,9 @@ export async function GET() {
       name: a.name,
       method: a.method,
       lead_time: a.lead,
+      // R2-Low: `cost_cents` (our internal manufacturing cost) is deliberately NOT
+      // exposed — it is commercially sensitive margin data and nothing public needs it.
       retail_cents: a.retailCents,
-      cost_cents: a.costCents,
       mockup: a.mockup,
     })),
   });

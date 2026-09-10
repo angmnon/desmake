@@ -1,8 +1,27 @@
 import { NextResponse } from "next/server";
 import { consumeVerificationToken } from "@/lib/verify";
 import { markUserVerified, createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/session";
+import { rateLimit, clientIp } from "@/lib/ratelimit";
+
+// The verification token travels in the URL query string; keep these responses
+// out of caches and stop the token leaking to third parties via the Referer header.
+const HTML_HEADERS = {
+  "content-type": "text/html; charset=utf-8",
+  "cache-control": "no-store",
+  "referrer-policy": "no-referrer",
+};
 
 export async function GET(request: Request) {
+  // R2-Low: throttle token guesses. Verification tokens are high-entropy, but an
+  // unauthenticated endpoint that consumes a token should still be rate limited.
+  const rl = rateLimit(`${clientIp(request)}:verify`, 20);
+  if (!rl.ok) {
+    return new NextResponse(htmlMessage("Too many attempts — please try again shortly.", false, "/"), {
+      status: 429,
+      headers: { ...HTML_HEADERS, "Retry-After": String(rl.retryAfter) },
+    });
+  }
+
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
   // C-2/M-4: honour a `next` target so the buyer lands back on checkout instead of
@@ -13,14 +32,14 @@ export async function GET(request: Request) {
   if (!token) {
     return new NextResponse(htmlMessage("Missing verification token.", false, "/"), {
       status: 400,
-      headers: { "content-type": "text/html; charset=utf-8" },
+      headers: HTML_HEADERS,
     });
   }
   const userId = await consumeVerificationToken(token);
   if (!userId) {
     return new NextResponse(htmlMessage("This verification link is invalid or has expired.", false, "/"), {
       status: 400,
-      headers: { "content-type": "text/html; charset=utf-8" },
+      headers: HTML_HEADERS,
     });
   }
 
@@ -28,7 +47,7 @@ export async function GET(request: Request) {
 
   const res = new NextResponse(
     htmlMessage("Your email is confirmed — you're all set to order.", true, next),
-    { status: 200, headers: { "content-type": "text/html; charset=utf-8" } },
+    { status: 200, headers: HTML_HEADERS },
   );
 
   // C-2 fix (the important half): re-issue the session cookie with emailVerified=true.

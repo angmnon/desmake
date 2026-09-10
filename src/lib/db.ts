@@ -199,6 +199,23 @@ async function ensureSchema(): Promise<void> {
       created_ts INTEGER NOT NULL
     )`,
   );
+  // R2: promote the two hot lookup keys out of the JSON blob into real (indexed) columns.
+  // `idempotency_key` makes retry/double-click collapsing a D1-guaranteed, cross-instance,
+  // race-free operation; `payment_intent_id` turns the refund-webhook lookup from a full
+  // blob scan into an index seek.
+  await ensureColumn("orders", "idempotency_key", `ALTER TABLE orders ADD COLUMN idempotency_key TEXT`);
+  await ensureColumn("orders", "payment_intent_id", `ALTER TABLE orders ADD COLUMN payment_intent_id TEXT`);
+  // M-12: `GET /api/orders` filters by user_id on every request — without this it full-scans
+  // the orders table.
+  await ensureOne("orders.user_id index", `CREATE INDEX IF NOT EXISTS idx_orders_user ON orders (user_id)`);
+  await ensureOne(
+    "orders.idempotency_key unique index",
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders (user_id, idempotency_key) WHERE idempotency_key IS NOT NULL`,
+  );
+  await ensureOne(
+    "orders.payment_intent index",
+    `CREATE INDEX IF NOT EXISTS idx_orders_pi ON orders (payment_intent_id) WHERE payment_intent_id IS NOT NULL`,
+  );
   await ensureOne(
     "designs",
     `CREATE TABLE IF NOT EXISTS designs (
@@ -208,6 +225,9 @@ async function ensureSchema(): Promise<void> {
       created_ts INTEGER NOT NULL
     )`,
   );
+  // R2-M-7/M-8: "my designs" (account page + DELETE owner check) filters by
+  // user_id — index it so that is an index seek, not a full-table blob scan.
+  await ensureOne("designs.user_id index", `CREATE INDEX IF NOT EXISTS idx_designs_user ON designs (user_id)`);
   // P0-1: shared design-index version counter (cross-instance cache invalidation).
   await ensureOne(
     "catalog_meta",
@@ -255,6 +275,16 @@ async function ensureSchema(): Promise<void> {
   // H-10: per-user AI generation quota counters.
   await ensureColumn("users", "gen_used_month", `ALTER TABLE users ADD COLUMN gen_used_month INTEGER NOT NULL DEFAULT 0`);
   await ensureColumn("users", "gen_month", `ALTER TABLE users ADD COLUMN gen_month TEXT`);
+  // R2/Low: guard the UNIQUE handle index against pre-existing duplicates. The old code
+  // ran CREATE UNIQUE INDEX with no dedupe, so if two rows ever shared a handle the index
+  // creation failed on EVERY boot (recorded only in schemaFailures, never self-healing).
+  // Suffix the losers' handles (keep the lowest rowid) instead of deleting users.
+  await ensureOne(
+    "users.handle dedupe",
+    `UPDATE users SET handle = handle || '-' || rowid
+       WHERE handle IS NOT NULL
+         AND rowid NOT IN (SELECT MIN(rowid) FROM users WHERE handle IS NOT NULL GROUP BY handle)`,
+  );
   await ensureOne(
     "users.handle unique index",
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_handle ON users(handle)`,
@@ -356,5 +386,29 @@ async function ensureSchema(): Promise<void> {
   await ensureOne(
     "cms_posts published idx",
     `CREATE INDEX IF NOT EXISTS idx_cms_posts_published ON cms_posts(status, published_at)`,
+  );
+  // R2: month-end settlement audit trail (who settled what, when).
+  await ensureOne(
+    "settle_audit",
+    `CREATE TABLE IF NOT EXISTS settle_audit (
+      id TEXT PRIMARY KEY,
+      actor TEXT NOT NULL,
+      scope TEXT NOT NULL,
+      creators INTEGER NOT NULL DEFAULT 0,
+      referrals INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )`,
+  );
+  // R2: cookie-consent audit trail (server-side record of consent decisions + policy version).
+  await ensureOne(
+    "consent_log",
+    `CREATE TABLE IF NOT EXISTS consent_log (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      anon_id TEXT,
+      consent TEXT NOT NULL,
+      policy_version TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`,
   );
 }

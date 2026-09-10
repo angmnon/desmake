@@ -1,10 +1,16 @@
 // Lightweight in-memory fixed-window rate limiter.
 //
-// NOTE: Cloudflare Containers run up to max_instances copies, so this limiter is
-// per-instance, not global — the effective ceiling is roughly limit × instance
-// count. It is a baseline WAF-style throttle that blunts abuse and brute force;
-// for a hard global ceiling, back this with D1/KV. Kept in-memory to avoid a
-// network round-trip on every request.
+// R2-M-11 (accepted limitation): Cloudflare Workers runs several isolates of this
+// app, each with its own `globalThis`, so this limiter is PER-INSTANCE — the
+// effective ceiling is roughly limit × live isolate count. It is a baseline
+// abuse/brute-force blunter, not a hard global quota. Kept in-memory on purpose to
+// avoid a D1/KV round-trip on every request.
+//
+// Upgrade path when a hard global ceiling is needed (e.g. for admin/settle or
+// credential endpoints): swap the Map for a D1 counter table with an atomic
+// `UPDATE ... WHERE count < limit` (the same fail-closed pattern used by
+// consumeGenerationQuota in session.ts), or a Durable Object / KV with TTL. Do it
+// behind this same `rateLimit()` signature so call sites don't change.
 
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();

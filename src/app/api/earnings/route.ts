@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSession, SESSION_COOKIE } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
 import { getEarningsForUser, listEarningsForUser, getReferralEarningsForUser, listReferralEarningsForUser } from "@/lib/stores";
 
 // No edge runtime — reads the earnings store / D1 off `globalThis` (R2/C1).
 
 export async function GET(request: NextRequest) {
-  const user = getSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const user = await getSessionAsync(request.cookies.get(SESSION_COOKIE)?.value);
   if (!user) {
     return NextResponse.json({ error: { code: "unauthorized", message: "Sign in to view earnings" } }, { status: 401 });
   }

@@ -147,7 +147,9 @@ export default function ListingView({ design }: { design: Design }) {
       title: design.title,
       adapter: adapterIdForSku(activeSku) ?? activeSku,
       sku: activeSku,
-      variant: currentVariant,
+      // R2-Low: a SKU with no variants (home family) yields `currentVariant === undefined`;
+      // coerce to "" so the cart/checkout never carry an undefined variant.
+      variant: currentVariant ?? "",
       qty,
       priceCents: unit,
       seed: design.seed,

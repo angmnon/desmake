@@ -51,8 +51,9 @@ export default function CookieConsent() {
     >
       <span style={{ maxWidth: 680 }}>
         We use cookies to measure marketing performance — so we can attribute
-        sales to the ads you clicked — and to remember your preferences. No data
-        is shared with ad platforms until you accept.
+        sales to the ads you clicked — and to remember your preferences. No
+        tracking or attribution cookies are set until you accept; declining
+        leaves the site fully functional.
       </span>
       <div style={{ display: "flex", gap: 8 }}>
         <button
