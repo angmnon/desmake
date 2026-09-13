@@ -126,9 +126,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         <link rel="preconnect" href="https://connect.facebook.net" />
-        {/* E2E-VERIFY: deploy+purge smoke marker. Must appear in live HTML after CI
-            deploy + zone purge, then be removed in a follow-up commit. */}
-        <meta name="x-verify-build" content="verify-desmake-20260913T2320Z" />
       </head>
       <body className="antialiased">
         <JsonLd data={[organizationSchema, websiteSchema]} />
