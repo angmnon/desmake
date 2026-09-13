@@ -56,6 +56,9 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
+      - name: Generate blog content (required before type-check)
+        run: node scripts/gen-blog-content.mjs
+
       - name: Type check (fail fast before deploy)
         run: pnpm ts-check
 
@@ -100,8 +103,11 @@ jobs:
       - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
+      - name: Generate blog content (required before type-check)
+        run: node scripts/gen-blog-content.mjs
+
       - name: Type check
         run: pnpm ts-check
 
       - name: Build (no upload)
-        run: node scripts/gen-blog-content.mjs && pnpm exec opennextjs-cloudflare build
+        run: pnpm exec opennextjs-cloudflare build
