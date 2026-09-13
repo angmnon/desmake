@@ -39,9 +39,7 @@
       "AGNES_IMAGE_MODEL": "agnes-image-2.1-flash",
       "SITE_URL": "https://desmake.com",
       "REQUIRE_EMAIL_VERIFICATION": "true",
-      "IMAGE_RESIZING_ENABLED": "true",
-      "SMOKE_KEY": "desmake-smoke-2026",
-      "OUTREACH_KEY": "desmake-outreach-2026"
+      "IMAGE_RESIZING_ENABLED": "true"
     },
   "observability": {
     "enabled": true
