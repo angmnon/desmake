@@ -7,8 +7,13 @@ name: Deploy desmake (Cloudflare Workers)
 # Windows symlink problem does not exist here. No Docker required.
 #
 # Required GitHub repo secrets (set once):
-#   CLOUDFLARE_API_TOKEN  -> Workers:Edit token (also used for cache purge)
-#   CLOUDFLARE_ACCOUNT_ID -> Cloudflare account id
+#   CLOUDFLARE_API_TOKEN   -> Workers:Edit token (deploy only)
+#   CLOUDFLARE_ACCOUNT_ID  -> Cloudflare account id
+#   CLOUDFLARE_PURGE_TOKEN -> OPTIONAL dedicated token with `Zone:Cache Purge`
+#                             scoped to the desmake zone. If present, the purge
+#                             step uses it; otherwise it falls back to
+#                             CLOUDFLARE_API_TOKEN. Decouples cache-purge
+#                             permission from the deploy token.
 # Runtime secrets (SESSION_SECRET, STRIPE_*, AGNES_API_KEY, ...) are already
 # persisted on the Worker via `wrangler secret put` and survive deploys.
 
@@ -71,11 +76,16 @@ jobs:
       - name: Purge zone cache (mandatory; best-effort)
         if: success()
         continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_PURGE_TOKEN }}
         run: |
           echo "Purging Cloudflare zone cache (purge_everything)..."
+          # Prefer a dedicated purge-scoped token; fall back to the deploy token.
+          PURGE_TOKEN="${CLOUDFLARE_PURGE_TOKEN:-${CLOUDFLARE_API_TOKEN}}"
           curl -s -o /tmp/purge.json -w "HTTP %{http_code}\n" -X POST \
             "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Authorization: Bearer ${PURGE_TOKEN}" \
             -H "Content-Type: application/json" \
             --data '{"purge_everything":true}'
           cat /tmp/purge.json || true
