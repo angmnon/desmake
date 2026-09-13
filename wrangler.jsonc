@@ -40,7 +40,8 @@
       "SITE_URL": "https://desmake.com",
       "REQUIRE_EMAIL_VERIFICATION": "true",
       "IMAGE_RESIZING_ENABLED": "true",
-      "SMOKE_KEY": "desmake-smoke-2026"
+      "SMOKE_KEY": "desmake-smoke-2026",
+      "OUTREACH_KEY": "desmake-outreach-2026"
     },
   "observability": {
     "enabled": true
