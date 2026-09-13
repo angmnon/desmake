@@ -355,6 +355,13 @@ export async function POST(request: NextRequest) {
           ? ["uploaded"]
           : ["generated"];
 
+  // Early Creator Program：发布时把创作者的档位快照到设计上，下单时据此抬高分成比例。
+  const creatorTier =
+    (() => {
+      const t = getUserById(user.id)?.creatorTier;
+      return t === "early" || t === "founding" ? t : "standard";
+    })();
+
   const design: PublishedDesign = {
     id: newId("dsn"),
     slug,
@@ -380,6 +387,7 @@ export async function POST(request: NextRequest) {
     description,
     source,
     royaltyRate,
+    creatorTier,
     selectedProducts,
     created_at: new Date().toISOString(),
     imageUrl,

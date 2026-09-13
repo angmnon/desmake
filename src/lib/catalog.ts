@@ -59,6 +59,7 @@ export function publishedToDesign(p: PublishedDesign): Design {
     description: p.description,
     source: p.source,
     royaltyRate: royaltyRateOf(p),
+    creatorTier: p.creatorTier,
     selectedProducts: productsOf(p),
     creatorHandle: p.creatorHandle,
     creatorDisplayName: p.creatorName,

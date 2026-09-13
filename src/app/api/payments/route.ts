@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getOrder, ordersStore, persistOrder, type OrderRecord } from "@/lib/stores";
 import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
-import { stripe, STRIPE_ENABLED, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
+import { STRIPE_ENABLED, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe";
+import { createPaymentIntent, retrievePaymentIntent } from "@/lib/stripeFetch";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 
 // No edge runtime — reads the order store and talks to Stripe (Node SDK).
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!STRIPE_ENABLED || !stripe) {
+  if (!STRIPE_ENABLED) {
     return NextResponse.json(
       { error: { code: "payment_unavailable", message: "Payment provider is not configured" } },
       { status: 503 },
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
   const currency = (order.pricing.currency || "usd").toLowerCase();
 
   let intentId = order.payment.payment_intent_id ?? undefined;
-  let intent = intentId ? await stripe.paymentIntents.retrieve(intentId).catch(() => null) : null;
+  let intent = intentId ? await retrievePaymentIntent(intentId) : null;
 
   // C-5 (critical): an already-succeeded intent must NEVER be replaced.
   //
@@ -77,19 +78,20 @@ export async function POST(request: NextRequest) {
 
   if (!intent || intent.status === "canceled") {
     try {
-      intent = await stripe.paymentIntents.create({
+      intent = await createPaymentIntent({
         amount,
         currency,
-        receipt_email: order.customer.email || undefined,
+        receiptEmail: order.customer.email || undefined,
         metadata: { order_id: order.order_id, user_id: user.id },
-        automatic_payment_methods: { enabled: true },
       });
     } catch (e) {
       // F3: previously unhandled — any Stripe rejection became a bare 500 that left
-      // the order stranded in `pending` with no operator signal.
-      console.error("[payments] paymentIntents.create failed:", e instanceof Error ? e.message : e);
+      // the order stranded in `pending` with no operator signal. Surfacing the real
+      // Stripe error (not just a generic message) so a hang/timeout is diagnosable.
+      const detail = e instanceof Error ? e.message : String(e);
+      console.error("[payments] createPaymentIntent failed:", detail);
       return NextResponse.json(
-        { error: { code: "payment_unavailable", message: "Could not start the payment. Please try again." } },
+        { error: { code: "payment_unavailable", message: "Could not start the payment. Please try again.", detail } },
         { status: 502 },
       );
     }

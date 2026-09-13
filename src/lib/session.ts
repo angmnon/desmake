@@ -56,6 +56,8 @@ export type UserRecord = SessionUser & {
   /** H-10: per-user AI generation quota counters (monthly window). */
   gen_used_month?: number;
   gen_month?: string;
+  /** M-UGC: creator royalty tier (standard | early | founding) — denormalized snapshot resolved at publish time. */
+  creatorTier?: string;
 };
 
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -211,7 +213,7 @@ export function resolveHandleToUserId(handle: string | null | undefined): string
 // below fall back to D1 **per query** and cache the row in memory on a hit. This is
 // correct under multi-isolate, needs no lifecycle hook, and self-heals.
 
-const USER_SELECT_COLUMNS = `id, email, name, password_hash, role, created_at, email_verified, session_epoch, gen_used_month, gen_month, handle, bio, avatar_seed, city, role_tag, verified, referred_by, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_gclid, acquisition_fbclid, acquisition_landing`;
+const USER_SELECT_COLUMNS = `id, email, name, password_hash, role, created_at, email_verified, session_epoch, gen_used_month, gen_month, handle, bio, avatar_seed, city, role_tag, verified, referred_by, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_gclid, acquisition_fbclid, acquisition_landing, creator_tier`;
 
 type UserRow = {
   id: string; email: string; name: string; password_hash: string; role: string;
@@ -222,6 +224,7 @@ type UserRow = {
   acquisition_medium?: string | null; acquisition_campaign?: string | null;
   acquisition_gclid?: string | null; acquisition_fbclid?: string | null;
   acquisition_landing?: string | null; gen_used_month?: number | null; gen_month?: string | null;
+  creator_tier?: string | null;
 };
 
 function rowToUser(r: UserRow): UserRecord {
@@ -251,6 +254,7 @@ function rowToUser(r: UserRow): UserRecord {
     acquisitionGclid: r.acquisition_gclid ?? null,
     acquisitionFbclid: r.acquisition_fbclid ?? null,
     acquisitionLanding: r.acquisition_landing ?? null,
+    creatorTier: r.creator_tier === "early" || r.creator_tier === "founding" ? r.creator_tier : "standard",
   };
 }
 
@@ -712,9 +716,9 @@ export async function hydrateUsersAndSessions(): Promise<void> {
       avatar_seed?: string; city?: string; role_tag?: string; verified?: number; referred_by?: string;
       acquisition_source?: string; acquisition_medium?: string; acquisition_campaign?: string;
       acquisition_gclid?: string; acquisition_fbclid?: string; acquisition_landing?: string;
-      gen_used_month?: number; gen_month?: string;
+      gen_used_month?: number; gen_month?: string; creator_tier?: string;
     }>(
-      `SELECT id, email, name, password_hash, role, created_at, email_verified, session_epoch, gen_used_month, gen_month, handle, bio, avatar_seed, city, role_tag, verified, referred_by, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_gclid, acquisition_fbclid, acquisition_landing FROM users`,
+      `SELECT id, email, name, password_hash, role, created_at, email_verified, session_epoch, gen_used_month, gen_month, handle, bio, avatar_seed, city, role_tag, verified, referred_by, acquisition_source, acquisition_medium, acquisition_campaign, acquisition_gclid, acquisition_fbclid, acquisition_landing, creator_tier FROM users`,
     );
     // Legacy rows (pre-UGC migration) have handle = NULL. Backfill deterministically
     // so every instance agrees, then write the value back so it becomes durable.
@@ -746,6 +750,7 @@ export async function hydrateUsersAndSessions(): Promise<void> {
         acquisitionGclid: r.acquisition_gclid ?? null,
         acquisitionFbclid: r.acquisition_fbclid ?? null,
         acquisitionLanding: r.acquisition_landing ?? null,
+        creatorTier: r.creator_tier === "early" || r.creator_tier === "founding" ? r.creator_tier : "standard",
       });
     }
     // Persist the backfilled handles (best-effort, never blocks startup). A rare

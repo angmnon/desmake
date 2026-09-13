@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getOrder, ordersStore, persistOrder, recordOrderEarnings, recordReferralEarnings } from "@/lib/stores";
 import { getSessionAsync, SESSION_COOKIE, runDurable } from "@/lib/session";
-import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
+import { STRIPE_ENABLED } from "@/lib/stripe";
+import { retrievePaymentIntent } from "@/lib/stripeFetch";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { recordError, notifyAlert } from "@/lib/monitor";
 import { sendOrderConfirmationEmail } from "@/lib/email";
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Real gateway path: verify the Stripe PaymentIntent server-side ──
-  if (STRIPE_ENABLED && stripe) {
+  if (STRIPE_ENABLED) {
     // Stripe is configured, so a real, server-verified PaymentIntent is MANDATORY.
     // A client that omits payment_intent_id must be rejected, never silently
     // accepted — otherwise any buyer could mark their own order paid for free.
@@ -128,9 +129,14 @@ export async function POST(request: NextRequest) {
     }
     let intent;
     try {
-      intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      intent = await retrievePaymentIntent(paymentIntentId);
     } catch (err) {
       recordError("/api/payments/confirm", err);
+      void notifyAlert("Payment confirm lookup failed", `order ${orderId}`);
+      return NextResponse.json({ error: { code: "payment_lookup_failed", message: "Could not verify payment" } }, { status: 402 });
+    }
+    if (!intent) {
+      recordError("/api/payments/confirm", "intent not found: " + paymentIntentId);
       void notifyAlert("Payment confirm lookup failed", `order ${orderId}`);
       return NextResponse.json({ error: { code: "payment_lookup_failed", message: "Could not verify payment" } }, { status: 402 });
     }

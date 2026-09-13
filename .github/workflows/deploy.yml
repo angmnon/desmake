@@ -1,0 +1,103 @@
+name: Deploy desmake (Cloudflare Workers)
+
+# Builds & deploys on the Linux runner (ubuntu-latest).
+# This replaces the previous "build inside a Docker Linux container on the
+# dev machine" approach: on Linux, pnpm's symlinked node_modules are native
+# POSIX symlinks that the OpenNext/esbuild bundler traverses correctly, so the
+# Windows symlink problem does not exist here. No Docker required.
+#
+# Required GitHub repo secrets (set once):
+#   CLOUDFLARE_API_TOKEN  -> Workers:Edit token (also used for cache purge)
+#   CLOUDFLARE_ACCOUNT_ID -> Cloudflare account id
+# Runtime secrets (SESSION_SECRET, STRIPE_*, AGNES_API_KEY, ...) are already
+# persisted on the Worker via `wrangler secret put` and survive deploys.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      note:
+        description: "Reason for manual deploy"
+        required: false
+        default: "manual trigger"
+
+concurrency:
+  group: desmake-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  OPEN_NEXT_DEPLOY: "true"
+  CF_ZONE_ID: "a9062fb63b353e5fb0c93e87d9def60f"
+
+jobs:
+  deploy:
+    name: Build & deploy (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable Corepack (pin pnpm 9.0.0 to match lockfile)
+        run: corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check (fail fast before deploy)
+        run: pnpm ts-check
+
+      - name: Deploy to Cloudflare Workers
+        run: pnpm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Purge zone cache (mandatory; best-effort)
+        if: success()
+        continue-on-error: true
+        run: |
+          echo "Purging Cloudflare zone cache (purge_everything)..."
+          curl -s -o /tmp/purge.json -w "HTTP %{http_code}\n" -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
+          cat /tmp/purge.json || true
+
+  pr-check:
+    name: Build & type-check (PR only, no deploy)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable Corepack (pin pnpm 9.0.0)
+        run: corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm ts-check
+
+      - name: Build (no upload)
+        run: node scripts/gen-blog-content.mjs && pnpm exec opennextjs-cloudflare build

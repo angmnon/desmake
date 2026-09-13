@@ -12,6 +12,7 @@ import { ShareSheet } from "@/components/ShareSheet";
 import { useCart } from "@/lib/cart";
 import { useUser } from "@/lib/use-user";
 import { track } from "@/lib/tracking";
+import { effectiveRoyaltyRate } from "@/lib/royalty";
 
 function trackEvent(slug: string, event: "view" | "save" | "share") {
   try {
@@ -100,6 +101,9 @@ export default function ListingView({ design }: { design: Design }) {
     [design.creator, creatorData],
   );
   const hasSelection = Boolean(activeSku);
+  // Early Creator Program：展示抬高后的有效分成比例（含档位加成时给出标注）。
+  const effectiveRate = effectiveRoyaltyRate(design.royaltyRate, design.creatorTier);
+  const isBoosted = effectiveRate > (design.royaltyRate ?? 0);
   const adapter = adapterById(adapterIdForSku(activeSku) ?? "");
   const variants = variantsForSku(activeSku);
   const currentVariant = selectedVariant && variants.includes(selectedVariant) ? selectedVariant : variants[0];

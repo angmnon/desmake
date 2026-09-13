@@ -180,6 +180,8 @@ export type PublishedDesign = {
   // ── M3: 商品配置与创作者分成 ──
   /** 创作者分成比例 0.10–0.50；缺省时下单按 0 处理（不产生分成） */
   royaltyRate?: number;
+  /** 创作者档位（standard/early/founding），发布时从 users.creator_tier 快照，用于抬高分成比例 */
+  creatorTier?: string;
   /** 发布时勾选的具体商品（SKU）；缺省时由 adapters 推导 family 默认 SKU（兼容旧数据） */
   selectedProducts?: SelectedProduct[];
   created_at: string;
@@ -565,6 +567,53 @@ export async function deleteDesignForUserAsync(slug: string, userId: string): Pr
     void notifyAlert("Design delete: index bump FAILED", `slug ${slug} may linger in other instances' index`);
   }
   return existing;
+}
+
+/**
+ * R2-M-9: read one of the caller's own designs (memory first, fall back to D1).
+ * Used by the in-place PATCH handler so an update never has to delete+recreate
+ * (which would collide with other instances' still-cached slug and rename it
+ * to `slug-2`).
+ */
+export async function getDesignBySlugForUser(slug: string, userId: string): Promise<PublishedDesign | null> {
+  const mem = designsStore().get(slug);
+  let d = mem && mem.user_id === userId ? mem : null;
+  if (!d && D1_ENABLED) {
+    try {
+      const rows = await d1Query<{ data: string }>(
+        `SELECT data FROM designs WHERE slug = ? AND user_id = ?`,
+        [slug, userId],
+      );
+      if (rows.length) d = JSON.parse(rows[0].data) as PublishedDesign;
+    } catch (e) {
+      recordError("getDesignBySlugForUser.read", e);
+    }
+  }
+  return d;
+}
+
+/**
+ * R2-M-9: persist an in-place update to an existing design (adapters/tags/etc.)
+ * by overwriting the D1 row, refreshing this instance's memory, and bumping the
+ * shared index version so other instances re-read the authoritative D1 copy.
+ */
+export async function updateDesignForUserAsync(d: PublishedDesign): Promise<void> {
+  if (D1_ENABLED) {
+    // The `designs` table has no `id` column — the id lives inside the `data` JSON.
+    // Key the UPDATE on (slug, user_id), which are real columns.
+    await d1Run(`UPDATE designs SET data = ? WHERE slug = ? AND user_id = ?`, [
+      JSON.stringify(d),
+      d.slug,
+      d.user_id,
+    ]);
+  }
+  designsStore().set(d.slug, d);
+  __cachedAllDesigns = null;
+  try {
+    await bumpDesignIndex();
+  } catch (e) {
+    recordError("updateDesignForUserAsync.bump", e);
+  }
 }
 
 /**

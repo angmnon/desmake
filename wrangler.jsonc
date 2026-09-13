@@ -31,17 +31,17 @@
   },
   "send_email": [
     {
-      "name": "EMAIL",
-      "remote": true
+      "name": "EMAIL"
     }
   ],
-  "vars": {
-    "AGNES_BASE_URL": "https://apihub.agnes-ai.com/v1",
-    "AGNES_IMAGE_MODEL": "agnes-image-2.1-flash",
-    "SITE_URL": "https://desmake.com",
-    "REQUIRE_EMAIL_VERIFICATION": "true",
-    "IMAGE_RESIZING_ENABLED": "true"
-  },
+    "vars": {
+      "AGNES_BASE_URL": "https://apihub.agnes-ai.com/v1",
+      "AGNES_IMAGE_MODEL": "agnes-image-2.1-flash",
+      "SITE_URL": "https://desmake.com",
+      "REQUIRE_EMAIL_VERIFICATION": "true",
+      "IMAGE_RESIZING_ENABLED": "true",
+      "SMOKE_KEY": "desmake-smoke-2026"
+    },
   "observability": {
     "enabled": true
   }

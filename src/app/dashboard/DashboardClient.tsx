@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BarChart3, Grid3x3, DollarSign, Share2, User, Check, Copy, ExternalLink } from "lucide-react";
+import { BarChart3, Grid3x3, DollarSign, Share2, User, Check, Copy, ExternalLink, Sparkles } from "lucide-react";
 import { money } from "@/lib/data";
 import { ShareSheet } from "@/components/ShareSheet";
 
@@ -19,6 +19,7 @@ type PerDesign = { slug: string; title: string; views: number; saves: number; sh
 type Earnings = {
   creator: { pending_cents: number; paid_cents: number; total_cents: number };
   referral: { pending_cents: number; paid_cents: number; total_cents: number };
+  tier?: string;
   recent: Array<{ kind: "creator" | "referral"; id: string; order_id: string; design_slug: string; rate: number; cents: number; status: string; created_at: string }>;
 };
 

@@ -121,6 +121,8 @@ export type Design = {
   // ── M3: 商品配置与创作者分成 ──
   /** 创作者分成比例 0.10–0.50；缺省表示未配置（下单时按 0 处理，不产生分成） */
   royaltyRate?: number;
+  /** 创作者档位（standard/early/founding），用于展示抬高后的分成比例 */
+  creatorTier?: string;
   /** 发布时勾选的具体商品（SKU）；缺省时由 adapters 推导 family 默认 SKU（兼容旧数据） */
   selectedProducts?: SelectedProduct[];
 };

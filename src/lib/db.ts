@@ -258,6 +258,8 @@ async function ensureSchema(): Promise<void> {
   // instead of logging "duplicate column name" as a fake failure.
   await ensureColumn("users", "email_verified", `ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0`);
   await ensureColumn("users", "handle", `ALTER TABLE users ADD COLUMN handle TEXT`);
+  // 创作者档位（Early Creator Program）：standard / early / founding，用于抬高分成比例。
+  await ensureColumn("users", "creator_tier", `ALTER TABLE users ADD COLUMN creator_tier TEXT NOT NULL DEFAULT 'standard'`);
   await ensureColumn("users", "bio", `ALTER TABLE users ADD COLUMN bio TEXT`);
   await ensureColumn("users", "avatar_seed", `ALTER TABLE users ADD COLUMN avatar_seed TEXT`);
   await ensureColumn("users", "city", `ALTER TABLE users ADD COLUMN city TEXT`);

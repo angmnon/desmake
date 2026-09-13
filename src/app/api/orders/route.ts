@@ -35,6 +35,7 @@ import {
 } from "@/lib/session";
 import { rateLimit, clientIp } from "@/lib/ratelimit";
 import { readAttributionFromRequest } from "@/lib/tracking";
+import { effectiveRoyaltyRate } from "@/lib/royalty";
 
 // NOTE: no `export const runtime = "edge"`. These handlers read the in-memory session
 // and order stores off `globalThis`; on the edge runtime every function gets its own
@@ -272,8 +273,8 @@ export async function POST(request: NextRequest) {
 
     // ── M3: 创作者分成 ──
     // 净价基数 N = 零售不含税 − 运费（与 region 无关）；royalty = round(N × rate)。
-    const rate =
-      pub?.royaltyRate && pub.royaltyRate >= 0.1 && pub.royaltyRate <= 0.5 ? pub.royaltyRate : 0;
+    // Early Creator Program：有效分成比例 = max(设计比例, 档位地板)，封顶 0.50。
+    const rate = effectiveRoyaltyRate(pub?.royaltyRate, pub?.creatorTier);
     const net = skuRetailCents(skuObj) - skuFreightCents(skuObj);
     const royaltyCentsVal = rate > 0 ? Math.round(net * rate) : 0;
 

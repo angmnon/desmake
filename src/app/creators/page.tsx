@@ -22,7 +22,7 @@ const CREATOR_FAQ = [
   },
   {
     q: "How much can I earn?",
-    a: "You set a royalty between 10% and 50% per sale, with a 90% revenue share available on Desmake. Payouts are transparent and paid across 34 countries.",
+    a: "You set a royalty between 10% and 50% per sale, with a 90% revenue share available on Desmake. Early and Founding creators enrolled in the Early Creator Program earn a guaranteed higher minimum — up to 50% on every sale. Payouts are transparent and paid across 34+ countries.",
   },
   {
     q: "Do I need design skills?",
@@ -45,6 +45,12 @@ const STEPS = [
   { n: "01", t: "Generate or upload", d: "Use Desmake Studio to create with AI, or upload your own work as PNG/SVG." },
   { n: "02", t: "Publish once", d: "We auto-adapt your design to every product surface in the catalog — prints, apparel, tech, and more." },
   { n: "03", t: "Share & earn", d: "Share your storefront. The network routes orders and pays out weekly." },
+];
+
+const TIERS = [
+  { name: "Standard", rate: "10–50%", floor: "You set it", accent: false, note: "Set a royalty per design (default 30%). Paid weekly across 34+ countries." },
+  { name: "Early Creator", rate: "≥ 40%", floor: "Guaranteed", accent: true, note: "Limited Founding-window enrollment. Every sale earns at least 40%, even if you leave the default at 30%." },
+  { name: "Founding Creator", rate: "50%", floor: "Max", accent: true, note: "The first creators on Desmake. Every sale earns the maximum 50% royalty." },
 ];
 
 export default async function CreatorsPage() {

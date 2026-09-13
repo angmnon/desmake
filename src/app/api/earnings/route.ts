@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
+import { getSessionAsync, SESSION_COOKIE, getUserById } from "@/lib/session";
 import { getEarningsForUser, listEarningsForUser, getReferralEarningsForUser, listReferralEarningsForUser } from "@/lib/stores";
 
 // No edge runtime — reads the earnings store / D1 off `globalThis` (R2/C1).
@@ -43,7 +43,12 @@ export async function GET(request: NextRequest) {
     .slice(0, 20);
 
   return NextResponse.json(
-    { creator: creatorSummary, referral: referralSummary, recent },
+    {
+      creator: creatorSummary,
+      referral: referralSummary,
+      tier: getUserById(user.id)?.creatorTier ?? "standard",
+      recent,
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
