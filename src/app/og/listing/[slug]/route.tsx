@@ -63,6 +63,28 @@ async function loadFont(
   return null;
 }
 
+// Transcode bytes to JPEG via the Cloudflare Images binding.
+// API (this wrangler/runtime version): IMAGES.input(buf).transform(...).output(opts)
+// returns a Promise<TransformationResultImpl>; awaiting it gives a result whose
+// .response() returns a Response. (Calling .response() on the Promise itself is a
+// no-op/error — that was the original bug.)
+async function transcodeToJpeg(
+  env: any,
+  input: ArrayBuffer,
+  transform?: { width: number; height: number; fit: string },
+): Promise<ArrayBuffer | null> {
+  if (!env?.IMAGES) return null;
+  try {
+    let chain: any = env.IMAGES.input(input);
+    if (transform) chain = chain.transform(transform);
+    const result = await chain.output({ format: "image/jpeg", quality: 82 });
+    const resp = await result.response();
+    return (await resp.arrayBuffer()) as ArrayBuffer;
+  } catch {
+    return null;
+  }
+}
+
 // Read the product art from R2 (binding) and transcode it to a cover JPEG via the
 // Images binding. This neutralizes WebP (Satori can't decode it) and keeps the
 // embedded payload small — and, critically, makes zero external HTTP requests.
@@ -79,17 +101,12 @@ async function loadArtDataUrl(env: any, design: Design): Promise<string | null> 
   try {
     const obj = await getFromR2(key);
     if (!obj) return null;
-    if (env?.IMAGES) {
-      // .output() resolves to a Response (NOT .response()/.image() — those are
-      // not functions in this binding version). Resize to cover 1200x630 and
-      // re-encode as JPEG so the embedded payload stays small.
-      const resp = await env.IMAGES
-        .input(obj.body)
-        .transform({ width: 1200, height: 630, fit: "cover" })
-        .output({ format: "image/jpeg", quality: 82 });
-      const buf = await resp.arrayBuffer();
-      return `data:image/jpeg;base64,${toBase64(buf)}`;
-    }
+    const jpeg = await transcodeToJpeg(env, obj.body, {
+      width: 1200,
+      height: 630,
+      fit: "cover",
+    });
+    if (jpeg) return `data:image/jpeg;base64,${toBase64(jpeg)}`;
     return `data:${obj.contentType};base64,${toBase64(obj.body)}`;
   } catch {
     return null;
@@ -115,55 +132,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       : undefined;
 
     const artUrl = design ? await loadArtDataUrl(env, design) : null;
-    if (new URL(_req.url).searchParams.get("debug") === "1") {
-      const d: Record<string, unknown> = { artUrlLen: artUrl ? artUrl.length : 0 };
-      try {
-        if (design?.imageUrl) {
-          const mm = design.imageUrl.match(/\/cdn\/(.+)$/);
-          const k = mm ? mm[1] : null;
-          d.key = k;
-          if (k && env?.IMAGES) {
-            const o = await getFromR2(k);
-            d.r2 = o ? `${o.contentType} ${o.body.byteLength}` : "null";
-            if (o) {
-              try {
-                const out = await (env.IMAGES as any)
-                  .input(o.body)
-                  .transform({ width: 1200, height: 630, fit: "cover" })
-                  .output({ format: "image/jpeg", quality: 82 });
-                d.outCtor = out?.constructor?.name;
-                d.outOwn = out ? Object.getOwnPropertyNames(out).join(",") : "null";
-                d.outProto = out ? Object.getOwnPropertyNames(Object.getPrototypeOf(out)).join(",") : "null";
-                for (const m of ["response", "image", "blob", "arrayBuffer", "bytes", "readable", "body", "text"]) {
-                  d["m_" + m] = out ? typeof out[m] : "no-out";
-                }
-                for (const m of ["response", "image", "blob"]) {
-                  try {
-                    const r = await out[m]();
-                    if (r && typeof r.arrayBuffer === "function") {
-                      const ab = await r.arrayBuffer();
-                      d["call_" + m + "_bytes"] = ab.byteLength;
-                    } else {
-                      d["call_" + m] = typeof r + (r?.constructor?.name ? ":" + r.constructor.name : "");
-                    }
-                  } catch (e) {
-                    d["call_" + m + "_err"] = e instanceof Error ? e.message : String(e);
-                  }
-                }
-              } catch (e) {
-                d.outErr = e instanceof Error ? e.message : String(e);
-              }
-            }
-          }
-        }
-      } catch (e) {
-        d.err = e instanceof Error ? e.message : String(e);
-      }
-      return new Response(JSON.stringify(d, null, 2), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
     const price = design ? money(design.priceCents) : "";
     const tag = design?.aiGenerated ? "AI-designed" : design?.category ? design.category : "";
     const rating =
@@ -343,16 +311,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     // Images binding so the card clears the ~300KB WhatsApp/Telegram cliff.
     let finalBody: ArrayBuffer | ReadableStream = await imageResponse.arrayBuffer();
     let contentType = "image/png";
-    try {
-      if (env.IMAGES) {
-        const resp = await env.IMAGES
-          .input(finalBody as ArrayBuffer)
-          .output({ format: "image/jpeg", quality: 82 });
-        finalBody = (await resp.arrayBuffer()) as ArrayBuffer;
-        contentType = "image/jpeg";
-      }
-    } catch (e) {
-      console.error("[og] IMAGES PNG->JPEG conversion failed; serving PNG", e);
+    const jpeg = await transcodeToJpeg(env, finalBody as ArrayBuffer);
+    if (jpeg) {
+      finalBody = jpeg;
+      contentType = "image/jpeg";
     }
 
     return new Response(finalBody, {
