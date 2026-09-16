@@ -123,15 +123,60 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
             const oo = await getFromR2(k);
             d.r2 = oo ? `${oo.contentType} ${oo.body.byteLength}` : "null";
             if (oo && env?.IMAGES) {
+              const IM = env.IMAGES as any;
+              const buf = oo.body;
+              const methodsOf = (o: any) => {
+                if (!o || typeof o !== "object") return typeof o;
+                const names = Object.getOwnPropertyNames(o);
+                try {
+                  const proto = Object.getPrototypeOf(o);
+                  if (proto && proto !== Object.prototype) {
+                    for (const n of Object.getOwnPropertyNames(proto)) names.push(`proto:${n}`);
+                  }
+                } catch {
+                  /* ignore */
+                }
+                return names.join(",");
+              };
               try {
-                const jj = await (env.IMAGES as any)
-                  .input(oo.body)
-                  .output({ format: "image/jpeg", quality: 82 })
-                  .response();
-                const bb = await jj.arrayBuffer();
-                d.imagesBytes = bb.byteLength;
+                const inputRet = IM.input(buf);
+                d.inputType = typeof inputRet;
+                d.inputMethods = methodsOf(inputRet);
               } catch (e) {
-                d.imagesErr = e instanceof Error ? e.message : String(e);
+                d.inputErr = e instanceof Error ? e.message : String(e);
+              }
+              // Build output both with and without transform
+              for (const variant of ["plain", "transform"]) {
+                try {
+                  let chain: any = IM.input(buf);
+                  if (variant === "transform") {
+                    chain = chain.transform({ width: 1200, height: 630, fit: "cover" });
+                  }
+                  const outRet = chain.output({ format: "image/jpeg", quality: 82 });
+                  d[`${variant}_outType`] = typeof outRet;
+                  d[`${variant}_outMethods`] = methodsOf(outRet);
+                  // Is outRet itself a Response we can read?
+                  try {
+                    const ab = await outRet.arrayBuffer();
+                    d[`${variant}_outArrayBufferLen`] = ab.byteLength;
+                  } catch (e) {
+                    d[`${variant}_outArrayBufferErr`] = e instanceof Error ? e.message : String(e);
+                  }
+                  // Try each terminal method
+                  for (const m of ["response", "image", "blob", "fetch"]) {
+                    try {
+                      const r = await outRet[m]();
+                      d[`${variant}_${m}_len`] =
+                        r && typeof r.arrayBuffer === "function"
+                          ? (await r.arrayBuffer()).byteLength
+                          : typeof r;
+                    } catch (e) {
+                      d[`${variant}_${m}_err`] = e instanceof Error ? e.message : String(e);
+                    }
+                  }
+                } catch (e) {
+                  d[`${variant}_err`] = e instanceof Error ? e.message : String(e);
+                }
               }
             }
           }
@@ -139,7 +184,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       } catch (e) {
         d.err = e instanceof Error ? e.message : String(e);
       }
-      return new Response(JSON.stringify(d), {
+      return new Response(JSON.stringify(d, null, 2), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
