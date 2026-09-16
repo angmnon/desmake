@@ -28,9 +28,12 @@ const resolveDesign = cache(async (slug: string): Promise<Design | undefined> =>
   return findListingBySlug(slug);
 });
 
-function ogImageFor(design?: Design): string {
-  const img = design?.imageUrl;
-  if (img && img.startsWith("/")) return img; // /cdn/... served by the Worker
+// P0/P1: point the social preview at the branded, dynamic OG card
+// (app/og/listing/[slug]/route.tsx). The card itself shows the product art +
+// title + creator + from-price + "Customize & Buy" CTA. Falls back to the
+// generic static PNG when there is no design.
+function ogImageFor(_design?: Design, slug?: string): string {
+  if (slug) return `/og/listing/${encodeURIComponent(slug)}`;
   return "/og.png";
 }
 
@@ -53,7 +56,7 @@ export async function generateMetadata({
     design.description?.slice(0, 155) ||
     `${design.title} — ${design.aiGenerated ? "AI-generated" : "original"} ${design.category} design by ${creatorName}. Available on demand from ${from} as ${products.length ? products.join(", ") : "posters, tees, stickers and more"}, printed and shipped worldwide by Desmake.`;
   const canonical = `/listing/${encodeURIComponent(slug)}`;
-  const ogImg = ogImageFor(design);
+  const ogImg = ogImageFor(design, slug);
 
   return {
     title,
@@ -93,7 +96,7 @@ export default async function ListingLayout({
     const creator = CREATORS.find((c) => c.handle === design.creator);
     const creatorName = creator?.name ?? design.creator;
     const canonical = `${SITE_URL}/listing/${encodeURIComponent(slug)}`;
-    const image = ogImageFor(design);
+    const image = ogImageFor(design, slug);
     const absImage = image.startsWith("http") ? image : `${SITE_URL}${image}`;
 
     productLd = {
