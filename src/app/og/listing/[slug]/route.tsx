@@ -115,6 +115,46 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       : undefined;
 
     const artUrl = design ? await loadArtDataUrl(env, design) : null;
+    if (new URL(_req.url).searchParams.get("debug") === "1") {
+      const d: Record<string, unknown> = { artUrlLen: artUrl ? artUrl.length : 0 };
+      try {
+        if (design?.imageUrl) {
+          const mm = design.imageUrl.match(/\/cdn\/(.+)$/);
+          const k = mm ? mm[1] : null;
+          d.key = k;
+          if (k && env?.IMAGES) {
+            const o = await getFromR2(k);
+            d.r2 = o ? `${o.contentType} ${o.body.byteLength}` : "null";
+            if (o) {
+              try {
+                const out = await (env.IMAGES as any)
+                  .input(o.body)
+                  .transform({ width: 1200, height: 630, fit: "cover" })
+                  .output({ format: "image/jpeg", quality: 82 });
+                d.outType = typeof out;
+                d.outCtor = out?.constructor?.name;
+                d.outHasArrayBuffer = typeof out?.arrayBuffer;
+                d.outHasBody = typeof out?.body;
+                try {
+                  const ab = await out.arrayBuffer();
+                  d.abLen = ab.byteLength;
+                } catch (e) {
+                  d.abErr = e instanceof Error ? e.message : String(e);
+                }
+              } catch (e) {
+                d.outErr = e instanceof Error ? e.message : String(e);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        d.err = e instanceof Error ? e.message : String(e);
+      }
+      return new Response(JSON.stringify(d, null, 2), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const price = design ? money(design.priceCents) : "";
     const tag = design?.aiGenerated ? "AI-designed" : design?.category ? design.category : "";
     const rating =
