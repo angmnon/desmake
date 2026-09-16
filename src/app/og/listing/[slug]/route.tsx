@@ -112,6 +112,38 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       : undefined;
 
     const artUrl = design ? await loadArtDataUrl(env, design) : null;
+    if (new URL(_req.url).searchParams.get("debug") === "1") {
+      const d: Record<string, unknown> = { artUrlLen: artUrl ? artUrl.length : 0, hasIMAGES: !!env.IMAGES };
+      try {
+        if (design?.imageUrl) {
+          const mm = design.imageUrl.match(/\/cdn\/(.+)$/);
+          const k = mm ? mm[1] : null;
+          d.key = k;
+          if (k) {
+            const oo = await getFromR2(k);
+            d.r2 = oo ? `${oo.contentType} ${oo.body.byteLength}` : "null";
+            if (oo && env?.IMAGES) {
+              try {
+                const jj = await (env.IMAGES as any)
+                  .input(oo.body)
+                  .output({ format: "image/jpeg", quality: 82 })
+                  .response();
+                const bb = await jj.arrayBuffer();
+                d.imagesBytes = bb.byteLength;
+              } catch (e) {
+                d.imagesErr = e instanceof Error ? e.message : String(e);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        d.err = e instanceof Error ? e.message : String(e);
+      }
+      return new Response(JSON.stringify(d), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const price = design ? money(design.priceCents) : "";
     const tag = design?.aiGenerated ? "AI-designed" : design?.category ? design.category : "";
     const rating =
