@@ -82,9 +82,8 @@ async function loadArtDataUrl(env: any, design: Design): Promise<string | null> 
     if (env?.IMAGES) {
       const jpeg = await env.IMAGES
         .input(obj.body)
-        .transform({ width: 1200, height: 630, fit: "cover" })
         .output({ format: "image/jpeg", quality: 82 })
-        .image();
+        .response();
       const buf = await jpeg.arrayBuffer();
       return `data:image/jpeg;base64,${toBase64(buf)}`;
     }
@@ -113,60 +112,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       : undefined;
 
     const artUrl = design ? await loadArtDataUrl(env, design) : null;
-    // Diagnostic (does not affect normal traffic): ?debug=1 returns JSON about the
-    // art-resolution path so we can see why the photo may not embed.
-    if (new URL(_req.url).searchParams.get("debug") === "1") {
-      const url = design?.imageUrl ?? "";
-      const m = url.match(/\/cdn\/(.+)$/);
-      const key = m ? m[1] : null;
-      let r2info = "no-key";
-      const probe: Record<string, string> = {};
-      if (key) {
-        try {
-          const o = await getFromR2(key);
-          r2info = o ? `${o.contentType} ${o.body.byteLength}b` : "null-object";
-          if (o && env?.IMAGES) {
-            const IMAGES = env.IMAGES as any;
-            const buf = o.body;
-            const shapes: [string, () => Promise<any>][] = [
-              ["A input().output().image()", async () => (await IMAGES.input(buf).output({ format: "image/jpeg", quality: 82 })).image()],
-              ["B input().output().response()", async () => (await IMAGES.input(buf).output({ format: "image/jpeg", quality: 82 })).response()],
-              ["C input().transform().output().image()", async () => (await IMAGES.input(buf).transform({ width: 1200, height: 630, fit: "cover" }).output({ format: "image/jpeg", quality: 82 })).image()],
-              ["D input().output()", async () => await IMAGES.input(buf).output({ format: "image/jpeg", quality: 82 })],
-              ["E input()", async () => await IMAGES.input(buf)],
-              ["F input().image()", async () => (await IMAGES.input(buf)).image()],
-            ];
-            for (const [name, fn] of shapes) {
-              try {
-                const r = await fn();
-                if (!r) {
-                  probe[name] = "null";
-                  continue;
-                }
-                let len = -1;
-                try {
-                  if (typeof r.arrayBuffer === "function") len = (await r.arrayBuffer()).byteLength;
-                  else if (r.body && typeof r.body.arrayBuffer === "function") len = (await r.body.arrayBuffer()).byteLength;
-                  else if (typeof r.byteLength === "number") len = r.byteLength;
-                  else if (typeof r.size === "number") len = r.size;
-                } catch {
-                  /* ignore */
-                }
-                probe[name] = `ok len=${len}`;
-              } catch (e2) {
-                probe[name] = "ERR:" + (e2 instanceof Error ? e2.message : String(e2));
-              }
-            }
-          }
-        } catch (e) {
-          r2info = "throw:" + (e instanceof Error ? e.message : String(e));
-        }
-      }
-      return new Response(
-        JSON.stringify({ slug, hasDesign: !!design, imageUrl: url, key, r2info, probe, artUrlLen: artUrl ? artUrl.length : 0 }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      );
-    }
     const price = design ? money(design.priceCents) : "";
     const tag = design?.aiGenerated ? "AI-designed" : design?.category ? design.category : "";
     const rating =
@@ -351,7 +296,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
         const jpeg = await env.IMAGES
           .input(finalBody as ArrayBuffer)
           .output({ format: "image/jpeg", quality: 82 })
-          .image();
+          .response();
         finalBody = jpeg.body as ReadableStream;
         contentType = "image/jpeg";
       }
