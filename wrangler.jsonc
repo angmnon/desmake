@@ -34,13 +34,14 @@
       "name": "EMAIL"
     }
   ],
-    "vars": {
-      "AGNES_BASE_URL": "https://apihub.agnes-ai.com/v1",
-      "AGNES_IMAGE_MODEL": "agnes-image-2.1-flash",
-      "SITE_URL": "https://desmake.com",
-      "REQUIRE_EMAIL_VERIFICATION": "true",
-      "IMAGE_RESIZING_ENABLED": "true"
-    },
+  "vars": {
+    "AGNES_BASE_URL": "https://apihub.agnes-ai.com/v1",
+    "AGNES_IMAGE_MODEL": "agnes-image-2.1-flash",
+    "SITE_URL": "https://desmake.com",
+    "REQUIRE_EMAIL_VERIFICATION": "true",
+    "IMAGE_RESIZING_ENABLED": "true",
+    "BUILD_REV": "20260916"
+  },
   "observability": {
     "enabled": true
   }

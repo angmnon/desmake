@@ -45,12 +45,17 @@ function hashString(s: string): string {
 }
 
 // The cache key folds in every field that affects the rendered card, plus the
-// CARD_REVISION. Any change → a new key → a fresh render (old keys are orphaned
-// but harmless; a future cleanup can prune them).
-function ogCacheKey(slug: string, design: Design | undefined): string {
-  if (!design) return `og/${slug}/${CARD_REVISION}__missing.jpg`;
+// CARD_REVISION (card-layout changes) and BUILD_REV (deploy/content version from
+// wrangler.jsonc vars). Any change → a new key → a fresh render (old keys are
+// orphaned but harmless; a future cleanup can prune them). BUILD_REV is bumped
+// manually on content/metadata changes (per deploy convention) to force a global
+// cache invalidation independent of the design-data hash.
+function ogCacheKey(env: any, slug: string, design: Design | undefined): string {
+  const buildRev = (env?.BUILD_REV as string) || "";
+  if (!design) return `og/${slug}/${CARD_REVISION}__${buildRev}__missing.jpg`;
   const fingerprint = [
     CARD_REVISION,
+    buildRev,
     design.title,
     design.priceCents,
     design.creator,
@@ -202,7 +207,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
 
     // Phase 2: fast path — serve a previously rendered card from R2, skipping the
     // expensive Satori + Images transcode entirely. Edge cache still applies on top.
-    const cacheKey = ogCacheKey(slug, design);
+    const cacheKey = ogCacheKey(env, slug, design);
     const cached = await readCachedCard(env, cacheKey);
     if (cached) {
       return new Response(cached, {
