@@ -57,6 +57,7 @@ async function loadArtDataUrl(origin: string, design: Design): Promise<string | 
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ slug: string }> }) {
+ try {
   const { slug } = await ctx.params;
   const origin = new URL(req.url).origin;
   const design = await resolveDesign(slug);
@@ -290,4 +291,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
         "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
     },
   });
+ } catch (err) {
+  const msg = err instanceof Error ? `${err.name}: ${err.message}\n${(err as Error).stack ?? ""}` : String(err);
+  return new Response(`OG RENDER ERROR:\n${msg}`, {
+    status: 500,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+ }
 }
