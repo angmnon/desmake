@@ -255,10 +255,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
     </div>
   );
 
+  // Satori's FontOptions.weight is a string-literal union ("normal" | "semibold"
+  // | "bold" | …) in this type version, but it accepts numeric weights at
+  // runtime. Cast to satisfy the strict type without changing behavior.
   const imageResponse = new ImageResponse(card, {
     width: 1200,
     height: 630,
-    fonts: fonts ?? [],
+    fonts: (fonts as unknown as Parameters<typeof ImageResponse>[1]["fonts"]) ?? [],
   });
 
   // Convert the PNG (ImageResponse is PNG-only) to JPEG@82 via the Cloudflare
