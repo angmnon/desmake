@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { findPublishedBySlug } from "@/lib/catalogIndex";
 import { publishedToDesign } from "@/lib/catalog";
 import ListingView from "./ListingView";
@@ -28,5 +29,11 @@ export default async function ListingPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const base = await findPublishedBySlug(slug);
   if (!base) notFound();
-  return <ListingView design={publishedToDesign(base)} />;
+  // Suspense required because <ListingView> reads URL search params (?sku/&variant)
+  // to deep-link a pre-selected product from a shared link.
+  return (
+    <Suspense fallback={null}>
+      <ListingView design={publishedToDesign(base)} />
+    </Suspense>
+  );
 }

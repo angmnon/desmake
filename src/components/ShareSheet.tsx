@@ -8,6 +8,10 @@ type Props = {
   handle: string;
   /** Optional design slug — when present the share lands on that product and still attributes. */
   designSlug?: string;
+  /** Optional SKU to deep-link, so the shared link lands with the exact product pre-selected. */
+  sku?: string;
+  /** Optional variant to deep-link alongside `sku`. */
+  variant?: string;
   /** Human-readable title used in social copy. */
   title?: string;
   /** Label for the trigger button. */
@@ -24,14 +28,23 @@ type Props = {
  * Any logged-in user can share any product and earn a 7% referral on resulting
  * purchases — referral attribution is by handle, not by design ownership.
  */
-export function ShareSheet({ handle, designSlug, title, label = "Share & earn", iconOnly = false, children }: Props) {
+export function ShareSheet({ handle, designSlug, sku, variant, title, label = "Share & earn", iconOnly = false, children }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   function buildLinks() {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const refLink = `${origin}/api/ref?ref=${encodeURIComponent(handle)}${designSlug ? `&to=/listing/${encodeURIComponent(designSlug)}` : ""}`;
-    const landing = designSlug ? `${origin}/listing/${designSlug}` : `${origin}/creators/${handle}`;
+    // P0: deep-link the exact product + variant so the shared link lands on a
+    // ready-to-buy state (the "自带购物链接" request). The `to` param flows
+    // through /api/ref which 302-redirects (preserving the query) and plants the
+    // dm_ref attribution cookie — so referral commission still tracks.
+    const toPath = designSlug
+      ? `/listing/${designSlug}` + (sku ? `?sku=${encodeURIComponent(sku)}` + (variant ? `&variant=${encodeURIComponent(variant)}` : "") : "")
+      : "";
+    const refLink = `${origin}/api/ref?ref=${encodeURIComponent(handle)}` + (toPath ? `&to=${encodeURIComponent(toPath)}` : "");
+    const landing = designSlug
+      ? `${origin}/listing/${encodeURIComponent(designSlug)}` + (sku ? `?sku=${encodeURIComponent(sku)}` + (variant ? `&variant=${encodeURIComponent(variant)}` : "") : "")
+      : `${origin}/creators/${encodeURIComponent(handle)}`;
     return { refLink, landing };
   }
 

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Heart, ShoppingBag, Star, ChevronRight, Sparkles, BadgeCheck, Truck, ShieldCheck, RotateCcw, ChevronLeft, Check } from "lucide-react";
 import type { Design } from "@/lib/data";
 import { adapterById, money, unitPriceForSku, variantsForSku, adapterDefaultSku, adapterIdForSku, creatorByHandle, SKU_BY_ID, type SelectedProduct } from "@/lib/data";
@@ -79,12 +80,26 @@ export default function ListingView({ design }: { design: Design }) {
             return s ? { sku: s } : undefined;
           })
           .filter((x): x is SelectedProduct => Boolean(x));
+  // 深链预选：分享链接可带 ?sku=&variant=&qty= 落地即选好商品（"自带购物链接"）。
+  // 仅当参数属于本设计的有效 SKU/规格时才接受，避免乱跳或注入。
+  const searchParams = useSearchParams();
+  const initialSku = (() => {
+    const s = searchParams.get("sku") || "";
+    return products.some((p) => p.sku === s) ? s : "";
+  })();
+  const initialVariant = (() => {
+    const v = searchParams.get("variant");
+    const variants = variantsForSku(initialSku);
+    return v && variants.includes(v) ? v : null;
+  })();
+  const initialQty = Math.min(99, Math.max(1, Number(searchParams.get("qty")) || 1));
   // 强制先选：默认不预选任何商品（此前默认 products[0]=poster → 默认 variant=A3，
   // 导致每一款设计一打开就停在「Poster · A3」，直接加购即得到 A3 海报，造成
   // 「所有产品都变成 A3 明信片」的假象）。买家必须先点选一个商品才能加入购物车。
-  const [activeSku, setActiveSku] = useState("");
-  const [qty, setQty] = useState(1);
-  const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
+  // 但深链分享可绕过"强制先选"，让收件人落地即预选好指定商品。
+  const [activeSku, setActiveSku] = useState(initialSku);
+  const [qty, setQty] = useState(initialQty);
+  const [selectedVariant, setSelectedVariant] = useState<string | null>(initialVariant);
   const [liked, setLiked] = useState(false);
   const [heroError, setHeroError] = useState(false);
   // M-5: brief "Added to bag" confirmation so a click that silently succeeds (and
@@ -109,6 +124,7 @@ export default function ListingView({ design }: { design: Design }) {
   const currentVariant = selectedVariant && variants.includes(selectedVariant) ? selectedVariant : variants[0];
   const unit = unitPriceForSku(activeSku, currentVariant);
   const cart = useCart();
+  const router = useRouter();
   // 未选商品时不允许加购（强制先选）。选中后仍以服务端口径校验 unit 是否为有效价。
   const canBuy = hasSelection && unit !== null && adapter !== undefined;
 
@@ -143,9 +159,10 @@ export default function ListingView({ design }: { design: Design }) {
     return () => { cancelled = true; };
   }, [design.slug]);
 
-  const addToCart = () => {
-    if (unit === null) return;
-    cart.addItem({
+  // Shared cart-line builder so "Add to cart" and "Buy now" stay consistent.
+  const buildCartItem = () => {
+    if (unit === null) return null;
+    return {
       listingId: design.id,
       slug: design.slug,
       title: design.title,
@@ -159,10 +176,25 @@ export default function ListingView({ design }: { design: Design }) {
       seed: design.seed,
       palette: design.palette,
       shape: design.shape,
-    });
+    };
+  };
+
+  const addToCart = () => {
+    const item = buildCartItem();
+    if (!item) return;
+    cart.addItem(item);
     setAdded(true);
     if (addedTimer.current) clearTimeout(addedTimer.current);
     addedTimer.current = setTimeout(() => setAdded(false), 2400);
+  };
+
+  // "Buy now": add the selected line then jump straight to checkout — turns the
+  // shared deep link into a one-tap purchase entry.
+  const buyNow = () => {
+    const item = buildCartItem();
+    if (!item) return;
+    cart.addItem(item);
+    router.push("/checkout");
   };
 
   const renderRecRow = (title: string, items: RelatedCard[], cta?: { href: string; label: string }) => {
@@ -415,11 +447,24 @@ export default function ListingView({ design }: { design: Design }) {
                 <ShareSheet
                   handle={user.handle}
                   designSlug={design.slug}
+                  sku={activeSku}
+                  variant={currentVariant ?? undefined}
                   title={design.title}
                   iconOnly
                 />
               )}
             </div>
+
+            {/* Buy now: add the selected line and go straight to checkout. */}
+            <button
+              type="button"
+              className="btn btn-lg full mb-6"
+              style={{ height: 52, opacity: canBuy ? 1 : 0.5, cursor: canBuy ? undefined : "not-allowed" }}
+              onClick={buyNow}
+              disabled={!canBuy}
+            >
+              {canBuy ? "Buy now" : hasSelection ? "Unavailable" : "Select a product"}
+            </button>
 
             {added && (
               <p className="tiny" style={{ color: "var(--color-ink)", marginBottom: 24 }}>
