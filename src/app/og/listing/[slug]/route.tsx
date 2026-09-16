@@ -80,11 +80,14 @@ async function loadArtDataUrl(env: any, design: Design): Promise<string | null> 
     const obj = await getFromR2(key);
     if (!obj) return null;
     if (env?.IMAGES) {
-      const jpeg = await env.IMAGES
+      // .output() resolves to a Response (NOT .response()/.image() — those are
+      // not functions in this binding version). Resize to cover 1200x630 and
+      // re-encode as JPEG so the embedded payload stays small.
+      const resp = await env.IMAGES
         .input(obj.body)
-        .output({ format: "image/jpeg", quality: 82 })
-        .response();
-      const buf = await jpeg.arrayBuffer();
+        .transform({ width: 1200, height: 630, fit: "cover" })
+        .output({ format: "image/jpeg", quality: 82 });
+      const buf = await resp.arrayBuffer();
       return `data:image/jpeg;base64,${toBase64(buf)}`;
     }
     return `data:${obj.contentType};base64,${toBase64(obj.body)}`;
@@ -112,83 +115,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       : undefined;
 
     const artUrl = design ? await loadArtDataUrl(env, design) : null;
-    if (new URL(_req.url).searchParams.get("debug") === "1") {
-      const d: Record<string, unknown> = { artUrlLen: artUrl ? artUrl.length : 0, hasIMAGES: !!env.IMAGES };
-      try {
-        if (design?.imageUrl) {
-          const mm = design.imageUrl.match(/\/cdn\/(.+)$/);
-          const k = mm ? mm[1] : null;
-          d.key = k;
-          if (k) {
-            const oo = await getFromR2(k);
-            d.r2 = oo ? `${oo.contentType} ${oo.body.byteLength}` : "null";
-            if (oo && env?.IMAGES) {
-              const IM = env.IMAGES as any;
-              const buf = oo.body;
-              const methodsOf = (o: any) => {
-                if (!o || typeof o !== "object") return typeof o;
-                const names = Object.getOwnPropertyNames(o);
-                try {
-                  const proto = Object.getPrototypeOf(o);
-                  if (proto && proto !== Object.prototype) {
-                    for (const n of Object.getOwnPropertyNames(proto)) names.push(`proto:${n}`);
-                  }
-                } catch {
-                  /* ignore */
-                }
-                return names.join(",");
-              };
-              try {
-                const inputRet = IM.input(buf);
-                d.inputType = typeof inputRet;
-                d.inputMethods = methodsOf(inputRet);
-              } catch (e) {
-                d.inputErr = e instanceof Error ? e.message : String(e);
-              }
-              // Build output both with and without transform
-              for (const variant of ["plain", "transform"]) {
-                try {
-                  let chain: any = IM.input(buf);
-                  if (variant === "transform") {
-                    chain = chain.transform({ width: 1200, height: 630, fit: "cover" });
-                  }
-                  const outRet = chain.output({ format: "image/jpeg", quality: 82 });
-                  d[`${variant}_outType`] = typeof outRet;
-                  d[`${variant}_outMethods`] = methodsOf(outRet);
-                  // Is outRet itself a Response we can read?
-                  try {
-                    const ab = await outRet.arrayBuffer();
-                    d[`${variant}_outArrayBufferLen`] = ab.byteLength;
-                  } catch (e) {
-                    d[`${variant}_outArrayBufferErr`] = e instanceof Error ? e.message : String(e);
-                  }
-                  // Try each terminal method
-                  for (const m of ["response", "image", "blob", "fetch"]) {
-                    try {
-                      const r = await outRet[m]();
-                      d[`${variant}_${m}_len`] =
-                        r && typeof r.arrayBuffer === "function"
-                          ? (await r.arrayBuffer()).byteLength
-                          : typeof r;
-                    } catch (e) {
-                      d[`${variant}_${m}_err`] = e instanceof Error ? e.message : String(e);
-                    }
-                  }
-                } catch (e) {
-                  d[`${variant}_err`] = e instanceof Error ? e.message : String(e);
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        d.err = e instanceof Error ? e.message : String(e);
-      }
-      return new Response(JSON.stringify(d, null, 2), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
     const price = design ? money(design.priceCents) : "";
     const tag = design?.aiGenerated ? "AI-designed" : design?.category ? design.category : "";
     const rating =
@@ -370,11 +296,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     let contentType = "image/png";
     try {
       if (env.IMAGES) {
-        const jpeg = await env.IMAGES
+        const resp = await env.IMAGES
           .input(finalBody as ArrayBuffer)
-          .output({ format: "image/jpeg", quality: 82 })
-          .response();
-        finalBody = jpeg.body as ReadableStream;
+          .output({ format: "image/jpeg", quality: 82 });
+        finalBody = (await resp.arrayBuffer()) as ArrayBuffer;
         contentType = "image/jpeg";
       }
     } catch (e) {
