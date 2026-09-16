@@ -113,6 +113,35 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       : undefined;
 
     const artUrl = design ? await loadArtDataUrl(env, design) : null;
+    // Diagnostic (does not affect normal traffic): ?debug=1 returns JSON about the
+    // art-resolution path so we can see why the photo may not embed.
+    if (new URL(_req.url).searchParams.get("debug") === "1") {
+      const url = design?.imageUrl ?? "";
+      const m = url.match(/\/cdn\/(.+)$/);
+      const key = m ? m[1] : null;
+      let r2info = "no-key";
+      if (key) {
+        try {
+          const o = await getFromR2(key);
+          r2info = o ? `${o.contentType} ${o.body.byteLength}b` : "null-object";
+        } catch (e) {
+          r2info = "throw:" + (e instanceof Error ? e.message : String(e));
+        }
+      }
+      return new Response(
+        JSON.stringify({
+          slug,
+          hasDesign: !!design,
+          imageUrl: url,
+          key,
+          r2info,
+          artUrlLen: artUrl ? artUrl.length : 0,
+          envHasIMAGES: !!env.IMAGES,
+          envHasBUCKET: !!env.BUCKET,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
     const price = design ? money(design.priceCents) : "";
     const tag = design?.aiGenerated ? "AI-designed" : design?.category ? design.category : "";
     const rating =
