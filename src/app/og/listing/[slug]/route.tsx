@@ -66,10 +66,15 @@ async function loadFont(
 // Read the product art from R2 (binding) and transcode it to a cover JPEG via the
 // Images binding. This neutralizes WebP (Satori can't decode it) and keeps the
 // embedded payload small — and, critically, makes zero external HTTP requests.
+//
+// design.imageUrl is either "/cdn/<key>" or, most often, a Cloudflare Image
+// Resizing URL like "/cdn-cgi/image/width=3840/cdn/<key>". The actual R2 key is
+// the segment after the real "/cdn/" (note: "/cdn-cgi/" does NOT match).
 async function loadArtDataUrl(env: any, design: Design): Promise<string | null> {
-  let key: string | null = null;
-  if (design.imageUrl?.startsWith("/cdn/")) key = design.imageUrl.slice("/cdn/".length);
-  else if (design.imageUrl?.startsWith("/")) key = design.imageUrl.slice(1);
+  const url = design.imageUrl;
+  if (!url) return null;
+  const m = url.match(/\/cdn\/(.+)$/);
+  const key = m ? m[1] : null;
   if (!key) return null;
   try {
     const obj = await getFromR2(key);
