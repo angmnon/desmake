@@ -261,7 +261,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ slug: string }>
   const imageResponse = new ImageResponse(card, {
     width: 1200,
     height: 630,
-    fonts: (fonts as unknown as Parameters<typeof ImageResponse>[1]["fonts"]) ?? [],
+    fonts: (fonts as any) ?? [],
   });
 
   // Convert the PNG (ImageResponse is PNG-only) to JPEG@82 via the Cloudflare
