@@ -14,6 +14,10 @@ type Props = {
   variant?: string;
   /** Human-readable title used in social copy. */
   title?: string;
+  /** Creator display name, used to personalize share templates. */
+  creatorName?: string;
+  /** Design category, used to personalize share templates. */
+  category?: string;
   /** Label for the trigger button. */
   label?: string;
   /** Render as a compact icon button instead of a full button. */
@@ -28,9 +32,21 @@ type Props = {
  * Any logged-in user can share any product and earn a 7% referral on resulting
  * purchases — referral attribution is by handle, not by design ownership.
  */
-export function ShareSheet({ handle, designSlug, sku, variant, title, label = "Share & earn", iconOnly = false, children }: Props) {
+export function ShareSheet({
+  handle,
+  designSlug,
+  sku,
+  variant,
+  title,
+  creatorName,
+  category,
+  label = "Share & earn",
+  iconOnly = false,
+  children,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedTpl, setCopiedTpl] = useState<number | null>(null);
 
   function buildLinks() {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -56,6 +72,22 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
     return { refLink, landing };
   }
 
+  // Phase 3: ready-to-paste share message templates. {link} is the attribution link.
+  // Order matters — index 0 is used as the default for native share + social targets.
+  function buildMessages(refLink: string): string[] {
+    const t = title && title.trim() ? title.trim() : "this design";
+    const msgs: string[] = [];
+    msgs.push(`Love this? "${t}" is fully customizable on Desmake — make it yours 🎨 ${refLink}`);
+    if (category && category.trim()) {
+      msgs.push(`For ${category.trim()} lovers: "${t}" is a made-to-order design you can personalize on Desmake. ${refLink}`);
+    }
+    if (creatorName && creatorName.trim()) {
+      msgs.push(`Check out "${t}" by ${creatorName.trim()}, available made-to-order on Desmake — customize it your way. ${refLink}`);
+    }
+    msgs.push(`Made just for you: "${t}" — printed on demand by Desmake. Start your own version 👉 ${refLink}`);
+    return msgs;
+  }
+
   async function copy() {
     const { refLink } = buildLinks();
     try {
@@ -67,12 +99,24 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
     }
   }
 
+  async function copyTemplate(i: number) {
+    const { refLink } = buildLinks();
+    const msgs = buildMessages(refLink);
+    try {
+      await navigator.clipboard.writeText(msgs[i]);
+      setCopiedTpl(i);
+      setTimeout(() => setCopiedTpl(null), 1500);
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function nativeShare() {
     const { refLink, landing } = buildLinks();
-    const text = title ? `Check out "${title}" on Desmake` : "Check out Desmake";
+    const text = buildMessages(refLink)[0];
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({ title: text, text, url: refLink });
+        await navigator.share({ title: title ?? "Desmake", text, url: refLink });
         return;
       } catch {
         /* user cancelled — fall through to copy */
@@ -83,7 +127,7 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
 
   function socialUrl(network: string) {
     const { refLink, landing } = buildLinks();
-    const text = title ? `Check out "${title}" on Desmake` : "Check out Desmake";
+    const text = buildMessages(refLink)[0];
     const u = encodeURIComponent(landing);
     const r = encodeURIComponent(refLink);
     const t = encodeURIComponent(text);
@@ -104,6 +148,9 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
         return landing;
     }
   }
+
+  const { refLink } = buildLinks();
+  const messages = buildMessages(refLink);
 
   const trigger = children ?? (
     <button
@@ -128,7 +175,7 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
           <div
             className="card"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 460, width: "100%", padding: 24, position: "relative" }}
+            style={{ maxWidth: 460, width: "100%", padding: 24, position: "relative", maxHeight: "90vh", overflowY: "auto" }}
           >
             <button
               type="button"
@@ -148,7 +195,7 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
             <div className="row gap-2 mt-1" style={{ alignItems: "stretch" }}>
               <input
                 readOnly
-                value={typeof window !== "undefined" ? buildLinks().refLink : ""}
+                value={refLink}
                 onFocus={(e) => e.currentTarget.select()}
                 className="input"
                 style={{ flex: 1, fontFamily: "monospace", fontSize: 13 }}
@@ -156,6 +203,27 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
               <button type="button" className="btn" onClick={copy}>
                 {copied ? <><Check size={15} /> Copied</> : <><Copy size={15} /> Copy</>}
               </button>
+            </div>
+
+            <label className="tiny mono mt-4" style={{ color: "var(--color-tx-3)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Message templates</label>
+            <div className="col gap-2 mt-1">
+              {messages.map((m, i) => (
+                <div
+                  key={i}
+                  className="card"
+                  style={{ padding: 12, background: "var(--color-paper)", position: "relative", paddingRight: 86 }}
+                >
+                  <p className="small" style={{ margin: 0, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{m}</p>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    style={{ position: "absolute", top: 8, right: 8, padding: "4px 10px", fontSize: 12 }}
+                    onClick={() => copyTemplate(i)}
+                  >
+                    {copiedTpl === i ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
+                  </button>
+                </div>
+              ))}
             </div>
 
             <div className="row gap-2 mt-4 wrap">

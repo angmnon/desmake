@@ -20,6 +20,10 @@ const FONT_FILES: { file: string; weight: number }[] = [
   { file: "Inter-Bold.ttf", weight: 700 },
 ];
 
+// Bump this whenever the card's visual composition changes, so cached renders
+// (in R2 + at the edge) are invalidated and re-rendered with the new design.
+const CARD_REVISION = "v2";
+
 // Reuse the same O(1) published-design lookup the listing layout uses.
 async function resolveDesign(slug: string): Promise<Design | undefined> {
   try {
@@ -29,6 +33,60 @@ async function resolveDesign(slug: string): Promise<Design | undefined> {
     /* D1 disabled — fall through to the seed/in-memory result */
   }
   return findListingBySlug(slug);
+}
+
+// Deterministic, dependency-free hash (djb2) used as the R2 cache key. We only
+// need a stable fingerprint of the design state + card revision, not cryptographic
+// strength — collisions would just serve a slightly-wrong card, which is harmless.
+function hashString(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(16);
+}
+
+// The cache key folds in every field that affects the rendered card, plus the
+// CARD_REVISION. Any change → a new key → a fresh render (old keys are orphaned
+// but harmless; a future cleanup can prune them).
+function ogCacheKey(slug: string, design: Design | undefined): string {
+  if (!design) return `og/${slug}/${CARD_REVISION}__missing.jpg`;
+  const fingerprint = [
+    CARD_REVISION,
+    design.title,
+    design.priceCents,
+    design.creator,
+    design.imageUrl,
+    design.rating,
+    design.reviews,
+    design.aiGenerated,
+    design.category,
+  ].join("|");
+  return `og/${slug}/${hashString(fingerprint)}.jpg`;
+}
+
+// Best-effort R2 read/write of the rendered card. Uses the BUCKET binding
+// directly (keys here are [a-z0-9._-] only, so no encoding needed). Never throws.
+async function readCachedCard(
+  env: any,
+  key: string,
+): Promise<ArrayBuffer | null> {
+  try {
+    const obj = await env?.BUCKET?.get(key);
+    if (obj) return (await obj.arrayBuffer()) as ArrayBuffer;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+async function writeCachedCard(
+  env: any,
+  key: string,
+  body: ArrayBuffer,
+): Promise<void> {
+  try {
+    await env?.BUCKET?.put(key, body, { contentType: "image/jpeg" });
+  } catch {
+    /* ignore — cache miss on next request is fine */
+  }
 }
 
 function toBase64(buf: ArrayBuffer): string {
@@ -113,11 +171,49 @@ async function loadArtDataUrl(env: any, design: Design): Promise<string | null> 
   }
 }
 
+// Serve the generic static OG card (PNG) on any render failure, so social
+// previews never hard-error. Best-effort.
+async function serveFallback(): Promise<Response> {
+  try {
+    const env = (getCloudflareContext() as any)?.env ?? {};
+    if (env?.ASSETS) {
+      const res = await env.ASSETS.fetch(new URL("/og.png", "http://localhost"));
+      if (res.ok) {
+        return new Response(await res.arrayBuffer(), {
+          status: 200,
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=3600",
+          },
+        });
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return new Response("OG render failed", { status: 500 });
+}
+
 export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await ctx.params;
     const env = (getCloudflareContext() as any)?.env ?? {};
     const design = await resolveDesign(slug);
+
+    // Phase 2: fast path — serve a previously rendered card from R2, skipping the
+    // expensive Satori + Images transcode entirely. Edge cache still applies on top.
+    const cacheKey = ogCacheKey(slug, design);
+    const cached = await readCachedCard(env, cacheKey);
+    if (cached) {
+      return new Response(cached, {
+        status: 200,
+        headers: {
+          "Content-Type": "image/jpeg",
+          "Cache-Control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800",
+        },
+      });
+    }
+
     const creatorName = design
       ? CREATORS.find((c) => c.handle === design.creator)?.name ?? design.creator
       : "";
@@ -232,6 +328,18 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
             {design ? design.title : "Custom print-on-demand art"}
           </div>
 
+          {/* Phase 3 micro-copy: reinforces the make-it-yours hook */}
+          <div
+            style={{
+              color: SILVER,
+              fontSize: 24,
+              fontWeight: 500,
+              display: "flex",
+            }}
+          >
+            Make it yours on Desmake
+          </div>
+
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             {creatorName ? (
               <div style={{ color: SILVER, fontSize: 26, fontWeight: 600, display: "flex" }}>
@@ -317,6 +425,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       contentType = "image/jpeg";
     }
 
+    // Phase 2: persist the rendered card to R2 so the fast path serves it next time.
+    if (jpeg) await writeCachedCard(env, cacheKey, jpeg);
+
     return new Response(finalBody, {
       status: 200,
       headers: {
@@ -328,23 +439,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     // Resilience: on any render failure, serve the generic static OG card rather
     // than a hard 500 (so share previews never break).
     console.error("[og] render failed; serving fallback", err);
-    try {
-      const env = (getCloudflareContext() as any)?.env ?? {};
-      if (env?.ASSETS) {
-        const res = await env.ASSETS.fetch(new URL("/og.png", "http://localhost"));
-        if (res.ok) {
-          return new Response(await res.arrayBuffer(), {
-            status: 200,
-            headers: {
-              "Content-Type": "image/png",
-              "Cache-Control": "public, max-age=3600",
-            },
-          });
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-    return new Response("OG render failed", { status: 500 });
+    return serveFallback();
   }
 }

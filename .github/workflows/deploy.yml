@@ -90,6 +90,14 @@ jobs:
             --data '{"purge_everything":true}'
           cat /tmp/purge.json || true
 
+      - name: Warm up OG share cards (best-effort)
+        if: success()
+        continue-on-error: true
+        env:
+          SITE_URL: "https://desmake.com"
+          OG_WARMUP_LIMIT: "200"
+        run: node scripts/warmup_og.mjs
+
   pr-check:
     name: Build & type-check (PR only, no deploy)
     if: github.event_name == 'pull_request'

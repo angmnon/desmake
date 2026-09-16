@@ -450,6 +450,8 @@ export default function ListingView({ design }: { design: Design }) {
                   sku={activeSku}
                   variant={currentVariant ?? undefined}
                   title={design.title}
+                  creatorName={design.creator}
+                  category={design.category}
                   iconOnly
                 />
               )}
