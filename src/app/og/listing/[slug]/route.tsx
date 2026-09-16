@@ -311,6 +311,24 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     // Resilience: on any render failure, serve the generic static OG card rather
     // than a hard 500 (so share previews never break).
     console.error("[og] render failed; serving fallback", err);
+    // Diagnostic escape hatch: ?debug=1 surfaces the error text instead of the
+    // fallback image (does not affect normal traffic).
+    try {
+      const debugUrl = new URL(_req.url);
+      if (debugUrl.searchParams.get("debug") === "1") {
+        const env = (getCloudflareContext() as any)?.env ?? {};
+        const envKeys = Object.keys(env).join(",");
+        const msg = `envKeys=[${envKeys}]\n${
+          err instanceof Error ? `${err.name}: ${err.message}\n${(err as Error).stack ?? ""}` : String(err)
+        }`;
+        return new Response(`OG RENDER ERROR:\n${msg}`, {
+          status: 500,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+    } catch {
+      /* ignore */
+    }
     try {
       const env = (getCloudflareContext() as any)?.env ?? {};
       if (env?.ASSETS) {
