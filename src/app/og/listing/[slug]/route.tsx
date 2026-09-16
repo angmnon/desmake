@@ -120,10 +120,26 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       const m = url.match(/\/cdn\/(.+)$/);
       const key = m ? m[1] : null;
       let r2info = "no-key";
+      let imagesError = "n/a";
+      let imagesOk = false;
       if (key) {
         try {
           const o = await getFromR2(key);
           r2info = o ? `${o.contentType} ${o.body.byteLength}b` : "null-object";
+          if (o && env?.IMAGES) {
+            try {
+              const jpeg = await (env.IMAGES as any)
+                .input(o.body)
+                .transform({ width: 1200, height: 630, fit: "cover" })
+                .output({ format: "image/jpeg", quality: 82 })
+                .response();
+              const buf = await jpeg.body.arrayBuffer();
+              imagesOk = true;
+              imagesError = `ok ${buf.byteLength}b`;
+            } catch (e2) {
+              imagesError = e2 instanceof Error ? `${e2.name}: ${e2.message}` : String(e2);
+            }
+          }
         } catch (e) {
           r2info = "throw:" + (e instanceof Error ? e.message : String(e));
         }
@@ -135,9 +151,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
           imageUrl: url,
           key,
           r2info,
+          imagesOk,
+          imagesError,
           artUrlLen: artUrl ? artUrl.length : 0,
-          envHasIMAGES: !!env.IMAGES,
-          envHasBUCKET: !!env.BUCKET,
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
