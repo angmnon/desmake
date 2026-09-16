@@ -84,8 +84,8 @@ async function loadArtDataUrl(env: any, design: Design): Promise<string | null> 
         .input(obj.body)
         .transform({ width: 1200, height: 630, fit: "cover" })
         .output({ format: "image/jpeg", quality: 82 })
-        .response();
-      const buf = await jpeg.body.arrayBuffer();
+        .image();
+      const buf = await jpeg.arrayBuffer();
       return `data:image/jpeg;base64,${toBase64(buf)}`;
     }
     return `data:${obj.contentType};base64,${toBase64(obj.body)}`;
@@ -132,8 +132,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
                 .input(o.body)
                 .transform({ width: 1200, height: 630, fit: "cover" })
                 .output({ format: "image/jpeg", quality: 82 })
-                .response();
-              const buf = await jpeg.body.arrayBuffer();
+                .image();
+              const buf = await jpeg.arrayBuffer();
               imagesOk = true;
               imagesError = `ok ${buf.byteLength}b`;
             } catch (e2) {
@@ -342,7 +342,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
         const jpeg = await env.IMAGES
           .input(finalBody as ArrayBuffer)
           .output({ format: "image/jpeg", quality: 82 })
-          .response();
+          .image();
         finalBody = jpeg.body as ReadableStream;
         contentType = "image/jpeg";
       }
