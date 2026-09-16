@@ -131,15 +131,24 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
                   .input(o.body)
                   .transform({ width: 1200, height: 630, fit: "cover" })
                   .output({ format: "image/jpeg", quality: 82 });
-                d.outType = typeof out;
                 d.outCtor = out?.constructor?.name;
-                d.outHasArrayBuffer = typeof out?.arrayBuffer;
-                d.outHasBody = typeof out?.body;
-                try {
-                  const ab = await out.arrayBuffer();
-                  d.abLen = ab.byteLength;
-                } catch (e) {
-                  d.abErr = e instanceof Error ? e.message : String(e);
+                d.outOwn = out ? Object.getOwnPropertyNames(out).join(",") : "null";
+                d.outProto = out ? Object.getOwnPropertyNames(Object.getPrototypeOf(out)).join(",") : "null";
+                for (const m of ["response", "image", "blob", "arrayBuffer", "bytes", "readable", "body", "text"]) {
+                  d["m_" + m] = out ? typeof out[m] : "no-out";
+                }
+                for (const m of ["response", "image", "blob"]) {
+                  try {
+                    const r = await out[m]();
+                    if (r && typeof r.arrayBuffer === "function") {
+                      const ab = await r.arrayBuffer();
+                      d["call_" + m + "_bytes"] = ab.byteLength;
+                    } else {
+                      d["call_" + m] = typeof r + (r?.constructor?.name ? ":" + r.constructor.name : "");
+                    }
+                  } catch (e) {
+                    d["call_" + m + "_err"] = e instanceof Error ? e.message : String(e);
+                  }
                 }
               } catch (e) {
                 d.outErr = e instanceof Error ? e.message : String(e);
