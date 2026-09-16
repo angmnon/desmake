@@ -120,24 +120,42 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
       const m = url.match(/\/cdn\/(.+)$/);
       const key = m ? m[1] : null;
       let r2info = "no-key";
-      let imagesError = "n/a";
-      let imagesOk = false;
+      const probe: Record<string, string> = {};
       if (key) {
         try {
           const o = await getFromR2(key);
           r2info = o ? `${o.contentType} ${o.body.byteLength}b` : "null-object";
           if (o && env?.IMAGES) {
-            try {
-              const jpeg = await (env.IMAGES as any)
-                .input(o.body)
-                .transform({ width: 1200, height: 630, fit: "cover" })
-                .output({ format: "image/jpeg", quality: 82 })
-                .image();
-              const buf = await jpeg.arrayBuffer();
-              imagesOk = true;
-              imagesError = `ok ${buf.byteLength}b`;
-            } catch (e2) {
-              imagesError = e2 instanceof Error ? `${e2.name}: ${e2.message}` : String(e2);
+            const IMAGES = env.IMAGES as any;
+            const buf = o.body;
+            const shapes: [string, () => Promise<any>][] = [
+              ["A input().output().image()", async () => (await IMAGES.input(buf).output({ format: "image/jpeg", quality: 82 })).image()],
+              ["B input().output().response()", async () => (await IMAGES.input(buf).output({ format: "image/jpeg", quality: 82 })).response()],
+              ["C input().transform().output().image()", async () => (await IMAGES.input(buf).transform({ width: 1200, height: 630, fit: "cover" }).output({ format: "image/jpeg", quality: 82 })).image()],
+              ["D input().output()", async () => await IMAGES.input(buf).output({ format: "image/jpeg", quality: 82 })],
+              ["E input()", async () => await IMAGES.input(buf)],
+              ["F input().image()", async () => (await IMAGES.input(buf)).image()],
+            ];
+            for (const [name, fn] of shapes) {
+              try {
+                const r = await fn();
+                if (!r) {
+                  probe[name] = "null";
+                  continue;
+                }
+                let len = -1;
+                try {
+                  if (typeof r.arrayBuffer === "function") len = (await r.arrayBuffer()).byteLength;
+                  else if (r.body && typeof r.body.arrayBuffer === "function") len = (await r.body.arrayBuffer()).byteLength;
+                  else if (typeof r.byteLength === "number") len = r.byteLength;
+                  else if (typeof r.size === "number") len = r.size;
+                } catch {
+                  /* ignore */
+                }
+                probe[name] = `ok len=${len}`;
+              } catch (e2) {
+                probe[name] = "ERR:" + (e2 instanceof Error ? e2.message : String(e2));
+              }
             }
           }
         } catch (e) {
@@ -145,16 +163,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
         }
       }
       return new Response(
-        JSON.stringify({
-          slug,
-          hasDesign: !!design,
-          imageUrl: url,
-          key,
-          r2info,
-          imagesOk,
-          imagesError,
-          artUrlLen: artUrl ? artUrl.length : 0,
-        }),
+        JSON.stringify({ slug, hasDesign: !!design, imageUrl: url, key, r2info, probe, artUrlLen: artUrl ? artUrl.length : 0 }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       );
     }
