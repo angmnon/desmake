@@ -35,15 +35,23 @@ export function ShareSheet({ handle, designSlug, sku, variant, title, label = "S
   function buildLinks() {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     // P0: deep-link the exact product + variant so the shared link lands on a
-    // ready-to-buy state (the "自带购物链接" request). The `to` param flows
-    // through /api/ref which 302-redirects (preserving the query) and plants the
-    // dm_ref attribution cookie — so referral commission still tracks.
-    const toPath = designSlug
-      ? `/listing/${designSlug}` + (sku ? `?sku=${encodeURIComponent(sku)}` + (variant ? `&variant=${encodeURIComponent(variant)}` : "") : "")
-      : "";
-    const refLink = `${origin}/api/ref?ref=${encodeURIComponent(handle)}` + (toPath ? `&to=${encodeURIComponent(toPath)}` : "");
+    // ready-to-buy state (the "自带购物链接" request). sku/variant are passed as
+    // TOP-LEVEL params on /api/ref (NOT nested inside `to`): a query nested inside
+    // a query param gets its `&` re-split by the URL parser and the variant is lost.
+    // /api/ref reconstructs the landing URL from these and plants the dm_ref cookie,
+    // so referral commission still tracks.
+    const toPath = designSlug ? `/listing/${encodeURIComponent(designSlug)}` : "";
+    const refParams = new URLSearchParams();
+    refParams.set("ref", handle);
+    if (toPath) refParams.set("to", toPath);
+    if (sku) refParams.set("sku", sku);
+    if (variant) refParams.set("variant", variant);
+    const refLink = `${origin}/api/ref?${refParams.toString()}`;
+    const landingParams = new URLSearchParams();
+    if (sku) landingParams.set("sku", sku);
+    if (variant) landingParams.set("variant", variant);
     const landing = designSlug
-      ? `${origin}/listing/${encodeURIComponent(designSlug)}` + (sku ? `?sku=${encodeURIComponent(sku)}` + (variant ? `&variant=${encodeURIComponent(variant)}` : "") : "")
+      ? `${origin}/listing/${encodeURIComponent(designSlug)}` + (landingParams.toString() ? `?${landingParams.toString()}` : "")
       : `${origin}/creators/${encodeURIComponent(handle)}`;
     return { refLink, landing };
   }

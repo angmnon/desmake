@@ -27,13 +27,22 @@ export async function GET(request: NextRequest) {
   }
   const ref = request.nextUrl.searchParams.get("ref");
   const to = request.nextUrl.searchParams.get("to") || "/";
+  // Deep-link params for the share "buy link". Passed as TOP-LEVEL params (never
+  // nested inside `to`) because a `to` carrying its own query string gets its
+  // nested `&` re-split by the URL parser, silently dropping sku/variant.
+  const sku = request.nextUrl.searchParams.get("sku");
+  const variant = request.nextUrl.searchParams.get("variant");
   // Only allow same-origin relative paths to avoid open-redirect to another host.
   const safeTo = to.startsWith("/") && !to.startsWith("//") ? to : "/";
 
   // Inside a Cloudflare Container `request.url` resolves to the internal host
   // (http://0.0.0.0:3000), so a redirect built from it sends real visitors to an
-  // unreachable address. Always build the Location from the public base URL.
-  const res = NextResponse.redirect(new URL(safeTo, getSiteBaseUrl(request)), 302);
+  // unreachable address. Always build the Location from the public base URL, then
+  // attach the deep-link params via searchParams (single-level query, no nesting).
+  const target = new URL(safeTo, getSiteBaseUrl(request));
+  if (sku) target.searchParams.set("sku", sku);
+  if (variant) target.searchParams.set("variant", variant);
+  const res = NextResponse.redirect(target, 302);
   // C-1 fix: resolve through D1. The synchronous lookup only saw users registered in
   // this isolate, so most share links silently failed to plant the attribution cookie
   // and the referrer lost the commission they had earned.
