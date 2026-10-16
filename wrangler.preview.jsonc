@@ -1,0 +1,57 @@
+{
+  // ── Preview-only wrangler config (deployed by .github/workflows/preview.yml) ──
+  // Identical to wrangler.jsonc EXCEPT:
+  //   • name -> desmake-preview  (separate Worker → separate *.workers.dev URL;
+  //     never touches the production "desmake" Worker that fronts desmake.com)
+  //   • WORKER_SELF_REFERENCE.service -> desmake-preview (revalidation stays inside the preview)
+  //   • BUILD_REV -> preview-*  (namespaces R2 OG-card cache keys away from prod)
+  // D1 / R2 / IMAGES bindings are intentionally SHARED with prod so reviewers see
+  // real catalog data. ⚠️ Visual review only — do not run real checkout/publish here
+  // (those write to the production D1).
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "desmake-preview",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "desmake-preview"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "39a994b2-f353-4ee3-a1ff-6288963a1339"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "desmake-assets"
+    }
+  ],
+  "images": {
+    "binding": "IMAGES"
+  },
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
+  "vars": {
+    "AGNES_BASE_URL": "https://apihub.agnes-ai.com/v1",
+    "AGNES_IMAGE_MODEL": "agnes-image-2.1-flash",
+    "SITE_URL": "https://desmake.com",
+    "REQUIRE_EMAIL_VERIFICATION": "true",
+    "IMAGE_RESIZING_ENABLED": "true",
+    "BUILD_REV": "preview-20260916"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
