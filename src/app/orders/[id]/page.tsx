@@ -95,7 +95,7 @@ export default function OrderDetailPage() {
               <h3 className="h4 mb-4">Items</h3>
               <div className="stack gap-3">
                 {data.items.map((it, i) => (
-                  <div key={i} className="row gap-3 items-center" style={{ borderBottom: i < data.items.length - 1 ? "1px solid rgba(12,12,13,0.08)" : "none", paddingBottom: i < data.items.length - 1 ? 12 : 0 }}>
+                  <div key={i} className="row gap-3 items-center" style={{ borderBottom: i < data.items.length - 1 ? "1px solid var(--color-line)" : "none", paddingBottom: i < data.items.length - 1 ? 12 : 0 }}>
                     <div className="flex-1 min-w-0">
                       <div className="small font-semibold truncate">{it.title || it.listing_id}</div>
                       <div className="tiny mono" style={{ color: "var(--color-tx-3)" }}>{adapterName(it.adapter)}{it.variant ? ` · ${it.variant}` : ""} × {it.quantity}</div>

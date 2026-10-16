@@ -74,7 +74,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
       <section style={{ paddingTop: "clamp(40px,5vw,72px)" }}>
         <div className="container-wide">
           <div className="row gap-5 wrap" style={{ alignItems: "flex-end" }}>
-            <div style={{ width: 88, height: 88, borderRadius: "50%", overflow: "hidden", border: "1px solid rgba(12,12,13,0.12)", flexShrink: 0 }}>
+            <div style={{ width: 88, height: 88, borderRadius: "50%", overflow: "hidden", border: "1px solid var(--color-line)", flexShrink: 0 }}>
               <Artwork seed={creator.handle} palette={["#0c0c0d", "#f7f6f3", "#f1efea"]} shape={creator.avatarHue % 6} rounded={false} className="!rounded-none" />
             </div>
             <div>

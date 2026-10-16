@@ -128,7 +128,7 @@ export default function OrdersPage() {
                 </div>
                 <div className="row gap-3 wrap">
                   {o.items.map((it, i) => (
-                    <span key={i} className="tiny mono" style={{ padding: "3px 9px", border: "1px solid rgba(12,12,13,0.1)", borderRadius: 6, color: "var(--color-tx-3)" }}>
+                    <span key={i} className="tiny mono" style={{ padding: "3px 9px", border: "1px solid var(--color-line)", borderRadius: 6, color: "var(--color-tx-3)" }}>
                       {it.title} · {adapterName(it.adapter)}{it.variant ? ` · ${it.variant}` : ""} × {it.quantity}
                     </span>
                   ))}
@@ -138,7 +138,7 @@ export default function OrdersPage() {
                     payment left an order permanently stuck in `pending` with no way to
                     complete it from the UI, so the sale was simply lost. */}
                 {o.state === "pending" && (
-                  <div className="row gap-3 wrap items-center" style={{ borderTop: "1px solid rgba(12,12,13,0.08)", marginTop: 14, paddingTop: 14 }}>
+                  <div className="row gap-3 wrap items-center" style={{ borderTop: "1px solid var(--color-line)", marginTop: 14, paddingTop: 14 }}>
                     <Link href={`/checkout/pay?order=${o.id}`} className="btn btn-outline" style={{ padding: "9px 16px", fontSize: "0.8125rem" }}>
                       Complete payment <ArrowRight size={14} strokeWidth={1.8} />
                     </Link>

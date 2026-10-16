@@ -164,7 +164,7 @@ export default async function CreatorsPage() {
           <div className="grid g-3" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
             {topCreators.slice(0, 4).map((c) => (
               <Link key={c.handle} href={`/creators/${c.handle}`} className="card card-hover block" style={{ padding: 20 }}>
-                <div style={{ width: 56, height: 56, borderRadius: "50%", overflow: "hidden", marginBottom: 16, border: "1px solid rgba(12,12,13,0.1)" }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", overflow: "hidden", marginBottom: 16, border: "1px solid var(--color-line)" }}>
                   <Artwork seed={c.handle} palette={["#0c0c0d", "#f7f6f3", "#f1efea"]} shape={c.avatarHue % 6} rounded={false} className="!rounded-none" />
                 </div>
                 <h4 className="h5">{c.name}</h4>

@@ -194,7 +194,7 @@ function DesignsTab({ designs }: { designs: PerDesign[] }) {
     <div className="card" style={{ overflow: "hidden" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(12,12,13,0.1)" }}>
+          <tr style={{ textAlign: "left", borderBottom: "1px solid var(--color-line)" }}>
             <th className="small" style={{ padding: "12px 16px" }}>Design</th>
             <th className="small" style={{ padding: "12px 16px" }}>Views</th>
             <th className="small" style={{ padding: "12px 16px" }}>Saves</th>
@@ -203,7 +203,7 @@ function DesignsTab({ designs }: { designs: PerDesign[] }) {
         </thead>
         <tbody>
           {designs.map((d) => (
-            <tr key={d.slug} style={{ borderBottom: "1px solid rgba(12,12,13,0.06)" }}>
+            <tr key={d.slug} style={{ borderBottom: "1px solid var(--color-line)" }}>
               <td style={{ padding: "12px 16px" }}><Link href={`/listing/${d.slug}`} className="link-u small">{d.title}</Link></td>
               <td className="mono small" style={{ padding: "12px 16px" }}>{d.views}</td>
               <td className="mono small" style={{ padding: "12px 16px" }}>{d.saves}</td>

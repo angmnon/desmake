@@ -104,7 +104,7 @@ export default async function BlogPostPage({
         <article className="section-sm" style={{ paddingTop: "clamp(20px,3vw,40px)" }}>
           <div className="container-narrow">
             <Markdown source={post.body} />
-            <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid rgba(12,12,13,0.1)" }}>
+            <div style={{ marginTop: 40, paddingTop: 28, borderTop: "1px solid var(--color-line)" }}>
               <Link href="/studio" className="btn btn-paper btn-lg">
                 Publish your first design <span className="arw" />
               </Link>

@@ -223,7 +223,7 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-2xl font-medium tracking-tight py-3 border-b border-[rgba(12,12,13,0.08)]"
+                className="text-2xl font-medium tracking-tight py-3 border-b border-[var(--color-line)]"
                 onClick={() => setMobileOpen(false)}
               >
                 {item.label}
