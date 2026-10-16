@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account — Desmake</title>
+<meta name="description" content="Manage your Desmake profile, notifications, addresses, payment methods, privacy and creator settings.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  i[data-ic] { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+
+  /* main split: content + rail */
+  .acc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 296px; gap: clamp(24px, 3vw, 40px); align-items: start; }
+  .acc-stack { display: flex; flex-direction: column; gap: 26px; }
+  .acc-rail { position: sticky; top: calc(var(--nav-h) + 28px); display: flex; flex-direction: column; gap: 16px; }
+
+  /* section heading inside main */
+  .sec-anchor { scroll-margin-top: calc(var(--nav-h) + 24px); }
+  .sec-t { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  .sec-n { font-family: var(--mono); font-size: .6875rem; color: var(--tx-3); letter-spacing: .1em; }
+
+  /* sidebar identity */
+  .side-me { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); margin-bottom: 18px; }
+  .side-me b { font-size: .8125rem; font-weight: 600; letter-spacing: -.01em; display: block; line-height: 1.25; }
+  .side-me span { font-size: .72rem; color: var(--tx-3); font-family: var(--mono); }
+
+  /* avatar uploader */
+  .av-up { position: relative; width: 132px; height: 132px; flex: none; }
+  .av-up .av { width: 132px; height: 132px; box-shadow: inset 0 0 0 1px rgba(12,12,13,.07), 0 10px 30px -14px rgba(12,12,13,.4); }
+  .av-up::after {
+    content: ""; position: absolute; inset: -5px; border-radius: 50%;
+    border: 1px dashed var(--line-2); pointer-events: none;
+    transition: border-color .3s var(--e), transform .5s var(--e);
+  }
+  .av-up:hover::after { border-color: var(--ink); transform: rotate(35deg); }
+  .av-cam {
+    position: absolute; right: 2px; bottom: 2px; z-index: 3;
+    width: 36px; height: 36px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--ink); color: var(--paper);
+    box-shadow: 0 0 0 3px var(--surface);
+    transition: transform .3s var(--e);
+  }
+  .av-cam:hover { transform: scale(1.08) translateY(-1px); }
+  .av-veil {
+    position: absolute; inset: 0; border-radius: 50%; z-index: 2;
+    display: grid; place-items: center;
+    background: rgba(12,12,13,.5); color: var(--paper);
+    font-size: .72rem; font-weight: 550; letter-spacing: .02em;
+    opacity: 0; transition: opacity .3s var(--e); cursor: pointer;
+  }
+  .av-up:hover .av-veil { opacity: 1; }
+
+  /* preference rows */
+  .pref { display: flex; align-items: flex-start; gap: 18px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .pref:last-child { border-bottom: 0; padding-bottom: 0; }
+  .pref:first-child { padding-top: 0; }
+  .pref-ic { width: 34px; height: 34px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; background: rgba(12,12,13,.05); color: var(--tx-2); }
+  .pref-b { min-width: 0; flex: 1; }
+  .pref-b b { display: block; font-size: .8438rem; font-weight: 550; letter-spacing: -.01em; }
+  .pref-b p { font-size: .78rem; color: var(--tx-3); line-height: 1.5; margin-top: 2px; max-width: 52ch; }
+
+  /* connected accounts */
+  .conn { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); transition: border-color .25s var(--e), transform .25s var(--e); }
+  .conn:hover { border-color: var(--line-2); transform: translateY(-1px); }
+  .conn-logo { width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; background: var(--paper-2); flex: none; }
+  .conn-logo svg { width: 18px; height: 18px; }
+
+  /* address / payment cards */
+  .mini { border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px; background: var(--surface); position: relative; transition: border-color .25s var(--e); }
+  .mini:hover { border-color: var(--line-2); }
+  .mini.is-default { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  .mini-add {
+    border: 1px dashed var(--line-2); border-radius: var(--r-md);
+    display: grid; place-items: center; gap: 6px; padding: 20px; min-height: 132px;
+    color: var(--tx-3); font-size: .8125rem; font-weight: 500;
+    transition: all .28s var(--e); cursor: pointer; background: transparent;
+  }
+  .mini-add:hover { border-color: var(--ink); color: var(--tx); background: rgba(12,12,13,.02); }
+  .cardface { width: 42px; height: 28px; border-radius: 5px; display: grid; place-items: center; flex: none; font-family: var(--mono); font-size: .5625rem; font-weight: 500; letter-spacing: .04em; color: #fff; }
+
+  /* danger */
+  .danger { border-color: rgba(255,77,24,.3); background: linear-gradient(180deg, rgba(255,77,24,.045), rgba(255,77,24,.015)); }
+  .btn-danger { --bg: transparent; --fg: var(--signal); --bd: rgba(255,77,24,.42); }
+  .btn-danger:hover { --bg: var(--signal); --fg: #fff; --bd: var(--signal); }
+
+  /* rail cards */
+  .rail-check { display: flex; align-items: center; gap: 9px; font-size: .78rem; color: var(--tx-2); padding: 5px 0; }
+  .rail-check .tick { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--moss); color: #fff; }
+  .rail-check.off .tick { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--tx-3); }
+
+  .save-bar { display: flex; align-items: center; gap: 12px; }
+  .saved-hint { font-size: .75rem; color: var(--tx-3); font-family: var(--mono); }
+
+  @media (max-width: 1180px) { .acc-grid { grid-template-columns: minmax(0, 1fr); } .acc-rail { position: static; flex-direction: row; flex-wrap: wrap; } .acc-rail > * { flex: 1 1 260px; } }
+  @media (max-width: 700px) { .g-2.form-2 { grid-template-columns: minmax(0,1fr); } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="app">
+  <!-- ---------- Sidebar ---------- -->
+  <aside class="side">
+    <div class="side-me">
+      <span class="av av-sm" id="sideAv"></span>
+      <span style="min-width:0">
+        <b>Ava Lindqvist</b>
+        <span>@avalind</span>
+      </span>
+    </div>
+
+    <div class="side-t">Account</div>
+    <a class="side-link is-active" href="#profile" data-spy="profile"><i data-ic="user" data-sz="16"></i> Profile</a>
+    <a class="side-link" href="#notifications" data-spy="notifications"><i data-ic="bell" data-sz="16"></i> Notifications</a>
+    <a class="side-link" href="#addresses" data-spy="addresses"><i data-ic="pin" data-sz="16"></i> Addresses <span class="cnt">2</span></a>
+    <a class="side-link" href="#payment" data-spy="payment"><i data-ic="card" data-sz="16"></i> Payment</a>
+
+    <div class="side-t">Preferences</div>
+    <a class="side-link" href="#privacy" data-spy="privacy"><i data-ic="lock" data-sz="16"></i> Privacy &amp; security</a>
+    <a class="side-link" href="#creator" data-spy="creator"><i data-ic="palette" data-sz="16"></i> Creator settings</a>
+
+    <div class="side-t">Elsewhere</div>
+    <a class="side-link" href="orders.html"><i data-ic="package" data-sz="16"></i> Orders</a>
+    <a class="side-link" href="earnings.html"><i data-ic="dollar" data-sz="16"></i> Earnings</a>
+    <a class="side-link" href="agents.html"><i data-ic="terminal" data-sz="16"></i> Agent Hub</a>
+
+    <div style="margin-top:26px;padding-top:16px;border-top:1px solid var(--line)">
+      <a class="side-link" href="auth.html"><i data-ic="logout" data-sz="16"></i> Sign out</a>
+    </div>
+  </aside>
+
+  <!-- ---------- Main ---------- -->
+  <main class="main">
+    <div class="crumb" style="margin-bottom:16px">
+      <a href="index.html">Home</a><i data-ic="chevronRight" data-sz="13"></i><span class="strong" style="color:var(--tx-2)">Account</span>
+    </div>
+
+    <div class="page-h">
+      <div>
+        <div class="eyebrow eyebrow-dot">Settings</div>
+        <h1 class="h1" style="margin-top:10px">Account</h1>
+      </div>
+      <div class="save-bar">
+        <span class="saved-hint" id="savedHint">Saved 4 min ago</span>
+        <button class="btn btn-outline btn-sm">Discard</button>
+        <button class="btn btn-sm" id="saveTop"><i data-ic="check" data-sz="14"></i> Save changes</button>
+      </div>
+    </div>
+
+    <div class="acc-grid">
+      <!-- ============ LEFT COLUMN ============ -->
+      <div class="acc-stack">
+
+        <!-- ---- Profile ---- -->
+        <section id="profile" class="sec-anchor rv">
+          <div class="sec-t">
+            <span class="sec-n">01</span>
+            <h2 class="h3">Profile</h2>
+          </div>
+          <div class="panel">
+            <div class="panel-b" style="padding:26px">
+              <div class="row-top gap-32 wrap" style="margin-bottom:28px">
+                <div class="av-up">
+                  <span class="av" id="meAv"></span>
+                  <span class="av-veil">Change</span>
+                  <button class="av-cam" aria-label="Upload avatar"><i data-ic="image" data-sz="16"></i></button>
+                </div>
+                <div class="stack gap-12" style="flex:1;min-width:220px;padding-top:6px">
+                  <div>
+                    <div class="h4">Profile photo</div>
+                    <p class="body" style="margin-top:4px;max-width:44ch">Used across the marketplace, your storefront and agent receipts. Square images look best.</p>
+                  </div>
+                  <div class="row gap-8 wrap">
+                    <button class="btn btn-outline btn-sm"><i data-ic="upload" data-sz="14"></i> Upload new</button>
+                    <button class="btn btn-ghost btn-sm" id="shuffleAv"><i data-ic="refresh" data-sz="14"></i> Generate</button>
+                    <button class="btn btn-ghost btn-sm" style="color:var(--tx-3)">Remove</button>
+                  </div>
+                  <div class="tiny faint">PNG, JPG or WebP · max 4 MB · min 400×400</div>
+                </div>
+              </div>
+
+              <div class="hr" style="margin-bottom:26px"></div>
+
+              <div class="grid g-2 form-2" style="gap:18px">
+                <div class="field">
+                  <label class="label" for="dn">Display name</label>
+                  <input class="input" id="dn" value="Ava Lindqvist">
+                </div>
+                <div class="field">
+                  <label class="label" for="hn">Handle</label>
+                  <div class="input-wrap">
+                    <input class="input" id="hn" value="avalind" style="padding-left:118px">
+                    <span class="mono" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--tx-3);pointer-events:none">desmake.com/@</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="em">Email</label>
+                  <div class="input-wrap">
+                    <input class="input" id="em" type="email" value="ava@northlight.studio" style="padding-right:86px">
+                    <span class="suffix badge badge-moss">Verified</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="ph">Phone</label>
+                  <input class="input" id="ph" type="tel" value="+46 70 118 22 04">
+                </div>
+                <div class="field" style="grid-column:1 / -1">
+                  <label class="label" for="bio">Bio</label>
+                  <textarea class="textarea" id="bio" maxlength="240">Independent designer working between print and parametric objects. Ex-Bonnier. I publish small runs and let the network handle the rest.</textarea>
+                  <div class="row-between">
+                    <span class="hint">Appears on your public creator profile.</span>
+                    <span class="hint mono tnum" id="bioCount">0 / 240</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="ws">Website</label>
+                  <div class="input-wrap">
+                    <span class="ic"><i data-ic="link" data-sz="15"></i></span>
+                    <input class="input" id="ws" value="northlight.studio">
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="lo">Location</label>
+                  <div class="input-wrap">
+                    <span class="ic"><i data-ic="pin" data-sz="15"></i></span>
+                    <input class="input" id="lo" value="Stockholm, Sweden">
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="lang">Language</label>
+                  <select class="select" id="lang">
+                    <option>English (US)</option><option>English (UK)</option><option>Svenska</option><option>Deutsch</option><option>日本語</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="tz">Time zone</label>
+                  <select class="select" id="tz">
+                    <option>(GMT+02:00) Stockholm</option><option>(GMT+00:00) London</option><option>(GMT-05:00) New York</option><option>(GMT+08:00) Shanghai</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="panel-f row-between">
+              <span class="tiny faint">Changes to your handle break existing links.</span>
+              <div class="row gap-8">
+                <button class="btn btn-ghost btn-sm">Cancel</button>
+                <button class="btn btn-sm">Save changes</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- Notification preferences ---- -->
+        <section id="notifications" class="sec-anchor rv">
+          <div class="sec-t">
+            <span class="sec-n">02</span>
+            <h2 class="h3">Notification preferences</h2>
+          </div>
+          <div class="panel">
+            <div class="panel-h">
+              <div>
+                <div class="h5">Delivery</div>
+                <div class="tiny faint" style="margin-top:2px">Choose what reaches your inbox and devices.</div>
+              </div>
+              <a class="btn btn-outline btn-xs" href="notifications.html">Open inbox <i data-ic="arrowUpRight" data-sz="12"></i></a>
+            </div>
+            <div class="panel-b" style="padding:20px 24px">
+              <div id="prefList"></div>
+            </div>
+            <div class="panel-f">
+              <div class="note" style="background:transparent;padding:0">
+                <span style="color:var(--tx-3)"><i data-ic="info" data-sz="15"></i></span>
+                <span class="tiny">Security alerts, payment receipts and legal notices are always sent — they can't be turned off.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- Addresses ---- -->
+        <section id="addresses" class="sec-anchor rv">
+          <div class="sec-t">
+            <span class="sec-n">03</span>
+            <h2 class="h3">Addresses</h2>
+          </div>
+          <div class="grid g-2" style="gap:14px">
+            <div class="mini is-default">
+              <div class="row-between" style="margin-bottom:10px">
+                <span class="row gap-8"><b class="h5">Home</b><span class="badge badge-ink">Default</span></span>
+                <button class="icon-btn" aria-label="More"><i data-ic="more" data-sz="16"></i></button>
+              </div>
+              <p class="small muted" style="line-height:1.55">Ava Lindqvist<br>Hornsgatan 74, 2 tr<br>118 21 Stockholm<br>Sweden</p>
+              <div class="row gap-12" style="margin-top:14px">
+                <button class="btn btn-ghost btn-xs">Edit</button>
+                <button class="btn btn-ghost btn-xs" style="color:var(--tx-3)">Delete</button>
+              </div>
+            </div>
+            <div class="mini">
+              <div class="row-between" style="margin-bottom:10px">
+                <span class="row gap-8"><b class="h5">Studio</b><span class="badge">Billing</span></span>
+                <button class="icon-btn" aria-label="More"><i data-ic="more" data-sz="16"></i></button>
+              </div>
+              <p class="small muted" style="line-height:1.55">Northlight Studio AB<br>Åsögatan 140<br>116 24 Stockholm<br>Sweden</p>
+              <div class="row gap-12" style="margin-top:14px">
+                <button class="btn btn-ghost btn-xs">Edit</button>
+                <button class="btn btn-ghost btn-xs">Set default</button>
+              </div>
+            </div>
+            <button class="mini-add" style="grid-column:1 / -1">
+              <i data-ic="plus" data-sz="18"></i>
+              <span>Add a new address</span>
+              <span class="tiny faint">Used for shipping and factory routing</span>
+            </button>
+          </div>
+        </section>
+
+        <!-- ---- Payment ---- -->
+        <section id="payment" class="sec-anchor rv">
+          <div class="sec-t">
+            <span class="sec-n">04</span>
+            <h2 class="h3">Payment methods</h2>
+          </div>
+          <div class="panel">
+            <div class="panel-b" style="padding:8px 20px">
+              <div class="pref">
+                <span class="cardface" style="background:linear-gradient(135deg,#1a1f71,#3b4bb8)">VISA</span>
+                <div class="pref-b">
+                  <b>Visa ending 4242</b>
+                  <p>Expires 09 / 2029 · Ava Lindqvist</p>
+                </div>
+                <span class="row gap-8"><span class="badge badge-ink">Default</span><button class="btn btn-ghost btn-xs">Edit</button></span>
+              </div>
+              <div class="pref">
+                <span class="cardface" style="background:linear-gradient(135deg,#eb001b,#f79e1b)">MC</span>
+                <div class="pref-b">
+                  <b>Mastercard ending 8813</b>
+                  <p>Expires 03 / 2028 · Northlight Studio AB</p>
+                </div>
+                <span class="row gap-8"><button class="btn btn-ghost btn-xs">Make default</button><button class="btn btn-ghost btn-xs" style="color:var(--tx-3)">Remove</button></span>
+              </div>
+              <div class="pref">
+                <span class="cardface" style="background:#635BFF">PAY</span>
+                <div class="pref-b">
+                  <b>Link by Stripe</b>
+                  <p>Fast checkout · ava@northlight.studio</p>
+                </div>
+                <button class="switch is-on" role="switch" aria-checked="true" aria-label="Link by Stripe"></button>
+              </div>
+            </div>
+            <div class="panel-f row-between">
+              <span class="tiny faint row gap-6"><i data-ic="lock" data-sz="13"></i> Card details are tokenised by Stripe. Desmake never stores them.</span>
+              <button class="btn btn-outline btn-sm"><i data-ic="plus" data-sz="14"></i> Add method</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- Privacy & security ---- -->
+        <section id="privacy" class="sec-anchor rv">
+          <div class="sec-t">
+            <span class="sec-n">05</span>
+            <h2 class="h3">Privacy &amp; security</h2>
+          </div>
+          <div class="panel" style="margin-bottom:16px">
+            <div class="panel-b" style="padding:20px 24px">
+              <div id="privList"></div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-bottom:16px">
+            <div class="panel-h">
+              <div class="h5">Sessions &amp; devices</div>
+              <button class="btn btn-outline btn-xs">Sign out everywhere</button>
+            </div>
+            <div class="panel-b" style="padding:8px 20px">
+              <div class="pref">
+                <span class="pref-ic"><i data-ic="frame" data-sz="16"></i></span>
+                <div class="pref-b"><b>MacBook Pro · Stockholm</b><p>Chrome 141 · Current session · 84.55.12.90</p></div>
+                <span class="badge badge-moss"><i class="dot dot-live"></i> Active</span>
+              </div>
+              <div class="pref">
+                <span class="pref-ic"><i data-ic="phone" data-sz="16"></i></span>
+                <div class="pref-b"><b>iPhone 17 Pro</b><p>Desmake iOS 3.2 · Last active 6 hours ago</p></div>
+                <button class="btn btn-ghost btn-xs">Revoke</button>
+              </div>
+              <div class="pref">
+                <span class="pref-ic"><i data-ic="terminal" data-sz="16"></i></span>
+                <div class="pref-b"><b>Claude Desktop · MCP</b><p>Agent session · dsk_live_9f2a••••3c71 · 2 min ago</p></div>
+                <a class="btn btn-ghost btn-xs" href="agents.html">Manage</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connected accounts -->
+          <div class="panel">
+            <div class="panel-h">
+              <div>
+                <div class="h5">Connected accounts</div>
+                <div class="tiny faint" style="margin-top:2px">Sign in faster and sync your portfolio.</div>
+              </div>
+            </div>
+            <div class="panel-b">
+              <div class="grid g-2" style="gap:12px" id="connList"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- Creator settings ---- -->
+        <section id="creator" class="sec-anchor rv">
+          <div class="sec-t">
+            <span class="sec-n">06</span>
+            <h2 class="h3">Creator settings</h2>
+          </div>
+          <div class="panel">
+            <div class="panel-h">
+              <div class="row gap-10">
+                <span class="h5">Storefront</span>
+                <span class="badge badge-cobalt">Verified creator</span>
+                <span class="badge">Tier 2 · 82% royalty</span>
+              </div>
+              <a class="btn btn-outline btn-xs" href="creator.html">View public profile <i data-ic="arrowUpRight" data-sz="12"></i></a>
+            </div>
+            <div class="panel-b" style="padding:24px">
+              <div class="grid g-2 form-2" style="gap:18px;margin-bottom:22px">
+                <div class="field">
+                  <label class="label" for="shop">Shop name</label>
+                  <input class="input" id="shop" value="Northlight Studio">
+                </div>
+                <div class="field">
+                  <label class="label" for="cat">Primary discipline</label>
+                  <select class="select" id="cat">
+                    <option>Graphic Design</option><option selected>Print &amp; Editorial</option><option>3D &amp; Objects</option><option>Illustration</option><option>Type Design</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="label" for="margin">Default margin over base cost</label>
+                  <div class="input-wrap">
+                    <input class="input" id="margin" value="145">
+                    <span class="suffix mono faint">%</span>
+                  </div>
+                  <span class="hint">Applied when the D2M engine prices a new adapter.</span>
+                </div>
+                <div class="field">
+                  <label class="label" for="payout">Payout schedule</label>
+                  <select class="select" id="payout">
+                    <option>Monthly · 1st</option><option selected>Bi-weekly</option><option>Weekly · Monday</option>
+                  </select>
+                  <span class="hint">Minimum balance $50.00 · Stripe Connect</span>
+                </div>
+              </div>
+
+              <div class="field" style="margin-bottom:22px">
+                <label class="label">Auto-enable product adapters on publish</label>
+                <div class="row gap-8 wrap" data-chipgroup="multi" id="adapterChips"></div>
+              </div>
+
+              <div id="creatorPrefs"></div>
+            </div>
+            <div class="panel-f row-between">
+              <span class="tiny faint">Creator Agreement v4.2 accepted on Mar 14, 2026.</span>
+              <div class="row gap-8">
+                <button class="btn btn-ghost btn-sm">Read agreement</button>
+                <button class="btn btn-sm">Save creator settings</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---- Danger zone ---- -->
+        <section class="rv">
+          <div class="sec-t">
+            <span class="sec-n">07</span>
+            <h2 class="h3" style="color:var(--signal)">Danger zone</h2>
+          </div>
+          <div class="panel danger">
+            <div class="panel-b" style="padding:8px 22px">
+              <div class="pref">
+                <span class="pref-ic" style="background:rgba(255,77,24,.1);color:var(--signal)"><i data-ic="download" data-sz="16"></i></span>
+                <div class="pref-b"><b>Export my data</b><p>A machine-readable archive of your designs, orders, payouts and agent logs. Delivered by email within 24 hours.</p></div>
+                <button class="btn btn-outline btn-sm">Request export</button>
+              </div>
+              <div class="pref">
+                <span class="pref-ic" style="background:rgba(255,77,24,.1);color:var(--signal)"><i data-ic="lock" data-sz="16"></i></span>
+                <div class="pref-b"><b>Deactivate storefront</b><p>Hide all listings and pause manufacturing. Existing orders continue to completion. Reversible at any time.</p></div>
+                <button class="btn btn-outline btn-sm">Deactivate</button>
+              </div>
+              <div class="pref">
+                <span class="pref-ic" style="background:rgba(255,77,24,.1);color:var(--signal)"><i data-ic="trash" data-sz="16"></i></span>
+                <div class="pref-b"><b style="color:var(--signal)">Delete account</b><p>Permanently erase your profile, designs and licences. Payout records are retained for 7 years for tax compliance. This cannot be undone.</p></div>
+                <button class="btn btn-danger btn-sm">Delete account</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============ RIGHT RAIL ============ -->
+      <aside class="acc-rail">
+        <div class="card rv">
+          <div class="row-between" style="margin-bottom:14px">
+            <span class="h5">Profile strength</span>
+            <span class="mono tnum small strong">85%</span>
+          </div>
+          <div class="bar" style="margin-bottom:16px"><i style="width:85%"></i></div>
+          <div class="stack">
+            <div class="rail-check"><span class="tick"><i data-ic="check" data-sz="10" data-sw="3"></i></span> Photo &amp; bio added</div>
+            <div class="rail-check"><span class="tick"><i data-ic="check" data-sz="10" data-sw="3"></i></span> Email verified</div>
+            <div class="rail-check"><span class="tick"><i data-ic="check" data-sz="10" data-sw="3"></i></span> Payout account linked</div>
+            <div class="rail-check off"><span class="tick"></span> Add two-factor auth</div>
+          </div>
+          <button class="btn btn-outline btn-sm full" style="margin-top:16px">Finish setup</button>
+        </div>
+
+        <div class="card card-ink rv" data-d=".08">
+          <div class="eyebrow" style="color:var(--tx-inv-3)">Creator since 2024</div>
+          <div class="row gap-12" style="margin:14px 0 18px">
+            <span class="av av-lg" id="railAv"></span>
+            <div style="min-width:0">
+              <div class="h5 row gap-6">Northlight Studio <span class="verified"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.8l2.6 1.9 3.2-.2.9 3.1 2.6 1.9-1.3 3 1.3 3-2.6 1.9-.9 3.1-3.2-.2L12 22.2l-2.6-1.9-3.2.2-.9-3.1L2.7 15.5l1.3-3-1.3-3 2.6-1.9.9-3.1 3.2.2z"/></svg></span></div>
+              <div class="tiny" style="color:var(--tx-inv-3)">Tier 2 · 82% royalty</div>
+            </div>
+          </div>
+          <div class="grid g-2" style="gap:14px">
+            <div class="stat"><span class="stat-v" style="font-size:1.35rem">48</span><span class="stat-k" style="color:var(--tx-inv-3)">Live works</span></div>
+            <div class="stat"><span class="stat-v" style="font-size:1.35rem">$18.2k</span><span class="stat-k" style="color:var(--tx-inv-3)">Lifetime</span></div>
+          </div>
+          <div class="hr-ink" style="margin:18px 0 14px"></div>
+          <a class="link-u tiny" href="earnings.html" style="color:var(--tx-inv-2)">Open earnings <i data-ic="arrowRight" data-sz="12"></i></a>
+        </div>
+
+        <div class="card rv" data-d=".14">
+          <div class="h5" style="margin-bottom:10px">Need a hand?</div>
+          <p class="tiny muted" style="line-height:1.6;margin-bottom:14px">Account, payouts and manufacturing questions are answered by a human within 4 hours.</p>
+          <div class="stack gap-8">
+            <a class="btn btn-outline btn-sm full" href="#"><i data-ic="message" data-sz="14"></i> Contact support</a>
+            <a class="btn btn-ghost btn-sm full" href="#"><i data-ic="help" data-sz="14"></i> Help centre</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div id="app-footer"></div>
+
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+/* ---------- avatars ---------- */
+const AV_SEED = "me-desmake";
+document.getElementById("meAv").innerHTML = Art.avatar(AV_SEED);
+document.getElementById("sideAv").innerHTML = Art.avatar(AV_SEED);
+document.getElementById("railAv").innerHTML = Art.avatar(AV_SEED);
+document.getElementById("shuffleAv").addEventListener("click", () => {
+  const s = "me-" + Math.random().toString(36).slice(2, 8);
+  document.getElementById("meAv").innerHTML = Art.avatar(s);
+});
+
+/* ---------- notification preferences ---------- */
+const PREFS = [
+  { ic: "package", t: "Order updates", d: "Production milestones, factory routing, shipping and delivery confirmations.", on: true },
+  { ic: "sparkles", t: "Marketing emails", d: "Product drops, creator spotlights and the weekly Dispatch newsletter.", on: false },
+  { ic: "heart", t: "Social activity", d: "Likes, follows, comments and collection saves on your work.", on: true },
+  { ic: "terminal", t: "Agent alerts", d: "Access requests, scope changes, quota warnings and failed agent calls.", on: true },
+  { ic: "dollar", t: "Payouts", d: "Settlement confirmations, balance thresholds and payout failures.", on: true },
+  { ic: "shield", t: "Review outcomes", d: "Content review decisions on submitted designs and appeals.", on: true }
+];
+document.getElementById("prefList").innerHTML = PREFS.map(p => `
+  <div class="pref">
+    <span class="pref-ic">${UI.icon(p.ic, 16)}</span>
+    <div class="pref-b"><b>${p.t}</b><p>${p.d}</p></div>
+    <button class="switch${p.on ? " is-on" : ""}" role="switch" aria-checked="${p.on}" aria-label="${p.t}"></button>
+  </div>`).join("");
+
+/* ---------- privacy ---------- */
+const PRIV = [
+  { ic: "eye", t: "Public profile", d: "Show your storefront, works and follower count to everyone.", on: true },
+  { ic: "bag", t: "Show purchase history", d: "Let others see which designs you have collected.", on: false },
+  { ic: "sparkles", t: "Allow AI training on my designs", d: "Contribute your published work to Desmake's style models. You keep full ownership and earn a share of derivative sales.", on: false },
+  { ic: "globe", t: "Search engine indexing", d: "Allow Google and other engines to index your public pages.", on: true },
+  { ic: "key", t: "Two-factor authentication", d: "Require a code from your authenticator app on every new device.", on: false }
+];
+document.getElementById("privList").innerHTML = PRIV.map(p => `
+  <div class="pref">
+    <span class="pref-ic">${UI.icon(p.ic, 16)}</span>
+    <div class="pref-b"><b>${p.t}</b><p>${p.d}</p></div>
+    <button class="switch${p.on ? " is-on" : ""}" role="switch" aria-checked="${p.on}" aria-label="${p.t}"></button>
+  </div>`).join("");
+
+/* ---------- connected accounts ---------- */
+const LOGO = {
+  google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.55-5.17 3.55-8.87z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.08 7.95-2.91l-3.88-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58V6.62H1.29a12 12 0 0 0 0 10.76z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/></svg>',
+  github: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
+  figma: '<svg viewBox="0 0 24 24"><path d="M8.6 2H12v6H8.6a3 3 0 1 1 0-6z" fill="#F24E1E"/><path d="M12 2h3.4a3 3 0 1 1 0 6H12z" fill="#FF7262"/><path d="M8.6 8H12v6H8.6a3 3 0 1 1 0-6z" fill="#A259FF"/><circle cx="15.4" cy="11" r="3" fill="#1ABCFE"/><path d="M12 14v3.2A2.8 2.8 0 1 1 9.2 14z" fill="#0ACF83"/></svg>',
+  stripe: '<svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#635BFF"/><path d="M11.4 9.7c0-.5.4-.8 1.1-.8 1 0 2.2.3 3.2.8V6.8a8.4 8.4 0 0 0-3.2-.6c-2.6 0-4.3 1.4-4.3 3.6 0 3.5 4.8 2.9 4.8 4.4 0 .6-.5.8-1.2.8-1.1 0-2.5-.4-3.6-1.1v2.9c1.2.5 2.4.8 3.6.8 2.6 0 4.4-1.3 4.4-3.6 0-3.8-4.8-3.1-4.8-4.3z" fill="#fff"/></svg>'
+};
+const CONNS = [
+  { k: "google", n: "Google", s: "ava@northlight.studio", on: true },
+  { k: "github", n: "GitHub", s: "@avalind · 2 repos synced", on: true },
+  { k: "figma", n: "Figma", s: "Import frames straight into Studio", on: false },
+  { k: "stripe", n: "Stripe Connect", s: "Payouts · acct_1P9xK2 · SE", on: true }
+];
+document.getElementById("connList").innerHTML = CONNS.map(c => `
+  <div class="conn">
+    <span class="conn-logo">${LOGO[c.k]}</span>
+    <div style="min-width:0;flex:1">
+      <div class="h5">${c.n}</div>
+      <div class="tiny faint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.s}</div>
+    </div>
+    ${c.on
+      ? `<span class="badge badge-moss">${UI.icon("check", 11, 3)} Connected</span>`
+      : `<button class="btn btn-outline btn-xs">Connect</button>`}
+  </div>`).join("");
+
+/* ---------- adapter chips ---------- */
+document.getElementById("adapterChips").innerHTML = DB.ADAPTERS.map((a, i) =>
+  `<button class="chip chip-sm${i < 3 ? " is-active" : ""}">${UI.icon(a.icon, 13)} ${a.name}</button>`
+).join("");
+
+/* ---------- creator prefs ---------- */
+const CPREFS = [
+  { ic: "shield", t: "Require review before publish", d: "Hold every new listing for human moderation, even when created by an agent.", on: true },
+  { ic: "terminal", t: "Let agents publish on my behalf", d: "Agents with design.publish can create listings. They still enter the review queue.", on: true },
+  { ic: "trendingUp", t: "Dynamic pricing", d: "Let Desmake adjust retail price within ±12% based on demand and factory cost.", on: false }
+];
+document.getElementById("creatorPrefs").innerHTML = CPREFS.map(p => `
+  <div class="pref">
+    <span class="pref-ic">${UI.icon(p.ic, 16)}</span>
+    <div class="pref-b"><b>${p.t}</b><p>${p.d}</p></div>
+    <button class="switch${p.on ? " is-on" : ""}" role="switch" aria-checked="${p.on}" aria-label="${p.t}"></button>
+  </div>`).join("");
+
+/* ---------- bio counter ---------- */
+const bio = document.getElementById("bio"), bc = document.getElementById("bioCount");
+const sync = () => bc.textContent = bio.value.length + " / 240";
+bio.addEventListener("input", sync); sync();
+
+/* ---------- fake save ---------- */
+document.getElementById("saveTop").addEventListener("click", function () {
+  const h = document.getElementById("savedHint");
+  this.innerHTML = UI.icon("check", 14, 3) + " Saved";
+  h.textContent = "Saved just now";
+  setTimeout(() => { this.innerHTML = UI.icon("check", 14) + " Save changes"; }, 2200);
+});
+
+/* ---------- mount + icons ---------- */
+UI.mount({ active: "account.html" });
+document.querySelectorAll("[data-ic]").forEach(el => {
+  el.innerHTML = UI.icon(el.dataset.ic, +el.dataset.sz || 16, el.dataset.sw ? +el.dataset.sw : 1.6);
+});
+
+/* ---------- scrollspy ---------- */
+const links = [...document.querySelectorAll("[data-spy]")];
+const secs = links.map(l => document.getElementById(l.dataset.spy)).filter(Boolean);
+const spy = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle("is-active", l.dataset.spy === e.target.id));
+    }
+  });
+}, { rootMargin: "-20% 0px -70% 0px" });
+secs.forEach(s => spy.observe(s));
+</script>
+</body>
+</html>

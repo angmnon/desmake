@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notifications — Desmake</title>
+<meta name="description" content="Orders, reviews, social activity, agent alerts and payouts — everything Desmake needs to tell you, in one place.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  i[data-ic] { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+
+  .nt-wrap { width: 100%; max-width: 940px; margin-inline: auto; padding-inline: clamp(20px, 4vw, 40px); }
+  .nt-page { padding-block: clamp(28px, 4vw, 52px) clamp(64px, 8vw, 110px); }
+
+  /* filter bar */
+  .nt-bar {
+    position: sticky; top: var(--nav-h); z-index: 40;
+    background: rgba(247, 246, 243, .86);
+    backdrop-filter: saturate(180%) blur(16px);
+    -webkit-backdrop-filter: saturate(180%) blur(16px);
+    margin-inline: calc(clamp(20px, 4vw, 40px) * -1);
+    padding-inline: clamp(20px, 4vw, 40px);
+    padding-top: 6px;
+  }
+  .nt-tabs { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; overflow-x: auto; scrollbar-width: none; }
+  .nt-tabs::-webkit-scrollbar { display: none; }
+  .nt-tabs .row { align-items: flex-end; }
+
+  /* day group */
+  .nt-day { display: flex; align-items: center; gap: 14px; margin: 30px 0 10px; }
+  .nt-day span { font-family: var(--mono); font-size: .625rem; text-transform: uppercase; letter-spacing: .16em; color: var(--tx-3); white-space: nowrap; }
+  .nt-day i { flex: 1; height: 1px; background: var(--line); }
+
+  /* item */
+  .nt {
+    display: grid; grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 15px; align-items: flex-start;
+    padding: 16px 18px;
+    border: 1px solid transparent;
+    border-radius: var(--r-md);
+    position: relative;
+    transition: background .25s var(--e), border-color .25s var(--e), box-shadow .3s var(--e), transform .3s var(--e);
+    cursor: pointer;
+  }
+  .nt + .nt { margin-top: 4px; }
+  .nt:hover { background: var(--surface); border-color: var(--line); box-shadow: var(--sh-1); transform: translateX(2px); }
+  .nt.is-unread { background: var(--surface); border-color: var(--line); }
+  .nt.is-unread::before {
+    content: ""; position: absolute; left: -1px; top: 14px; bottom: 14px;
+    width: 3px; border-radius: 0 99px 99px 0; background: var(--signal);
+  }
+  .nt-ic { width: 38px; height: 38px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
+  .nt-t { font-size: .875rem; font-weight: 550; letter-spacing: -.012em; line-height: 1.35; }
+  .nt-x { font-size: .8125rem; color: var(--tx-2); line-height: 1.55; margin-top: 3px; max-width: 62ch; }
+  .nt-meta { display: flex; align-items: center; gap: 9px; margin-top: 8px; }
+  .nt-time { font-family: var(--mono); font-size: .6875rem; color: var(--tx-3); white-space: nowrap; }
+  .nt-right { display: flex; align-items: center; gap: 8px; padding-top: 3px; }
+  .nt-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--signal); flex: none; }
+  .nt:not(.is-unread) .nt-dot { background: transparent; }
+  .nt-act { display: flex; gap: 6px; opacity: 0; transform: translateX(4px); transition: all .28s var(--e); }
+  .nt:hover .nt-act { opacity: 1; transform: none; }
+  .nt-inline { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+  .tone-order { background: var(--cobalt-soft); color: var(--cobalt); }
+  .tone-review { background: var(--moss-soft); color: var(--moss); }
+  .tone-social { background: var(--signal-soft); color: var(--signal); }
+  .tone-payout { background: var(--amber-soft); color: var(--amber); }
+  .tone-agent { background: var(--violet-soft); color: var(--violet); }
+
+  /* toast */
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; z-index: 400;
+    transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+    display: flex; align-items: center; gap: 9px;
+    height: 42px; padding: 0 18px;
+    border-radius: var(--r-full);
+    background: var(--ink); color: var(--paper);
+    font-size: .8125rem; font-weight: 500;
+    box-shadow: var(--sh-3);
+    transition: opacity .35s var(--e), transform .35s var(--e);
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 620px) {
+    .nt { grid-template-columns: 34px minmax(0, 1fr); padding: 14px; }
+    .nt-right { grid-column: 1 / -1; justify-content: flex-end; }
+    .nt-act { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="nt-page">
+  <div class="nt-wrap">
+
+    <div class="crumb" style="margin-bottom:18px">
+      <a href="index.html">Home</a><i data-ic="chevronRight" data-sz="13"></i><span class="strong" style="color:var(--tx-2)">Notifications</span>
+    </div>
+
+    <div class="row-between wrap" style="margin-bottom:24px;align-items:flex-end">
+      <div>
+        <div class="eyebrow eyebrow-dot">Message centre</div>
+        <h1 class="h1" style="margin-top:10px">Notifications</h1>
+        <p class="body" style="margin-top:8px">
+          <span class="strong" style="color:var(--tx)" id="unreadLine">3 unread</span> · Everything your orders, agents and audience are doing.
+        </p>
+      </div>
+      <div class="row gap-8">
+        <button class="btn btn-outline btn-sm" id="markAll"><i data-ic="check" data-sz="14"></i> Mark all read</button>
+        <a class="btn btn-outline btn-icon btn-sm" href="account.html#notifications" aria-label="Notification settings"><i data-ic="settings" data-sz="16"></i></a>
+      </div>
+    </div>
+
+    <!-- filter bar -->
+    <div class="nt-bar">
+      <div class="nt-tabs tabs" data-tabs="nt" id="ntTabs">
+        <div class="row gap-24">
+          <a class="tab is-active" data-tab="all" href="#">All <span class="cnt" data-c="all">0</span></a>
+          <a class="tab" data-tab="orders" href="#">Orders <span class="cnt" data-c="orders">0</span></a>
+          <a class="tab" data-tab="social" href="#">Social <span class="cnt" data-c="social">0</span></a>
+          <a class="tab" data-tab="agents" href="#">Agents <span class="cnt" data-c="agents">0</span></a>
+          <a class="tab" data-tab="system" href="#">System <span class="cnt" data-c="system">0</span></a>
+        </div>
+        <div class="seg" style="margin-bottom:10px" id="readSeg">
+          <button class="is-active" data-read="any">Everything</button>
+          <button data-read="unread">Unread</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- list -->
+    <div id="ntList" style="margin-top:6px"></div>
+
+    <!-- empty -->
+    <div class="empty hide" id="ntEmpty">
+      <span style="width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2);color:var(--tx-3)"><i data-ic="bell" data-sz="24"></i></span>
+      <div>
+        <div class="h3" id="emptyT">Nothing here</div>
+        <p class="body" style="margin-top:6px;max-width:38ch" id="emptyD">You're all caught up. New activity for this filter will show up here.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" id="emptyReset">Show all notifications</button>
+    </div>
+
+    <!-- footer card -->
+    <div class="card row-between wrap gap-16" style="margin-top:40px;background:transparent;border-style:dashed">
+      <div class="row gap-12">
+        <span style="width:36px;height:36px;border-radius:var(--r-sm);display:grid;place-items:center;background:rgba(12,12,13,.05);color:var(--tx-2)"><i data-ic="sliders" data-sz="17"></i></span>
+        <div>
+          <div class="h5">Too much noise?</div>
+          <div class="tiny faint" style="margin-top:2px">Tune what reaches your inbox, phone and agents.</div>
+        </div>
+      </div>
+      <a class="btn btn-outline btn-sm" href="account.html#notifications">Notification preferences <i data-ic="arrowRight" data-sz="14"></i></a>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"><i data-ic="check" data-sz="15"></i> <span id="toastT">Done</span></div>
+
+<div id="app-footer"></div>
+
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+/* ---------- dataset: shared notifs + extended history ---------- */
+const GROUPS = { today: "Today", yest: "Yesterday", earlier: "Earlier this month" };
+const FILTER_OF = { order: "orders", social: "social", agent: "agents", review: "system", payout: "system" };
+
+const EXTRA = [
+  { type: "review", icon: "alert", title: "Listing flagged for trademark review", body: "“Analog Ghost” — a rights holder submitted a claim. Respond within 7 days to keep it live.", time: "3 days ago", unread: true, g: "earlier", actions: [["Respond", "signal"], ["View claim", "ghost"]] },
+  { type: "order", icon: "truck", title: "Delivery attempted — DM-4818-0071", body: "UPS left a notice at Hornsgatan 74. Reschedule within 5 days or it returns to the factory.", time: "4 days ago", unread: false, g: "earlier" },
+  { type: "social", icon: "users", title: "You have 3 new followers", body: "Kai Sugimoto, Elif Kaya and Noah Brandt started following Northlight Studio.", time: "4 days ago", unread: false, g: "earlier" },
+  { type: "agent", icon: "zap", title: "Studio Copilot reached 80% of its monthly quota", body: "5,012 of 6,250 calls used. Raise the limit or the agent pauses on Aug 12.", time: "5 days ago", unread: false, g: "earlier", actions: [["Raise limit", "outline"]] },
+  { type: "payout", icon: "trendingUp", title: "Balance threshold reached", body: "$500.00 is now available. Your next bi-weekly payout runs Aug 5.", time: "6 days ago", unread: false, g: "earlier" },
+  { type: "order", icon: "alert", title: "Order DM-4816-0064 needs attention", body: "Rotterdam Additive reported a resin shortage. Pick a replacement material or we refund automatically.", time: "1 week ago", unread: false, g: "earlier", actions: [["Choose material", "outline"]] },
+  { type: "review", icon: "shield", title: "Content review passed", body: "“Contour Map 09” cleared automated and human review in 41 minutes.", time: "1 week ago", unread: false, g: "earlier" }
+];
+
+const BASE_G = ["today", "today", "today", "yest", "yest", "earlier"];
+const BASE_ACT = { 4: [["Approve", "signal"], ["Deny", "ghost"]] };
+
+const ITEMS = DB.NOTIFS.map((n, i) => Object.assign({}, n, { g: BASE_G[i] || "earlier", actions: BASE_ACT[i] })).concat(EXTRA);
+
+/* ---------- render ---------- */
+const TONE_IC = { order: "package", review: "shield", social: "heart", payout: "dollar", agent: "terminal" };
+
+function itemHTML(n, idx) {
+  const ic = n.icon || TONE_IC[n.type];
+  const acts = (n.actions || []).map(a =>
+    `<button class="btn btn-xs ${a[1] === "signal" ? "btn-signal" : a[1] === "ghost" ? "btn-ghost" : "btn-outline"}" data-stop>${a[0]}</button>`
+  ).join("");
+  return `<a class="nt${n.unread ? " is-unread" : ""}" href="#" data-i="${idx}" data-f="${FILTER_OF[n.type]}" data-unread="${n.unread ? 1 : 0}">
+    <span class="nt-ic tone-${n.type}">${UI.icon(ic, 17)}</span>
+    <div style="min-width:0">
+      <div class="nt-t">${n.title}</div>
+      <p class="nt-x">${n.body}</p>
+      <div class="nt-meta">
+        <span class="nt-time">${n.time}</span>
+        <span class="dot" style="width:3px;height:3px"></span>
+        <span class="tag-inline">${n.type}</span>
+      </div>
+      ${acts ? `<div class="nt-inline">${acts}</div>` : ""}
+    </div>
+    <span class="nt-right">
+      <span class="nt-act">
+        <button class="icon-btn" title="Mark as read" data-act="read">${UI.icon("check", 15)}</button>
+        <button class="icon-btn" title="Dismiss" data-act="dismiss">${UI.icon("x", 15)}</button>
+      </span>
+      <span class="nt-dot"></span>
+    </span>
+  </a>`;
+}
+
+function render() {
+  const order = ["today", "yest", "earlier"];
+  const html = order.map(g => {
+    const rows = ITEMS.map((n, i) => [n, i]).filter(([n]) => n.g === g);
+    if (!rows.length) return "";
+    return `<div class="nt-group" data-g="${g}">
+      <div class="nt-day"><span>${GROUPS[g]}</span><i></i><span style="letter-spacing:.08em">${rows.length}</span></div>
+      ${rows.map(([n, i]) => itemHTML(n, i)).join("")}
+    </div>`;
+  }).join("");
+  document.getElementById("ntList").innerHTML = html;
+}
+render();
+
+/* ---------- counts + filtering ---------- */
+let curTab = "all", curRead = "any";
+
+function counts() {
+  const c = { all: 0, orders: 0, social: 0, agents: 0, system: 0 };
+  document.querySelectorAll(".nt").forEach(el => {
+    if (el.dataset.unread === "1") { c.all++; c[el.dataset.f]++; }
+  });
+  document.querySelectorAll("[data-c]").forEach(el => {
+    const v = c[el.dataset.c];
+    el.textContent = v || "";
+  });
+  const line = document.getElementById("unreadLine");
+  line.textContent = c.all === 0 ? "All caught up" : c.all + " unread";
+  return c;
+}
+
+const EMPTY_COPY = {
+  all: ["You're all caught up", "New orders, reviews and agent activity will land here."],
+  orders: ["No order updates", "Production milestones and shipping events show up here."],
+  social: ["No social activity", "Likes, follows and collection saves will appear here."],
+  agents: ["No agent alerts", "Access requests, quota warnings and failures appear here."],
+  system: ["Nothing from the system", "Review outcomes, payouts and platform notices land here."]
+};
+
+function applyFilter() {
+  let shown = 0;
+  document.querySelectorAll(".nt").forEach(el => {
+    const okTab = curTab === "all" || el.dataset.f === curTab;
+    const okRead = curRead === "any" || el.dataset.unread === "1";
+    const on = okTab && okRead;
+    el.classList.toggle("hide", !on);
+    if (on) shown++;
+  });
+  document.querySelectorAll(".nt-group").forEach(g => {
+    const any = [...g.querySelectorAll(".nt")].some(n => !n.classList.contains("hide"));
+    g.classList.toggle("hide", !any);
+    if (any) g.querySelector(".nt-day span:last-child").textContent = g.querySelectorAll(".nt:not(.hide)").length;
+  });
+  const empty = document.getElementById("ntEmpty");
+  empty.classList.toggle("hide", shown > 0);
+  if (!shown) {
+    const copy = curRead === "unread" ? ["Nothing unread", "Every notification in this view has been read."] : EMPTY_COPY[curTab];
+    document.getElementById("emptyT").textContent = copy[0];
+    document.getElementById("emptyD").textContent = copy[1];
+  }
+}
+
+document.getElementById("ntTabs").addEventListener("click", e => {
+  const t = e.target.closest("[data-tab]");
+  if (t) { curTab = t.dataset.tab; applyFilter(); }
+});
+document.getElementById("readSeg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b) { curRead = b.dataset.read; applyFilter(); }
+});
+document.getElementById("emptyReset").addEventListener("click", () => {
+  curTab = "all"; curRead = "any";
+  document.querySelectorAll("#ntTabs [data-tab]").forEach(t => t.classList.toggle("is-active", t.dataset.tab === "all"));
+  document.querySelectorAll("#readSeg button").forEach(b => b.classList.toggle("is-active", b.dataset.read === "any"));
+  applyFilter();
+});
+
+/* ---------- row interactions ---------- */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById("toast");
+  document.getElementById("toastT").textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2400);
+}
+
+document.getElementById("ntList").addEventListener("click", e => {
+  const row = e.target.closest(".nt");
+  if (!row) return;
+  e.preventDefault();
+  const act = e.target.closest("[data-act]");
+  if (act && act.dataset.act === "dismiss") {
+    row.style.transition = "opacity .3s, transform .3s, margin .3s, padding .3s, height .3s";
+    row.style.opacity = "0"; row.style.transform = "translateX(24px)";
+    setTimeout(() => { row.remove(); counts(); applyFilter(); }, 260);
+    toast("Notification dismissed");
+    return;
+  }
+  if (row.dataset.unread === "1") {
+    row.dataset.unread = "0";
+    row.classList.remove("is-unread");
+    counts();
+    if (curRead === "unread") applyFilter();
+  }
+  if (!act && !e.target.closest("[data-stop]")) toast("Opening detail view…");
+});
+
+document.getElementById("markAll").addEventListener("click", () => {
+  document.querySelectorAll(".nt").forEach(el => { el.dataset.unread = "0"; el.classList.remove("is-unread"); });
+  counts(); applyFilter(); toast("All notifications marked as read");
+});
+
+counts();
+applyFilter();
+
+/* ---------- mount + icons ---------- */
+UI.mount({ active: "notifications.html" });
+document.querySelectorAll("[data-ic]").forEach(el => {
+  el.innerHTML = UI.icon(el.dataset.ic, +el.dataset.sz || 16, el.dataset.sw ? +el.dataset.sw : 1.6);
+});
+</script>
+</body>
+</html>

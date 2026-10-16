@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explore — Desmake</title>
+<meta name="description" content="Search 128,400 AI native designs, ready to manufacture on demand across posters, apparel, stickers, cases and 3D prints.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  [data-ic] { display: inline-flex; align-items: center; }
+
+  /* ---- Hero ---- */
+  .ex-hero { position: relative; overflow: hidden; padding-top: clamp(30px, 4vw, 54px); padding-bottom: clamp(26px, 3vw, 40px); }
+  .ex-spot-1 { width: 520px; height: 520px; background: rgba(255,77,24,.1); top: -280px; right: -80px; }
+  .ex-spot-2 { width: 420px; height: 420px; background: rgba(34,68,255,.08); top: -240px; left: -140px; }
+  .ex-head { max-width: 880px; margin-inline: auto; text-align: center; position: relative; }
+
+  /* ---- Search bar ---- */
+  .sbar {
+    display: flex; align-items: center; gap: 2px;
+    height: 66px; padding: 0 8px 0 22px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-full);
+    box-shadow: var(--sh-2);
+    transition: box-shadow .4s var(--e), border-color .3s var(--e), transform .4s var(--e);
+  }
+  .sbar:focus-within { border-color: rgba(12,12,13,.28); box-shadow: var(--sh-3); transform: translateY(-1px); }
+  .sbar .sic { color: var(--tx-3); flex: none; }
+  .sbar input {
+    flex: 1; min-width: 0; height: 100%;
+    border: 0; outline: 0; background: none;
+    font-size: 1rem; letter-spacing: -.015em;
+    padding: 0 14px;
+  }
+  .sbar input::placeholder { color: var(--tx-3); }
+  .sbar .sdiv { width: 1px; height: 26px; background: var(--line); flex: none; margin-right: 8px; }
+  .sbar-filters { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: var(--r-full); font-size: .8438rem; font-weight: 500; color: var(--tx-2); transition: all .25s var(--e); }
+  .sbar-filters:hover { background: rgba(12,12,13,.05); color: var(--tx); }
+  .sbar-filters .n { font-family: var(--mono); font-size: .625rem; background: var(--ink); color: var(--paper); border-radius: 99px; padding: 1px 6px; }
+
+  .pop { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .pop a { font-size: .8125rem; color: var(--tx-3); border-bottom: 1px solid transparent; transition: all .25s var(--e); }
+  .pop a:hover { color: var(--tx); border-color: var(--line-2); }
+
+  /* ---- Sticky category rail ---- */
+  .catbar {
+    position: sticky; top: var(--nav-h); z-index: 40;
+    background: rgba(247,246,243,.86);
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .catbar-in { display: flex; align-items: center; gap: 14px; height: 62px; }
+  .catrail { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; -webkit-mask-image: linear-gradient(90deg, #000 96%, transparent); mask-image: linear-gradient(90deg, #000 96%, transparent); }
+  .catrail::-webkit-scrollbar { display: none; }
+  .catrail .chip { flex: none; }
+  .catrail .chip .cnt { font-family: var(--mono); font-size: .625rem; color: var(--tx-3); }
+  .catrail .chip.is-active .cnt { color: var(--tx-inv-3); }
+
+  /* ---- Layout ---- */
+  .ex-layout { display: grid; grid-template-columns: 262px minmax(0, 1fr); gap: clamp(28px, 3.4vw, 56px); align-items: start; }
+  .fside { position: sticky; top: calc(var(--nav-h) + 86px); }
+  .fgroup { padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .fgroup:first-child { padding-top: 0; }
+  .fgroup:last-child { border-bottom: 0; }
+  .fgroup-t { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .fgroup-t .t { font-family: var(--mono); font-size: .625rem; text-transform: uppercase; letter-spacing: .14em; color: var(--tx-3); }
+  .fgroup-t button { font-size: .75rem; color: var(--tx-3); transition: color .2s; }
+  .fgroup-t button:hover { color: var(--tx); }
+
+  .frow { display: flex; align-items: center; gap: 10px; padding: 7px 0; cursor: pointer; transition: opacity .2s; }
+  .frow:hover { opacity: .78; }
+  .frow .nm { font-size: .8438rem; font-weight: 450; }
+  .frow .cnt { margin-left: auto; font-family: var(--mono); font-size: .6875rem; color: var(--tx-3); }
+  .frow .ico { color: var(--tx-3); display: inline-flex; }
+
+  /* ---- Price range ---- */
+  .histo { display: flex; align-items: flex-end; gap: 2px; height: 46px; margin-bottom: 6px; }
+  .histo i { flex: 1; background: rgba(12,12,13,.14); border-radius: 2px 2px 0 0; transition: background .3s var(--e); }
+  .histo i.on { background: var(--ink); }
+  .rng { position: relative; height: 20px; }
+  .rng .track { position: absolute; top: 8px; left: 0; right: 0; height: 3px; border-radius: 99px; background: rgba(12,12,13,.1); }
+  .rng .fill { position: absolute; top: 8px; height: 3px; border-radius: 99px; background: var(--ink); }
+  .rng input[type=range] { position: absolute; top: 0; left: 0; width: 100%; height: 20px; margin: 0; background: none; pointer-events: none; -webkit-appearance: none; appearance: none; }
+  .rng input[type=range]:focus { outline: none; }
+  .rng input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: auto; width: 15px; height: 15px; border-radius: 50%; background: #fff; border: 1.5px solid var(--ink); box-shadow: 0 1px 4px rgba(12,12,13,.22); cursor: grab; }
+  .rng input[type=range]::-moz-range-thumb { pointer-events: auto; width: 15px; height: 15px; border-radius: 50%; background: #fff; border: 1.5px solid var(--ink); box-shadow: 0 1px 4px rgba(12,12,13,.22); cursor: grab; }
+  .price-vals { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .price-box { height: 34px; min-width: 78px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: var(--r-sm); font-size: .8125rem; font-variant-numeric: tabular-nums; background: var(--surface); }
+
+  /* ---- Toolbar ---- */
+  .tool { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+  .applied { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+  .fchip {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 30px; padding: 0 8px 0 12px;
+    border-radius: var(--r-full);
+    background: var(--ink); color: var(--paper);
+    font-size: .78rem; font-weight: 500;
+  }
+  .fchip button { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: rgba(247,246,243,.16); color: var(--paper); transition: background .2s; }
+  .fchip button:hover { background: rgba(247,246,243,.32); }
+
+  .sortsel { position: relative; }
+  .sortsel .select { height: 38px; font-size: .8125rem; padding-left: 36px; border-color: var(--line); }
+  .sortsel .sfx { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--tx-3); pointer-events: none; }
+
+  /* ---- Results grid ---- */
+  .res-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 24px; }
+  @media (min-width: 1500px) { .res-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+  .band {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    padding: 26px 30px;
+    border-radius: var(--r-lg);
+    background: var(--ink); color: var(--tx-inv);
+    position: relative; overflow: hidden;
+  }
+  .band .bspot { position: absolute; width: 320px; height: 320px; border-radius: 50%; filter: blur(80px); background: rgba(255,77,24,.34); right: -60px; top: -140px; pointer-events: none; }
+
+  /* ---- Pagination ---- */
+  .pg { display: flex; align-items: center; gap: 5px; }
+  .pg a, .pg span { min-width: 38px; height: 38px; padding: 0 10px; display: grid; place-items: center; border-radius: var(--r-sm); font-size: .8125rem; font-weight: 500; color: var(--tx-2); font-variant-numeric: tabular-nums; transition: all .22s var(--e); }
+  .pg a:hover { background: rgba(12,12,13,.055); color: var(--tx); }
+  .pg .is-current { background: var(--ink); color: var(--paper); }
+  .pg .gapx { color: var(--tx-3); min-width: 20px; }
+  .pg .nav-a { border: 1px solid var(--line); }
+
+  .ex-layout.filters-off { grid-template-columns: minmax(0, 1fr); }
+  .ex-layout.filters-off .fside { display: none; }
+
+  @media (max-width: 1100px) {
+    .ex-layout, .ex-layout.filters-off { grid-template-columns: minmax(0, 1fr); }
+    .fside { display: none; position: static; margin-bottom: 34px; }
+    .ex-layout.filters-on .fside { display: block; }
+    .res-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 860px) { .res-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sbar { height: 58px; padding-left: 18px; } .sbar input { font-size: .9375rem; } }
+  @media (max-width: 560px) { .res-grid { grid-template-columns: minmax(0, 1fr); } .sbar .sdiv, .sbar-filters span.lbl { display: none; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<!-- ══════════ HERO / SEARCH ══════════ -->
+<section class="ex-hero grain">
+  <div class="spot ex-spot-1"></div>
+  <div class="spot ex-spot-2"></div>
+  <div class="container-wide">
+    <nav class="crumb rv in" style="margin-bottom:30px">
+      <a href="index.html">Home</a>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      <span style="color:var(--tx)">Explore</span>
+    </nav>
+
+    <div class="ex-head rv in">
+      <div class="eyebrow eyebrow-dot" style="justify-content:center">128,400 designs · 6 product adapters · 41 factories</div>
+      <h1 class="display" style="margin:16px 0 14px">Explore the <span class="serif-i">catalogue</span></h1>
+      <p class="lead balance" style="max-width:56ch;margin-inline:auto">Every design here is manufacture-ready. Filter by style, product type or price — then order one, or ten thousand.</p>
+
+      <form class="sbar rv in" data-d=".08" style="margin-top:30px" onsubmit="return false">
+        <span class="sic" data-ic="search" data-s="20"></span>
+        <input type="search" placeholder="Search designs, creators, styles — try &ldquo;brutalist poster&rdquo;" value="" aria-label="Search designs">
+        <span class="sdiv"></span>
+        <button type="button" class="sbar-filters" id="filtToggle">
+          <span data-ic="sliders" data-s="16"></span><span class="lbl">Filters</span><span class="n">4</span>
+        </button>
+        <button type="submit" class="btn" style="height:50px;padding:0 24px">Search <span class="arw" data-ic="arrowRight" data-s="15"></span></button>
+      </form>
+
+      <div class="pop rv in" data-d=".14">
+        <span class="eyebrow" style="letter-spacing:.14em">Popular</span>
+        <a href="#">brutalist poster</a><a href="#">riso texture</a><a href="#">swiss grid</a>
+        <a href="#">afro-futurist pattern</a><a href="#">parametric vase</a><a href="#">monochrome type</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ CATEGORY RAIL ══════════ -->
+<div class="catbar">
+  <div class="container-wide catbar-in">
+    <div class="catrail" id="catRail" data-chipgroup="multi"></div>
+    <div class="row gap-8" style="flex:none;margin-left:auto">
+      <span class="divider-v hide-sm" style="height:24px"></span>
+      <button class="chip hide-sm" data-toggle="is-active">
+        <span data-ic="sparkles" data-s="13"></span> AI generated
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ RESULTS ══════════ -->
+<section class="section-sm" style="padding-top:34px">
+  <div class="container-wide ex-layout">
+
+    <!-- ---------- Sidebar filters ---------- -->
+    <aside class="fside rv in">
+      <div class="row-between" style="margin-bottom:6px">
+        <div class="h4">Filters</div>
+        <button class="small" style="color:var(--tx-3)">Reset</button>
+      </div>
+      <div class="hr" style="margin:14px 0 4px"></div>
+
+      <!-- Price -->
+      <div class="fgroup">
+        <div class="fgroup-t"><span class="t">Price range</span><span class="mono" style="color:var(--tx-3)" id="priceTag">$0–$180</span></div>
+        <div class="histo" id="histo"></div>
+        <div class="rng">
+          <span class="track"></span><span class="fill" id="rngFill"></span>
+          <input type="range" id="rMin" min="0" max="180" step="5" value="0" aria-label="Minimum price">
+          <input type="range" id="rMax" min="0" max="180" step="5" value="140" aria-label="Maximum price">
+        </div>
+        <div class="price-vals">
+          <span class="price-box" id="pMin">$0</span>
+          <span class="tiny faint">to</span>
+          <span class="price-box" id="pMax">$140</span>
+        </div>
+        <div class="row gap-6 wrap" style="margin-top:12px">
+          <button class="chip chip-sm" data-toggle="is-active">Under $25</button>
+          <button class="chip chip-sm is-active" data-toggle="is-active">$25–$60</button>
+          <button class="chip chip-sm" data-toggle="is-active">$60+</button>
+        </div>
+      </div>
+
+      <!-- Adapter type -->
+      <div class="fgroup">
+        <div class="fgroup-t"><span class="t">Product adapter</span><button>Clear</button></div>
+        <div id="adapterList"></div>
+      </div>
+
+      <!-- Creation -->
+      <div class="fgroup">
+        <div class="fgroup-t"><span class="t">Creation</span></div>
+        <label class="row-between" style="padding:8px 0;cursor:pointer">
+          <span class="row gap-8"><span class="ico" data-ic="sparkles" data-s="15"></span><span class="nm" style="font-size:.8438rem">AI generated only</span></span>
+          <span class="switch is-on"></span>
+        </label>
+        <label class="row-between" style="padding:8px 0;cursor:pointer">
+          <span class="row gap-8"><span class="ico" data-ic="edit" data-s="15"></span><span class="nm" style="font-size:.8438rem">Human illustrated</span></span>
+          <span class="switch"></span>
+        </label>
+        <label class="row-between" style="padding:8px 0;cursor:pointer">
+          <span class="row gap-8"><span class="ico" data-ic="zap" data-s="15"></span><span class="nm" style="font-size:.8438rem">New this week</span></span>
+          <span class="switch"></span>
+        </label>
+      </div>
+
+      <!-- Lead time -->
+      <div class="fgroup">
+        <div class="fgroup-t"><span class="t">Lead time</span></div>
+        <div class="row gap-6 wrap">
+          <button class="chip chip-sm is-active" data-toggle="is-active">≤ 3 days</button>
+          <button class="chip chip-sm" data-toggle="is-active">≤ 5 days</button>
+          <button class="chip chip-sm" data-toggle="is-active">Any</button>
+        </div>
+      </div>
+
+      <!-- Rating -->
+      <div class="fgroup">
+        <div class="fgroup-t"><span class="t">Creator rating</span></div>
+        <div id="ratingList"></div>
+      </div>
+
+      <!-- Licence -->
+      <div class="fgroup">
+        <div class="fgroup-t"><span class="t">Licence</span></div>
+        <label class="frow"><span class="check is-on"></span><span class="nm">Personal use</span><span class="cnt">112k</span></label>
+        <label class="frow"><span class="check"></span><span class="nm">Commercial</span><span class="cnt">38.4k</span></label>
+        <label class="frow"><span class="check"></span><span class="nm">Extended / resale</span><span class="cnt">9.1k</span></label>
+      </div>
+
+      <div class="note" style="margin-top:20px">
+        <span data-ic="info" data-s="15" style="flex:none;color:var(--cobalt)"></span>
+        <span>Prices shown include manufacturing. Shipping is calculated from the nearest production node at checkout.</span>
+      </div>
+    </aside>
+
+    <!-- ---------- Results ---------- -->
+    <div>
+      <div class="applied rv in">
+        <span class="eyebrow" style="margin-right:2px">Applied</span>
+        <span class="fchip">Abstract <button aria-label="Remove filter" data-ic="x" data-s="11"></button></span>
+        <span class="fchip">Poster <button aria-label="Remove filter" data-ic="x" data-s="11"></button></span>
+        <span class="fchip">$25–$60 <button aria-label="Remove filter" data-ic="x" data-s="11"></button></span>
+        <span class="fchip">AI generated <button aria-label="Remove filter" data-ic="x" data-s="11"></button></span>
+        <button class="small" style="color:var(--tx-3);margin-left:4px;text-decoration:underline;text-underline-offset:3px">Clear all</button>
+      </div>
+
+      <div class="tool rv in">
+        <div class="stack gap-2">
+          <div class="h4">Trending designs</div>
+          <div class="small faint tnum">Showing <b style="color:var(--tx-2)">1–12</b> of 128,400 results</div>
+        </div>
+        <div class="row gap-10">
+          <div class="sortsel">
+            <span class="sfx" data-ic="trendingUp" data-s="15"></span>
+            <select class="select" aria-label="Sort results">
+              <option>Trending</option>
+              <option>Newest first</option>
+              <option>Price: low to high</option>
+              <option>Price: high to low</option>
+              <option>Most liked</option>
+            </select>
+          </div>
+          <div class="seg" aria-label="View mode">
+            <button class="is-active" aria-label="Grid view"><span data-ic="grid" data-s="14"></span></button>
+            <button aria-label="List view"><span data-ic="list" data-s="14"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="res-grid" id="resGrid"></div>
+
+      <!-- Pagination -->
+      <div class="hr" style="margin:44px 0 22px"></div>
+      <div class="row-between wrap gap-16">
+        <div class="small faint">Page <b class="tnum" style="color:var(--tx-2)">1</b> of <span class="tnum">10,700</span></div>
+        <nav class="pg" aria-label="Pagination">
+          <a class="nav-a" href="#" aria-label="Previous page" data-ic="chevronLeft" data-s="15"></a>
+          <a class="is-current" href="#">1</a>
+          <a href="#">2</a><a href="#">3</a><a href="#">4</a>
+          <span class="gapx">···</span>
+          <a href="#">10,700</a>
+          <a class="nav-a" href="#" aria-label="Next page" data-ic="chevronRight" data-s="15"></a>
+        </nav>
+        <div class="row gap-8">
+          <span class="small faint">Per page</span>
+          <select class="select input-sm" style="width:78px" aria-label="Results per page"><option>12</option><option>24</option><option>48</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ CTA ══════════ -->
+<section class="section-sm" style="padding-bottom:clamp(56px,7vw,104px)">
+  <div class="container-wide">
+    <div class="band rv">
+      <div class="bspot"></div>
+      <div style="position:relative;min-width:260px;flex:1">
+        <div class="eyebrow" style="color:var(--tx-inv-3)">Nothing quite right?</div>
+        <div class="h2" style="margin:10px 0 8px">Generate it instead.</div>
+        <p class="body" style="color:var(--tx-inv-2);max-width:52ch">Describe what you want in the Design Studio. Publish it to the same manufacturing network in under two minutes.</p>
+      </div>
+      <div class="row gap-12 wrap" style="position:relative">
+        <a class="btn btn-paper btn-lg" href="studio.html"><span data-ic="sparkles" data-s="15"></span> Open Studio</a>
+        <a class="btn btn-inv-outline btn-lg" href="agents.html">Use the API</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+(function () {
+  /* ---- icon hydration ---- */
+  function icons(root) {
+    (root || document).querySelectorAll("[data-ic]").forEach(function (el) {
+      el.innerHTML = UI.icon(el.dataset.ic, parseInt(el.dataset.s, 10) || 16);
+      delete el.dataset.ic;
+    });
+  }
+
+  /* ---- category chips ---- */
+  document.getElementById("catRail").innerHTML =
+    '<button class="chip is-active">All</button>' +
+    DB.CATEGORIES.map(function (c, i) {
+      return '<button class="chip' + (i === 0 ? " is-active" : "") + '">' + c.name +
+             ' <span class="cnt">' + DB.compact(c.count) + "</span></button>";
+    }).join("");
+
+  /* ---- adapter filter list ---- */
+  document.getElementById("adapterList").innerHTML = DB.ADAPTERS.map(function (a, i) {
+    return '<label class="frow">' +
+      '<span class="check' + (i === 1 ? " is-on" : "") + '"></span>' +
+      '<span class="ico">' + UI.icon(a.icon, 15) + "</span>" +
+      '<span class="nm">' + a.name + "</span>" +
+      '<span class="cnt">' + DB.compact(4200 - i * 520) + "</span></label>";
+  }).join("");
+
+  /* ---- rating filter ---- */
+  document.getElementById("ratingList").innerHTML = [4.8, 4.5, 4.0].map(function (r, i) {
+    var stars = "";
+    for (var s = 0; s < 5; s++) stars += UI.iconFill("star", 12);
+    return '<label class="frow">' +
+      '<span class="check' + (i === 0 ? " is-on" : "") + '"></span>' +
+      '<span class="row gap-2" style="color:var(--amber)">' + stars + "</span>" +
+      '<span class="nm">' + r.toFixed(1) + "+</span>" +
+      '<span class="cnt">' + DB.compact(38000 - i * 9400) + "</span></label>";
+  }).join("");
+
+  /* ---- price histogram + dual range ---- */
+  var HB = [7, 12, 19, 28, 41, 58, 74, 89, 100, 96, 84, 71, 62, 54, 47, 40, 34, 28, 23, 19, 15, 12, 9, 6];
+  var histo = document.getElementById("histo");
+  histo.innerHTML = HB.map(function (h) { return '<i style="height:' + h + '%"></i>'; }).join("");
+
+  var rMin = document.getElementById("rMin"), rMax = document.getElementById("rMax");
+  var fill = document.getElementById("rngFill"), pMin = document.getElementById("pMin"),
+      pMax = document.getElementById("pMax"), tag = document.getElementById("priceTag");
+
+  function sync(e) {
+    var lo = +rMin.value, hi = +rMax.value;
+    if (lo > hi - 10) {
+      if (e && e.target === rMin) { lo = hi - 10; rMin.value = lo; }
+      else { hi = lo + 10; rMax.value = hi; }
+    }
+    var a = (lo / 180) * 100, b = (hi / 180) * 100;
+    fill.style.left = a + "%";
+    fill.style.width = (b - a) + "%";
+    pMin.textContent = "$" + lo;
+    pMax.textContent = "$" + hi + (hi === 180 ? "+" : "");
+    tag.textContent = "$" + lo + "–$" + hi;
+    Array.prototype.forEach.call(histo.children, function (bar, i) {
+      var v = (i + 0.5) / HB.length * 180;
+      bar.classList.toggle("on", v >= lo && v <= hi);
+    });
+  }
+  rMin.addEventListener("input", sync);
+  rMax.addEventListener("input", sync);
+  sync();
+
+  /* ---- filters toggle ---- */
+  var layout = document.querySelector(".ex-layout");
+  document.getElementById("filtToggle").addEventListener("click", function () {
+    layout.classList.toggle(window.innerWidth <= 1100 ? "filters-on" : "filters-off");
+  });
+
+  /* ---- results grid ---- */
+  var items = DB.DESIGNS.slice(0, 12);
+  document.getElementById("resGrid").innerHTML = items.map(function (d, i) {
+    return UI.work(d, { mockup: i % 3 !== 1 }).replace('class="work"', 'class="work rv-blur" data-d="' + (i * 0.045).toFixed(2) + '"');
+  }).join("");
+
+  icons();
+  UI.mount({ active: "explore.html" });
+})();
+</script>
+</body>
+</html>

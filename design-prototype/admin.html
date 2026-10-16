@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Console — Desmake</title>
+<meta name="description" content="Desmake operations console: moderation queue, orders, manufacturing exceptions, finance and platform configuration.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  i[data-ic] { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+
+  /* ---------- admin top bar ---------- */
+  .adminbar {
+    position: sticky; top: var(--nav-h); z-index: 80;
+    height: 48px;
+    background: var(--ink); color: var(--tx-inv);
+    border-bottom: 1px solid var(--line-inv);
+  }
+  .adminbar .container-wide { height: 100%; display: flex; align-items: center; gap: 18px; }
+  .ab-tag { display: inline-flex; align-items: center; gap: 8px; font-size: .8125rem; font-weight: 600; letter-spacing: -.015em; }
+  .ab-env {
+    font-family: var(--mono); font-size: .625rem; letter-spacing: .1em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: var(--r-xs);
+    background: rgba(255,77,24,.18); color: #ff8f6b; border: 1px solid rgba(255,77,24,.3);
+  }
+  .ab-search {
+    flex: 1; max-width: 300px; height: 30px;
+    display: flex; align-items: center; gap: 8px; padding: 0 11px;
+    border-radius: var(--r-sm); border: 1px solid var(--line-inv);
+    background: rgba(255,255,255,.05); color: var(--tx-inv-3); font-size: .78rem;
+    transition: all .25s var(--e);
+  }
+  .ab-search:hover { border-color: var(--line-inv-2); background: rgba(255,255,255,.08); }
+  .ab-item { display: inline-flex; align-items: center; gap: 7px; font-size: .75rem; color: var(--tx-inv-2); }
+  .ab-role {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 3px 10px 3px 3px; border-radius: var(--r-full);
+    background: rgba(255,255,255,.08); border: 1px solid var(--line-inv);
+  }
+  .ab-role .av { box-shadow: none; }
+
+  /* ---------- dark shell ---------- */
+  .adm { background: var(--paper-2); }
+  .adm .side {
+    background: var(--ink); border-right-color: var(--line-inv);
+    top: calc(var(--nav-h) + 48px); height: calc(100vh - var(--nav-h) - 48px);
+  }
+  .adm .side-t { color: var(--tx-inv-3); }
+  .adm .side-link { color: var(--tx-inv-2); }
+  .adm .side-link:hover { background: rgba(255,255,255,.07); color: var(--paper); }
+  .adm .side-link.is-active { background: rgba(255,255,255,.13); color: var(--paper); }
+  .adm .side-link .cnt { color: var(--tx-inv-3); }
+  .adm .side-link .cnt.hot { color: #ff8f6b; }
+  .side-note { margin: 22px 8px 0; padding: 13px; border-radius: var(--r-md); background: rgba(255,255,255,.05); border: 1px solid var(--line-inv); }
+
+  /* ---------- KPI ---------- */
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 18px; display: flex; flex-direction: column; gap: 12px; transition: transform .35s var(--e), box-shadow .35s var(--e); }
+  .kpi:hover { transform: translateY(-2px); box-shadow: var(--sh-2); }
+  .kpi-k { font-family: var(--mono); font-size: .625rem; text-transform: uppercase; letter-spacing: .12em; color: var(--tx-3); display: flex; align-items: center; gap: 7px; }
+  .kpi-v { font-size: 1.9rem; line-height: 1; letter-spacing: -.04em; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .spark { display: flex; align-items: flex-end; gap: 2px; height: 26px; }
+  .spark i { flex: 1; border-radius: 1.5px; background: rgba(12,12,13,.14); }
+  .spark.up i:last-child { background: var(--moss); }
+  .spark.warn i:last-child { background: var(--signal); }
+
+  /* ---------- charts ---------- */
+  .chart { display: flex; align-items: flex-end; gap: 10px; height: 168px; padding-top: 8px; }
+  .cb { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 9px; position: relative; cursor: default; }
+  .cb i { display: block; width: 100%; max-width: 46px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #2c2c31, #0c0c0d); transition: filter .25s var(--e), transform .25s var(--e); }
+  .cb:hover i { filter: brightness(2.2); }
+  .cb.hi i { background: linear-gradient(180deg, #ff6b3d, var(--signal)); }
+  .cb b { font-family: var(--mono); font-size: .625rem; font-weight: 400; color: var(--tx-3); letter-spacing: .04em; }
+  .cb .tip {
+    position: absolute; bottom: calc(100% - 4px); left: 50%; transform: translate(-50%, 4px);
+    background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: .625rem;
+    padding: 3px 7px; border-radius: var(--r-xs); white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: all .25s var(--e);
+  }
+  .cb:hover .tip { opacity: 1; transform: translate(-50%, 0); }
+  .chart-thin { gap: 3px; height: 132px; }
+  .chart-thin .cb i { border-radius: 2px; max-width: none; }
+  .chart-grid { position: relative; }
+  .chart-grid::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 8px; bottom: 26px;
+    background-image: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 25%);
+    pointer-events: none; opacity: .7;
+  }
+
+  /* ---------- activity log ---------- */
+  .lg { display: grid; grid-template-columns: 60px 26px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .lg:last-child { border-bottom: 0; }
+  .lg-t { font-family: var(--mono); font-size: .6875rem; color: var(--tx-3); }
+  .lg-ic { width: 26px; height: 26px; border-radius: var(--r-xs); display: grid; place-items: center; }
+  .lg-x { font-size: .8125rem; line-height: 1.4; }
+  .lg-x b { font-weight: 600; }
+  .lg-x span { color: var(--tx-3); }
+
+  /* ---------- quick actions ---------- */
+  .qa { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 14px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); text-align: left; transition: all .28s var(--e); }
+  .qa:hover { border-color: var(--ink); transform: translateX(3px); box-shadow: var(--sh-1); }
+  .qa-ic { width: 32px; height: 32px; border-radius: var(--r-sm); display: grid; place-items: center; flex: none; }
+  .qa b { display: block; font-size: .8125rem; font-weight: 550; }
+  .qa span { font-size: .72rem; color: var(--tx-3); }
+
+  /* ---------- moderation ---------- */
+  .mod-body { transition: max-height .5s var(--e), opacity .35s var(--e); overflow: hidden; }
+  .mod-body.closed { max-height: 0 !important; opacity: 0; }
+  .caret { transition: transform .35s var(--e); }
+  .caret.open { transform: rotate(180deg); }
+  .thumb { width: 34px; height: 42px; border-radius: var(--r-xs); overflow: hidden; flex: none; background: var(--paper-2); box-shadow: inset 0 0 0 1px rgba(12,12,13,.06); }
+  .thumb svg { width: 100%; height: 100%; object-fit: cover; }
+  .risk { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: .6875rem; font-variant-numeric: tabular-nums; }
+  .risk i { width: 34px; height: 3px; border-radius: 99px; background: rgba(12,12,13,.1); position: relative; overflow: hidden; }
+  .risk i::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--w, 20%); background: var(--c, var(--moss)); border-radius: 99px; }
+  .rowact { display: flex; gap: 4px; justify-content: flex-end; opacity: .35; transition: opacity .25s var(--e); }
+  .tbl tbody tr:hover .rowact { opacity: 1; }
+  .ib { width: 28px; height: 28px; border-radius: var(--r-xs); display: grid; place-items: center; color: var(--tx-2); transition: all .2s var(--e); }
+  .ib:hover { background: rgba(12,12,13,.06); color: var(--tx); }
+  .ib.ok:hover { background: var(--moss-soft); color: var(--moss); }
+  .ib.no:hover { background: var(--signal-soft); color: var(--signal); }
+  .ib.fl:hover { background: var(--amber-soft); color: var(--amber); }
+
+  .health-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+  .health-row .bar { flex: 1; }
+
+  @media (max-width: 1240px) { .adm-2 { grid-template-columns: minmax(0, 1fr) !important; } }
+  @media (max-width: 900px) { .ab-search, .ab-hide { display: none !important; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<!-- ---------- Admin bar ---------- -->
+<div class="adminbar">
+  <div class="container-wide">
+    <span class="ab-tag"><i data-ic="shield" data-sz="15"></i> Admin Console</span>
+    <span class="ab-env">Production</span>
+    <span class="divider-v" style="background:var(--line-inv);height:20px;align-self:center"></span>
+    <button class="ab-search"><i data-ic="search" data-sz="13"></i> Search orders, users, listings…</button>
+    <div class="row gap-16" style="margin-left:auto">
+      <span class="ab-item ab-hide"><i class="dot dot-live"></i> All systems nominal</span>
+      <span class="ab-item ab-hide"><i data-ic="activity" data-sz="13"></i> p95 168 ms</span>
+      <a class="ab-item ab-hide" href="#"><i data-ic="code" data-sz="13"></i> Runbooks</a>
+      <span class="ab-role">
+        <span class="av av-xs" id="adminAv"></span>
+        <span class="tiny" style="color:var(--paper)">M. Halvorsen · <span style="color:var(--tx-inv-3)">Ops L3</span></span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="app adm">
+  <!-- ---------- Sidebar ---------- -->
+  <aside class="side">
+    <div class="side-t">Operations</div>
+    <a class="side-link is-active" href="#"><i data-ic="barChart" data-sz="16"></i> Dashboard</a>
+    <a class="side-link" href="#moderation"><i data-ic="shield" data-sz="16"></i> Content moderation <span class="cnt hot">37</span></a>
+    <a class="side-link" href="#"><i data-ic="users" data-sz="16"></i> User management</a>
+    <a class="side-link" href="#"><i data-ic="package" data-sz="16"></i> Orders <span class="cnt">1.2k</span></a>
+    <a class="side-link" href="#"><i data-ic="factory" data-sz="16"></i> Manufacturing <span class="cnt hot">9</span></a>
+    <a class="side-link" href="#"><i data-ic="dollar" data-sz="16"></i> Finance</a>
+
+    <div class="side-t">Platform</div>
+    <a class="side-link" href="#"><i data-ic="sliders" data-sz="16"></i> Platform config</a>
+    <a class="side-link" href="#"><i data-ic="terminal" data-sz="16"></i> Agent registry</a>
+    <a class="side-link" href="#"><i data-ic="layers" data-sz="16"></i> Product adapters</a>
+    <a class="side-link" href="#"><i data-ic="activity" data-sz="16"></i> Audit log</a>
+
+    <div class="side-note">
+      <div class="row gap-8" style="margin-bottom:8px">
+        <i class="dot dot-amber"></i>
+        <span class="tiny strong" style="color:var(--paper)">Release 26.7.2</span>
+      </div>
+      <p class="tiny" style="color:var(--tx-inv-3);line-height:1.5">Canary at 12% traffic. Auto-promote in 3h 40m.</p>
+      <button class="btn btn-inv-outline btn-xs" style="margin-top:10px;width:100%">Open release</button>
+    </div>
+  </aside>
+
+  <!-- ---------- Main ---------- -->
+  <main class="main">
+    <div class="page-h">
+      <div>
+        <div class="eyebrow eyebrow-dot">Saturday, Aug 1 · 19:04 UTC</div>
+        <h1 class="h1" style="margin-top:10px">Dashboard</h1>
+      </div>
+      <div class="row gap-8 wrap">
+        <div class="seg">
+          <button data-range="24h">24h</button>
+          <button class="is-active" data-range="7d">7d</button>
+          <button data-range="30d">30d</button>
+          <button data-range="qtd">QTD</button>
+        </div>
+        <button class="btn btn-outline btn-sm"><i data-ic="download" data-sz="14"></i> Export</button>
+        <button class="btn btn-sm"><i data-ic="refresh" data-sz="14"></i> Refresh</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid g-5" style="gap:14px;margin-bottom:22px" id="kpis"></div>
+
+    <!-- Charts -->
+    <div class="grid g-2" style="gap:16px;margin-bottom:22px">
+      <div class="panel rv">
+        <div class="panel-h">
+          <div>
+            <div class="h5">Orders — last 7 days</div>
+            <div class="tiny faint" style="margin-top:2px">Paid orders entering the manufacturing queue</div>
+          </div>
+          <span class="badge badge-moss"><i data-ic="trendingUp" data-sz="11"></i> +12.4%</span>
+        </div>
+        <div class="panel-b">
+          <div class="chart chart-grid" id="chartOrders"></div>
+        </div>
+        <div class="panel-f row-between">
+          <span class="tiny faint">Total 1,284 orders · avg 183 / day</span>
+          <a class="tiny link-u" href="#">Open orders <i data-ic="arrowRight" data-sz="12"></i></a>
+        </div>
+      </div>
+
+      <div class="panel rv" data-d=".08">
+        <div class="panel-h">
+          <div>
+            <div class="h5">New signups — last 30 days</div>
+            <div class="tiny faint" style="margin-top:2px">Buyers and creators, deduplicated</div>
+          </div>
+          <span class="row gap-12">
+            <span class="tiny faint row gap-6"><i style="width:8px;height:8px;border-radius:2px;background:#0c0c0d;display:block"></i> Buyers</span>
+            <span class="tiny faint row gap-6"><i style="width:8px;height:8px;border-radius:2px;background:var(--signal);display:block"></i> Creators</span>
+          </span>
+        </div>
+        <div class="panel-b">
+          <div class="chart chart-thin chart-grid" id="chartSignups"></div>
+        </div>
+        <div class="panel-f row-between">
+          <span class="tiny faint">4,912 total · 18.6% became creators</span>
+          <a class="tiny link-u" href="#">Cohort report <i data-ic="arrowRight" data-sz="12"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity + side column -->
+    <div class="grid adm-2" style="grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px;margin-bottom:22px">
+      <div class="panel rv">
+        <div class="panel-h">
+          <div class="row gap-10">
+            <span class="h5">Recent platform activity</span>
+            <span class="badge badge-outline">live</span>
+          </div>
+          <div class="row gap-8">
+            <button class="btn btn-ghost btn-xs">Filter</button>
+            <button class="btn btn-outline btn-xs">Full audit log</button>
+          </div>
+        </div>
+        <div class="panel-b" style="padding:6px 20px 14px">
+          <div id="adminLog"></div>
+        </div>
+      </div>
+
+      <div class="stack gap-16">
+        <div class="panel rv" data-d=".06">
+          <div class="panel-h"><span class="h5">Quick actions</span></div>
+          <div class="panel-b stack gap-10">
+            <a class="qa" href="#moderation">
+              <span class="qa-ic" style="background:var(--amber-soft);color:var(--amber)"><i data-ic="shield" data-sz="16"></i></span>
+              <span style="flex:1"><b>Review pending listings</b><span>37 in queue · oldest 4h 12m</span></span>
+              <i data-ic="chevronRight" data-sz="15" style="color:var(--tx-3)"></i>
+            </a>
+            <a class="qa" href="#">
+              <span class="qa-ic" style="background:var(--signal-soft);color:var(--signal)"><i data-ic="alert" data-sz="16"></i></span>
+              <span style="flex:1"><b>View exceptions</b><span>9 manufacturing jobs blocked</span></span>
+              <i data-ic="chevronRight" data-sz="15" style="color:var(--tx-3)"></i>
+            </a>
+            <a class="qa" href="#">
+              <span class="qa-ic" style="background:var(--moss-soft);color:var(--moss)"><i data-ic="dollar" data-sz="16"></i></span>
+              <span style="flex:1"><b>Run payout batch</b><span>$284,910 to 1,204 creators</span></span>
+              <i data-ic="chevronRight" data-sz="15" style="color:var(--tx-3)"></i>
+            </a>
+            <a class="qa" href="#">
+              <span class="qa-ic" style="background:var(--violet-soft);color:var(--violet)"><i data-ic="terminal" data-sz="16"></i></span>
+              <span style="flex:1"><b>Approve agent requests</b><span>2 awaiting scope review</span></span>
+              <i data-ic="chevronRight" data-sz="15" style="color:var(--tx-3)"></i>
+            </a>
+          </div>
+        </div>
+
+        <div class="panel rv" data-d=".12">
+          <div class="panel-h"><span class="h5">System health</span><span class="badge badge-moss"><i class="dot dot-live"></i> Healthy</span></div>
+          <div class="panel-b" style="padding:12px 20px 18px" id="health"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- Content moderation ---------- -->
+    <section id="moderation" class="rv" style="scroll-margin-top:calc(var(--nav-h) + 68px)">
+      <div class="panel">
+        <div class="panel-h" id="modHead" style="cursor:pointer">
+          <div class="row gap-12">
+            <span class="h5">Content moderation queue</span>
+            <span class="badge badge-amber">37 pending</span>
+            <span class="tiny faint hide-sm">SLA 6h · 4 breached</span>
+          </div>
+          <div class="row gap-8">
+            <button class="btn btn-outline btn-xs" data-stop>Bulk approve</button>
+            <span class="ib caret open" id="modCaret"><i data-ic="chevronDown" data-sz="16"></i></span>
+          </div>
+        </div>
+
+        <div class="mod-body" id="modBody" style="max-height:1600px">
+          <div class="panel-b" style="padding:16px 20px 0">
+            <div class="row-between wrap gap-12">
+              <div class="row gap-8 wrap" data-chipgroup="single" id="modChips">
+                <button class="chip chip-sm is-active" data-s="all">All <span class="mono faint" style="margin-left:4px">8</span></button>
+                <button class="chip chip-sm" data-s="Pending">Pending</button>
+                <button class="chip chip-sm" data-s="Flagged">Flagged</button>
+                <button class="chip chip-sm" data-s="Approved">Approved</button>
+                <button class="chip chip-sm" data-s="Rejected">Rejected</button>
+              </div>
+              <div class="row gap-8">
+                <select class="select input-sm" style="width:auto">
+                  <option>Sort: Oldest first</option><option>Sort: Highest risk</option><option>Sort: Newest first</option>
+                </select>
+                <button class="btn btn-ghost btn-sm btn-icon" aria-label="Columns"><i data-ic="sliders" data-sz="16"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-b" style="padding:14px 8px 0;overflow-x:auto">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th style="width:36px"><span class="check" style="margin-left:4px"></span></th>
+                  <th>Listing</th>
+                  <th>Creator</th>
+                  <th>Submitted</th>
+                  <th>Risk</th>
+                  <th>Status</th>
+                  <th class="num">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="modRows"></tbody>
+            </table>
+          </div>
+
+          <div class="panel-f row-between">
+            <span class="tiny faint">Showing <b class="tnum">8</b> of 37 · auto-refreshing every 30s</span>
+            <div class="row gap-6">
+              <button class="btn btn-ghost btn-xs" disabled><i data-ic="chevronLeft" data-sz="13"></i> Prev</button>
+              <span class="kbd">1</span><span class="tiny faint">/ 5</span>
+              <button class="btn btn-ghost btn-xs">Next <i data-ic="chevronRight" data-sz="13"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="app-footer"></div>
+
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const R = Art.rng("desmake-admin-2026");
+document.getElementById("adminAv").innerHTML = Art.avatar("ops-halvorsen");
+
+/* ---------- KPIs ---------- */
+function spark(seed, cls) {
+  const r = Art.rng(seed);
+  return `<span class="spark ${cls || ""}">${Array.from({ length: 14 }, () => `<i style="height:${16 + Math.round(r() * 84)}%"></i>`).join("")}</span>`;
+}
+const KPIS = [
+  { k: "Total listings", ic: "layers", v: "18,420", t: "+4.2%", up: true, s: "k1" },
+  { k: "Pending reviews", ic: "shield", v: "37", t: "+9 today", up: false, s: "k2", warn: true },
+  { k: "Active orders", ic: "package", v: "1,284", t: "+12.4%", up: true, s: "k3" },
+  { k: "Revenue today", ic: "dollar", v: "$42,918", t: "+6.1%", up: true, s: "k4" },
+  { k: "Exception rate", ic: "alert", v: "0.8%", t: "-0.3pp", up: true, s: "k5", warn: true }
+];
+document.getElementById("kpis").innerHTML = KPIS.map(x => `
+  <div class="kpi">
+    <span class="kpi-k">${UI.icon(x.ic, 13)} ${x.k}</span>
+    <span class="kpi-v"${x.warn && x.k === "Pending reviews" ? ' style="color:var(--amber)"' : ""}>${x.v}</span>
+    <div class="row-between">
+      <span class="trend ${x.up ? "trend-up" : "trend-down"}">${UI.icon(x.up ? "trendingUp" : "alert", 12)} ${x.t}</span>
+    </div>
+    ${spark(x.s, x.warn ? "warn" : "up")}
+  </div>`).join("");
+
+/* ---------- charts ---------- */
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const ORDER_VALS = [148, 172, 165, 198, 226, 211, 164];
+const maxO = Math.max(...ORDER_VALS);
+document.getElementById("chartOrders").innerHTML = ORDER_VALS.map((v, i) => `
+  <div class="cb${i === 4 ? " hi" : ""}">
+    <span class="tip">${v} orders</span>
+    <i style="height:${Math.round((v / maxO) * 100)}%"></i>
+    <b>${DAYS[i]}</b>
+  </div>`).join("");
+
+const sr = Art.rng("signups-30");
+const SIGN = Array.from({ length: 30 }, (_, i) => {
+  const base = 90 + Math.round(sr() * 110) + Math.round(i * 1.9);
+  return { v: base, cr: sr() > 0.78 };
+});
+const maxS = Math.max(...SIGN.map(s => s.v));
+document.getElementById("chartSignups").innerHTML = SIGN.map((s, i) => `
+  <div class="cb${s.cr ? " hi" : ""}">
+    <span class="tip">Jul ${i + 2} · ${s.v}</span>
+    <i style="height:${Math.round((s.v / maxS) * 100)}%"></i>
+    ${i === 0 || i === 14 || i === 29 ? `<b>${i === 0 ? "Jul 2" : i === 14 ? "Jul 16" : "Jul 31"}</b>` : "<b>&nbsp;</b>"}
+  </div>`).join("");
+
+/* ---------- admin activity log ---------- */
+const LOG = [
+  { t: "19:04:02", ic: "shield", tone: "moss", x: '<b>Auto-review</b> approved <b>“Ember Field”</b> <span>· confidence 0.97</span>', b: ["Approved", "moss"] },
+  { t: "18:57:44", ic: "alert", tone: "signal", x: '<b>Rotterdam Additive</b> raised an exception on <b>job_5521</b> <span>· resin shortage</span>', b: ["Exception", "signal"] },
+  { t: "18:51:19", ic: "user", tone: "cobalt", x: '<b>M. Halvorsen</b> suspended user <b>@fastmerch</b> <span>· repeat IP claims</span>', b: ["Enforcement", "cobalt"] },
+  { t: "18:44:03", ic: "terminal", tone: "violet", x: '<b>Merch Scout</b> requested scope <b>analytics.read</b> <span>· awaiting review</span>', b: ["Pending", "amber"] },
+  { t: "18:32:57", ic: "dollar", tone: "moss", x: '<b>Payout batch #2261</b> settled <span>· $128,440 to 612 creators</span>', b: ["Finance", "moss"] },
+  { t: "18:20:11", ic: "factory", tone: "cobalt", x: '<b>Shenzhen Print Lab</b> capacity raised to <b>2,400/day</b> <span>· seasonal</span>', b: ["Network", "cobalt"] },
+  { t: "18:08:36", ic: "alert", tone: "amber", x: '<b>SLA warning</b> — 4 listings in review beyond 6h <span>· queue depth 37</span>', b: ["SLA", "amber"] },
+  { t: "17:55:02", ic: "sliders", tone: "violet", x: '<b>Platform config</b> updated: dynamic pricing band <b>±12%</b>', b: ["Config", "violet"] }
+];
+document.getElementById("adminLog").innerHTML = LOG.map(l => `
+  <div class="lg">
+    <span class="lg-t">${l.t}</span>
+    <span class="lg-ic" style="background:var(--${l.tone}-soft);color:var(--${l.tone})">${UI.icon(l.ic, 14)}</span>
+    <span class="lg-x">${l.x}</span>
+    <span class="badge badge-${l.b[1]}">${l.b[0]}</span>
+  </div>`).join("");
+
+/* ---------- health ---------- */
+const HEALTH = [
+  { n: "Manufacturing queue", v: "412 jobs", p: 41, c: "var(--ink)" },
+  { n: "Factory uptime", v: "99.4%", p: 99, c: "var(--moss)" },
+  { n: "Review SLA", v: "88%", p: 88, c: "var(--amber)" },
+  { n: "API error rate", v: "0.12%", p: 8, c: "var(--signal)" },
+  { n: "Agent quota usage", v: "63%", p: 63, c: "var(--violet)" }
+];
+document.getElementById("health").innerHTML = HEALTH.map(h => `
+  <div class="health-row">
+    <span class="tiny" style="width:130px;flex:none;color:var(--tx-2)">${h.n}</span>
+    <span class="bar"><i style="width:${h.p}%;background:${h.c}"></i></span>
+    <span class="mono tiny tnum" style="width:52px;text-align:right;flex:none">${h.v}</span>
+  </div>`).join("");
+
+/* ---------- moderation table ---------- */
+const STATUSES = [
+  { s: "Pending", b: "badge-amber" }, { s: "Flagged", b: "badge-signal" },
+  { s: "Approved", b: "badge-moss" }, { s: "Pending", b: "badge-amber" },
+  { s: "Rejected", b: "badge" }, { s: "Pending", b: "badge-amber" },
+  { s: "Approved", b: "badge-moss" }, { s: "Flagged", b: "badge-signal" }
+];
+const SUBMITTED = ["4h 12m ago", "3h 40m ago", "2h 58m ago", "2h 04m ago", "1h 31m ago", "48 min ago", "26 min ago", "9 min ago"];
+const ROWS = DB.DESIGNS.slice(0, 8).map((d, i) => {
+  const c = DB.creatorByHandle(d.creator);
+  const risk = Math.round(Art.rng("risk-" + d.id)() * 88);
+  return { d, c, st: STATUSES[i], sub: SUBMITTED[i], risk };
+});
+document.getElementById("modRows").innerHTML = ROWS.map(r => {
+  const col = r.risk > 60 ? "var(--signal)" : r.risk > 30 ? "var(--amber)" : "var(--moss)";
+  return `<tr data-s="${r.st.s}">
+    <td><span class="check"></span></td>
+    <td>
+      <div class="row gap-10">
+        <span class="thumb">${Art.svg(r.d.seed)}</span>
+        <span style="min-width:0">
+          <span class="strong" style="display:block;font-size:.8438rem;letter-spacing:-.012em">${r.d.title}</span>
+          <span class="mono faint" style="font-size:.6875rem">${r.d.id} · ${r.d.adapters.length} adapters${r.d.aiGenerated ? " · AI" : ""}</span>
+        </span>
+      </div>
+    </td>
+    <td>
+      <div class="row gap-8">
+        <span class="av av-xs">${Art.avatar(r.c.handle)}</span>
+        <span>${r.c.name}</span>
+        ${r.c.verified ? `<span class="verified">${UI.iconFill("check", 11)}</span>` : ""}
+      </div>
+    </td>
+    <td class="mono" style="color:var(--tx-3);font-size:.6875rem">${r.sub}</td>
+    <td><span class="risk" style="color:${col}"><i style="--w:${r.risk}%;--c:${col}"></i>${String(r.risk).padStart(2, "0")}</span></td>
+    <td><span class="badge ${r.st.b}">${r.st.s}</span></td>
+    <td>
+      <div class="rowact">
+        <button class="ib ok" title="Approve">${UI.icon("check", 15)}</button>
+        <button class="ib fl" title="Flag">${UI.icon("alert", 15)}</button>
+        <button class="ib no" title="Reject">${UI.icon("x", 15)}</button>
+        <button class="ib" title="Open listing">${UI.icon("arrowUpRight", 15)}</button>
+      </div>
+    </td>
+  </tr>`;
+}).join("");
+
+/* filter chips */
+document.getElementById("modChips").addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if (!b) return;
+  const s = b.dataset.s;
+  let n = 0;
+  document.querySelectorAll("#modRows tr").forEach(tr => {
+    const on = s === "all" || tr.dataset.s === s;
+    tr.classList.toggle("hide", !on);
+    if (on) n++;
+  });
+  document.querySelector("#modChips .chip .mono").textContent = n;
+});
+
+/* collapse */
+const head = document.getElementById("modHead"), body = document.getElementById("modBody"), caret = document.getElementById("modCaret");
+head.addEventListener("click", e => {
+  if (e.target.closest("[data-stop]")) return;
+  const closed = body.classList.toggle("closed");
+  caret.classList.toggle("open", !closed);
+});
+
+/* range seg feedback */
+document.querySelectorAll("[data-range]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("#chartOrders .cb i").forEach(i => {
+    i.style.height = (22 + Math.round(Math.random() * 78)) + "%";
+  });
+}));
+
+/* ---------- mount + icons ---------- */
+UI.mount({ active: "admin.html" });
+document.querySelectorAll("[data-ic]").forEach(el => {
+  el.innerHTML = UI.icon(el.dataset.ic, +el.dataset.sz || 16, el.dataset.sw ? +el.dataset.sw : 1.6);
+});
+</script>
+</body>
+</html>

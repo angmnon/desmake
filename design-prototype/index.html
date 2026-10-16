@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desmake — Design once. Manufacture anywhere.</title>
+<meta name="description" content="The AI native design marketplace. Create with AI, publish once, and let the network manufacture and ship worldwide.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .hero { position: relative; padding-top: clamp(48px, 7vw, 96px); padding-bottom: clamp(40px, 5vw, 72px); overflow: hidden; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+  .hero h1 { margin-bottom: 26px; }
+  .hero-stage { position: relative; height: clamp(420px, 46vw, 580px); }
+  .hs-card { position: absolute; border-radius: var(--r-md); overflow: hidden; box-shadow: var(--sh-3); background: var(--surface); }
+  .hs-1 { width: 54%; left: 0; top: 6%; z-index: 3; }
+  .hs-2 { width: 46%; right: 2%; top: 0; z-index: 2; }
+  .hs-3 { width: 42%; right: 8%; bottom: 2%; z-index: 4; }
+  .hs-card > svg, .hs-card > img, .hs-card > div { animation: fl 10s ease-in-out infinite; }
+  .hs-2 > svg, .hs-2 > img, .hs-2 > div { animation-duration: 12s; animation-direction: reverse; }
+  .hs-3 > svg, .hs-3 > img, .hs-3 > div { animation-duration: 14s; }
+  @keyframes fl { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-14px) } }
+  .hs-tick {
+    position: absolute; left: 4%; bottom: 6%; z-index: 5;
+    background: rgba(255,255,255,.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,.7); border-radius: var(--r-md); padding: 13px 15px; box-shadow: var(--sh-3);
+    min-width: 232px;
+  }
+  .hero-spot-1 { width: 480px; height: 480px; background: rgba(255,77,24,.14); top: -160px; right: -60px; animation-delay: -3s; }
+  .hero-spot-2 { width: 420px; height: 420px; background: rgba(34,68,255,.1); bottom: -180px; left: -120px; animation-delay: -7s; }
+  .strip { background: var(--ink); color: var(--tx-inv); padding: 13px 0; }
+  .strip .marquee-track { animation-duration: 46s; }
+  .strip span { font-family: var(--mono); font-size: .6875rem; letter-spacing: .18em; text-transform: uppercase; color: rgba(247,246,243,.62); }
+  .strip b { color: var(--paper); font-weight: 500; }
+  .pipe { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; background: var(--line-inv); border: 1px solid var(--line-inv); border-radius: var(--r-lg); overflow: hidden; }
+  .pipe > div { background: var(--ink); padding: 26px 24px 30px; position: relative; }
+  .pipe .n { font-family: var(--mono); font-size: .6875rem; color: var(--tx-inv-3); letter-spacing: .12em; transition: color .3s var(--e); }
+  .pipe > div::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,77,24,.6), transparent);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform .5s var(--e-out-expo);
+  }
+  .pipe > div:hover::after { transform: scaleX(1); }
+  .pipe > div:hover .n { color: var(--signal); }
+  .feat { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,.85fr); gap: clamp(24px,4vw,56px); align-items: center; }
+  .creator-card { display: block; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); transition: transform .45s var(--e), box-shadow .45s var(--e), border-color .3s var(--e); }
+  .creator-card:hover { transform: translateY(-4px); box-shadow: var(--sh-3), 0 0 0 1px rgba(255,77,24,.18), 0 22px 50px -24px rgba(255,77,24,.26); }
+  .cc-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); }
+  .cc-strip > div { aspect-ratio: 1; overflow: hidden; }
+  .cc-strip svg { transition: transform .7s var(--e-out-expo); }
+  .creator-card:hover .cc-strip svg { transform: scale(1.06); }
+  .adp { display: block; border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--surface); transition: all .4s var(--e); }
+  .adp:hover { border-color: var(--ink); transform: translateY(-3px); box-shadow: var(--sh-2), 0 0 0 1px rgba(255,77,24,.15); }
+  .agent-band { position: relative; overflow: hidden; }
+  .ab-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.05fr); gap: clamp(28px,4vw,64px); align-items: center; }
+  @media (max-width: 900px) {
+    .hero-grid, .feat, .ab-grid { grid-template-columns: minmax(0,1fr); }
+    .hero-stage { height: 400px; }
+    .pipe { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<!-- ══════════ HERO ══════════ -->
+<section class="hero grain">
+  <div class="spot hero-spot-1"></div>
+  <div class="spot hero-spot-2"></div>
+  <div class="container-wide hero-grid">
+    <div class="rv in">
+      <div class="row gap-12 wrap" style="margin-bottom:26px">
+        <span class="badge badge-outline">AI Native Design Marketplace</span>
+        <span class="eyebrow row gap-6"><i class="dot dot-live"></i> 2,481 items in production right now</span>
+      </div>
+      <h1 class="display-xl balance" data-split>Design once.<br>Manufacture <span class="serif-i" style="letter-spacing:-.03em">anywhere</span>.</h1>
+      <p class="lead balance" style="max-width:46ch">Create with AI or upload your own work. Publish a single design and Desmake turns it into manufacturable products, produced on demand and shipped from the node closest to your buyer.</p>
+      <div class="row gap-12 wrap" style="margin-top:34px">
+        <a class="btn btn-lg" href="studio.html">Start creating <span class="arw" id="a1"></span></a>
+        <a class="btn btn-lg btn-outline" href="explore.html">Explore marketplace</a>
+      </div>
+      <div class="row gap-40 wrap" style="margin-top:52px" id="heroStats"></div>
+    </div>
+
+    <div class="hero-stage rv in" data-d=".15">
+      <div class="hs-card hs-1" id="hsA" data-parallax data-rate="-0.05"></div>
+      <div class="hs-card hs-2" id="hsB" data-parallax data-rate="-0.11"></div>
+      <div class="hs-card hs-3" id="hsC" data-parallax data-rate="-0.02"></div>
+      <div class="hs-tick">
+        <div class="row-between" style="margin-bottom:9px">
+          <span class="eyebrow" id="tickJob">Job #5521</span>
+          <span class="row gap-6 mono" style="font-size:.625rem;color:var(--moss)"><i class="dot dot-live"></i>LIVE</span>
+        </div>
+        <div class="h5" style="margin-bottom:3px" id="tickName">Ember Field — T-Shirt ×2</div>
+        <div class="tiny faint" style="margin-bottom:11px" id="tickRoute">Austin DTG Works · routed 41s ago</div>
+        <div class="bar"><i id="tickBar" style="width:62%"></i></div>
+        <div class="row-between tiny faint" style="margin-top:7px"><span id="tickStage">Printing</span><span id="tickShip">Ships Aug 4</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ ADAPTER STRIP ══════════ -->
+<div class="strip">
+  <div class="marquee"><div class="marquee-track" id="strip1"></div><div class="marquee-track" id="strip2"></div></div>
+</div>
+
+<!-- ══════════ DISCOVER ══════════ -->
+<section class="section">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <div>
+        <div class="eyebrow eyebrow-dot">The marketplace</div>
+        <h2 class="h1" style="margin-top:14px">What the world is making<br>this week</h2>
+      </div>
+      <div class="stack gap-16" style="align-items:flex-end">
+        <div class="seg" id="discTabs">
+          <button class="is-active">Trending</button><button>New</button><button>AI Picks</button><button>Editors</button>
+        </div>
+        <a class="link-u small" href="explore.html">Browse all 128,400 designs <span id="a2"></span></a>
+      </div>
+    </div>
+
+    <div class="row gap-8 wrap rv" style="margin-bottom:26px" id="catChips" data-chipgroup="multi"></div>
+    <div class="grid g-4" id="trendGrid"></div>
+  </div>
+</section>
+
+<!-- ══════════ D2M PIPELINE ══════════ -->
+<section class="section section-ink grain" style="position:relative">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <div>
+        <div class="eyebrow eyebrow-dot">Design-to-Market engine</div>
+        <h2 class="h1" style="margin-top:14px;color:var(--paper)">From prompt to parcel,<br><span class="serif-i">without the busywork</span></h2>
+      </div>
+      <p class="body pretty" style="color:var(--tx-inv-2);max-width:38ch">You publish a design — not a product catalogue. D2M analyses the artwork, picks the right adapters, renders mockups, writes the copy, prices it and lists it.</p>
+    </div>
+
+    <div class="pipe rv">
+      <div>
+        <div class="n">01 / ANALYSE</div>
+        <div class="h3" style="margin:16px 0 10px;color:var(--paper)">Read the artwork</div>
+        <p class="small" style="color:var(--tx-inv-2)">Colour, print resolution, transparency and subject matter are scored against every adapter's production profile.</p>
+      </div>
+      <div>
+        <div class="n">02 / ADAPT</div>
+        <div class="h3" style="margin:16px 0 10px;color:var(--paper)">Match the products</div>
+        <p class="small" style="color:var(--tx-inv-2)">Six manufacturing adapters compete for the design. Each returns a production file, a cost and a lead time.</p>
+      </div>
+      <div>
+        <div class="n">03 / DRESS</div>
+        <div class="h3" style="margin:16px 0 10px;color:var(--paper)">Mockups &amp; copy</div>
+        <p class="small" style="color:var(--tx-inv-2)">Photoreal mockups, titles, descriptions, SEO tags and EN/中文 localisation generated in one pass.</p>
+      </div>
+      <div>
+        <div class="n">04 / SHIP</div>
+        <div class="h3" style="margin:16px 0 10px;color:var(--paper)">Live in minutes</div>
+        <p class="small" style="color:var(--tx-inv-2)">Listings go live after review. Orders route straight to the factory node with the best cost-to-door.</p>
+      </div>
+    </div>
+
+    <div class="row gap-16 wrap rv" style="margin-top:36px">
+      <a class="btn btn-paper" href="publish.html">See the publish flow <span id="a3"></span></a>
+      <span class="small" style="color:var(--tx-inv-3)">Average time from upload to live listing — 4 min 12 s</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FEATURED ══════════ -->
+<section class="section">
+  <div class="container-wide feat">
+    <div class="rv" style="position:relative">
+      <div class="card-pad-0 card" style="border-radius:var(--r-lg);overflow:hidden" id="featArt"></div>
+      <div class="pill-glass" style="position:absolute;left:18px;top:18px">Featured collection</div>
+    </div>
+    <div class="rv" data-d=".1">
+      <div class="eyebrow">Collection 07 — curated by Desmake</div>
+      <h2 class="h1" style="margin:16px 0 18px">Quiet<br><span class="serif-i">Geometry</span></h2>
+      <p class="lead" style="max-width:40ch">Eighteen works exploring restraint: grids, negative space and a single decisive gesture. Available as giclée posters, heavyweight tees and die-cut stickers.</p>
+      <div class="row gap-32 wrap" style="margin:32px 0">
+        <div class="stat"><div class="stat-v">18</div><div class="stat-k">Works</div></div>
+        <div class="stat"><div class="stat-v">6</div><div class="stat-k">Creators</div></div>
+        <div class="stat"><div class="stat-v">$12</div><div class="stat-k">From</div></div>
+      </div>
+      <a class="btn" href="explore.html">View collection <span id="a4"></span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ CREATORS ══════════ -->
+<section class="section section-paper2">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <div>
+        <div class="eyebrow eyebrow-dot">Popular creators</div>
+        <h2 class="h1" style="margin-top:14px">People shaping<br>the catalogue</h2>
+      </div>
+      <a class="link-u small" href="creator.html">All creators <span id="a5"></span></a>
+    </div>
+    <div class="grid g-4" id="creatorGrid"></div>
+  </div>
+</section>
+
+<!-- ══════════ ADAPTERS ══════════ -->
+<section class="section">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <div>
+        <div class="eyebrow eyebrow-dot">Manufacturing adapters</div>
+        <h2 class="h1" style="margin-top:14px">Six ways to make it real</h2>
+      </div>
+      <p class="body pretty" style="max-width:34ch">Every adapter is a contract: validate, generate the production file, estimate cost. New categories are configuration, not rebuilds.</p>
+    </div>
+    <div class="grid g-3" id="adapterGrid"></div>
+  </div>
+</section>
+
+<!-- ══════════ AGENT BAND ══════════ -->
+<section class="section section-ink agent-band grain">
+  <div class="spot" style="width:520px;height:520px;background:rgba(255,77,24,.16);top:-140px;left:-100px"></div>
+  <div class="container-wide ab-grid">
+    <div class="rv">
+      <div class="eyebrow eyebrow-dot">Agent Hub</div>
+      <h2 class="h1" style="margin:16px 0 18px;color:var(--paper)">Give your agents<br>a <span class="serif-i">factory floor</span></h2>
+      <p class="lead" style="color:var(--tx-inv-2);max-width:42ch">Connect Claude, a custom GPT, or your own LangGraph worker over MCP. Scoped permissions, per-key metering, and a full audit trail of every action taken on your behalf.</p>
+      <ul class="stack gap-12" style="margin:30px 0 34px">
+        <li class="row gap-10 small" style="color:var(--tx-inv-2)"><span class="accent" id="c1"></span> Search the catalogue and read live manufacturing cost</li>
+        <li class="row gap-10 small" style="color:var(--tx-inv-2)"><span class="accent" id="c2"></span> Generate, publish and price designs through D2M</li>
+        <li class="row gap-10 small" style="color:var(--tx-inv-2)"><span class="accent" id="c3"></span> Place orders and track jobs to the doorstep</li>
+      </ul>
+      <div class="row gap-12 wrap">
+        <a class="btn btn-paper" href="agents.html">Open Agent Hub <span id="a6"></span></a>
+        <a class="btn btn-inv-outline" href="#">Read the docs</a>
+      </div>
+    </div>
+    <div class="rv" data-d=".12">
+      <div class="terminal">
+        <div class="terminal-h">
+          <i class="dot" style="background:#FF5F57"></i><i class="dot" style="background:#FEBC2E"></i><i class="dot" style="background:#28C840"></i>
+          <span class="mono" style="margin-left:8px;color:rgba(247,246,243,.4);font-size:.6875rem">~/.config/claude/mcp.json</span>
+        </div>
+        <div class="terminal-b"><pre style="margin:0" id="mcpCode" data-type></pre></div>
+      </div>
+      <div class="row gap-12 wrap" style="margin-top:16px">
+        <span class="badge" style="background:rgba(255,255,255,.07);color:var(--tx-inv-2)">MCP</span>
+        <span class="badge" style="background:rgba(255,255,255,.07);color:var(--tx-inv-2)">REST</span>
+        <span class="badge" style="background:rgba(255,255,255,.07);color:var(--tx-inv-2)">Webhooks</span>
+        <span class="badge" style="background:rgba(255,255,255,.07);color:var(--tx-inv-2)">TypeScript SDK</span>
+        <span class="badge" style="background:rgba(255,255,255,.07);color:var(--tx-inv-2)">Python SDK</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ CREATOR CTA ══════════ -->
+<section class="section">
+  <div class="container-wide">
+    <div class="card rv" style="padding:clamp(32px,5vw,72px);border-radius:var(--r-xl);position:relative;overflow:hidden">
+      <div class="spot" style="width:420px;height:420px;background:rgba(255,77,24,.1);right:-120px;top:-140px"></div>
+      <div class="row-between wrap gap-40" style="position:relative">
+        <div style="max-width:46ch">
+          <div class="eyebrow eyebrow-dot">For creators</div>
+          <h2 class="h1" style="margin:16px 0 16px">Keep making.<br>We handle the <span class="serif-i">rest</span>.</h2>
+          <p class="lead">No inventory, no minimum order, no factory calls. Publish your work and get paid when it sells — transparent cost breakdown on every order.</p>
+          <div class="row gap-12 wrap" style="margin-top:30px">
+            <a class="btn btn-lg" href="auth.html">Become a creator <span id="a7"></span></a>
+            <a class="btn btn-lg btn-outline" href="earnings.html">See how payouts work</a>
+          </div>
+        </div>
+        <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:34px 48px;min-width:280px">
+          <div class="stat"><div class="stat-v">$<span data-count="1.2" data-dec="1">0</span>M</div><div class="stat-k">Paid to creators</div></div>
+          <div class="stat"><div class="stat-v">0%</div><div class="stat-k">Upfront cost</div></div>
+          <div class="stat"><div class="stat-v"><span data-count="34">0</span></div><div class="stat-k">Shipping countries</div></div>
+          <div class="stat"><div class="stat-v"><span data-count="4.9" data-dec="1">0</span></div><div class="stat-k">Creator rating</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const I = UI.icon;
+/* arrows + checks */
+["a1","a2","a3","a4","a5","a6","a7"].forEach(id => { const e = document.getElementById(id); if (e) e.outerHTML = I("arrowRight", 15); });
+["c1","c2","c3"].forEach(id => { const e = document.getElementById(id); if (e) e.outerHTML = `<span class="accent" style="display:flex">${I("check",15)}</span>`; });
+
+/* hero stats */
+document.getElementById("heroStats").innerHTML = [
+  ["128400", "Designs listed", 0, ""], ["6", "Product adapters", 0, ""], ["34", "Countries served", 0, ""], ["99.6", "On-time ship rate", 1, "%"]
+].map(s => `<div class="stat"><div class="stat-v" style="font-size:1.5rem"><span data-count="${s[0]}" data-dec="${s[2]}">0</span>${s[3]}</div><div class="stat-k">${s[1]}</div></div>`).join("");
+
+/* hero stage */
+document.getElementById("hsA").innerHTML = Art.mockup("poster", "Meridian 04", { bg: "#EDEAE3" });
+document.getElementById("hsB").innerHTML = Art.svg("Prism Ritual", { style: "aspect-ratio:4/5" });
+document.getElementById("hsC").innerHTML = Art.mockup("tshirt", "Ember Field", { bg: "#F1EFE9" });
+
+/* adapter marquee */
+const stripHTML = DB.ADAPTERS.concat(DB.ADAPTERS).map(a =>
+  `<span><b>${a.name.toUpperCase()}</b> &nbsp;·&nbsp; ${a.method} &nbsp;·&nbsp; ${a.lead} days</span>`).join("");
+document.getElementById("strip1").innerHTML = stripHTML;
+document.getElementById("strip2").innerHTML = stripHTML;
+
+/* category chips */
+document.getElementById("catChips").innerHTML =
+  `<button class="chip is-active">All work</button>` +
+  DB.CATEGORIES.map(c => `<button class="chip">${c.name} <span class="mono" style="opacity:.45">${DB.compact(c.count)}</span></button>`).join("");
+
+/* trending grid */
+document.getElementById("trendGrid").innerHTML = DB.DESIGNS.slice(0, 8)
+  .map((d, i) => `<div class="rv" data-d="${(i % 4) * 0.06}">${UI.work(d, { mockup: i % 3 === 1 })}</div>`).join("");
+
+/* featured artwork */
+document.getElementById("featArt").innerHTML = Art.svg("Quiet Geometry Collection", { style: "aspect-ratio:5/4" });
+
+/* creators */
+document.getElementById("creatorGrid").innerHTML = DB.CREATORS.slice(0, 4).map((c, i) => {
+  const works = DB.byCreator(c.handle).slice(0, 3);
+  return `<a class="creator-card rv" data-d="${i * 0.06}" href="creator.html">
+    <div class="cc-strip">${works.map(w => `<div>${Art.svg(w.seed)}</div>`).join("")}</div>
+    <div style="padding:18px 18px 20px">
+      <div class="row gap-10">
+        <span class="av">${Art.avatar(c.handle)}</span>
+        <div style="min-width:0">
+          <div class="row gap-4"><span class="h5">${c.name}</span>${c.verified ? `<span class="verified" style="display:flex">${I("shield", 13)}</span>` : ""}</div>
+          <div class="tiny faint">${c.role}</div>
+        </div>
+      </div>
+      <div class="row gap-16" style="margin-top:16px">
+        <span class="tiny"><b class="tnum">${DB.compact(c.followers)}</b> <span class="faint">followers</span></span>
+        <span class="tiny"><b class="tnum">${DB.compact(c.sales)}</b> <span class="faint">sales</span></span>
+      </div>
+    </div>
+  </a>`;
+}).join("");
+
+/* adapters */
+document.getElementById("adapterGrid").innerHTML = DB.ADAPTERS.map((a, i) => `
+  <a class="adp rv" data-d="${(i % 3) * 0.06}" href="listing.html">
+    <div style="background:var(--paper-2)">${Art.mockup(a.mockup, DB.DESIGNS[i * 3].seed, {})}</div>
+    <div style="padding:18px 20px 20px">
+      <div class="row-between" style="margin-bottom:8px">
+        <span class="h4">${a.name}</span>
+        <span class="badge">${a.method}</span>
+      </div>
+      <div class="row-between">
+        <span class="small muted">Ships in ${a.lead} business days</span>
+        <span class="small strong">from ${DB.money(a.retailCents)}</span>
+      </div>
+    </div>
+  </a>`).join("");
+
+/* mcp snippet */
+document.getElementById("mcpCode").innerHTML =
+`<span class="p">{</span>
+  <span class="k">"mcpServers"</span>: <span class="p">{</span>
+    <span class="k">"desmake"</span>: <span class="p">{</span>
+      <span class="k">"command"</span>: <span class="s">"npx"</span>,
+      <span class="k">"args"</span>: [<span class="s">"-y"</span>, <span class="s">"@desmake/mcp"</span>],
+      <span class="k">"env"</span>: <span class="p">{</span>
+        <span class="k">"DESMAKE_API_KEY"</span>: <span class="s">"dsk_live_9f2a…3c71"</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c"># 14 tools exposed · catalog.search, design.generate,</span>
+<span class="c"># design.publish, orders.create, manufacturing.track …</span>`;
+
+/* live production tick — rotate job snapshots */
+(function () {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const jobs = [
+    { job: "Job #5521", name: "Ember Field — T-Shirt ×2", route: "Austin DTG Works · routed 41s ago", w: 62, stage: "Printing", ship: "Ships Aug 4" },
+    { job: "Job #5527", name: "Quiet Geometry — Poster ×1", route: "Berlin Fine Art · routed 12s ago", w: 34, stage: "Drying", ship: "Ships Aug 6" },
+    { job: "Job #5533", name: "Prism Ritual — Mug ×3", route: "Shenzhen Print Lab · routed 3s ago", w: 81, stage: "QC pass", ship: "Ships Aug 3" }
+  ];
+  const ids = ["tickJob", "tickName", "tickRoute", "tickBar", "tickStage", "tickShip"];
+  let i = 0;
+  setInterval(() => {
+    i = (i + 1) % jobs.length;
+    const j = jobs[i];
+    const els = {
+      tickJob: document.getElementById("tickJob"),
+      tickName: document.getElementById("tickName"),
+      tickRoute: document.getElementById("tickRoute"),
+      tickBar: document.getElementById("tickBar"),
+      tickStage: document.getElementById("tickStage"),
+      tickShip: document.getElementById("tickShip")
+    };
+    if (!els.tickJob) return;
+    els.tickJob.textContent = j.job;
+    els.tickName.textContent = j.name;
+    els.tickRoute.textContent = j.route;
+    els.tickStage.textContent = j.stage;
+    els.tickShip.textContent = j.ship;
+    els.tickBar.style.transition = "width .9s var(--e)";
+    els.tickBar.style.width = j.w + "%";
+    /* brief pulse on the tick card */
+    const card = els.tickJob.closest(".hs-tick");
+    card.style.transition = "transform .35s var(--e)";
+    card.style.transform = "translateY(-2px)";
+    setTimeout(() => { card.style.transform = ""; }, 380);
+  }, 5200);
+})();
+
+UI.mount({ active: "index.html" });
+</script>
+</body>
+</html>

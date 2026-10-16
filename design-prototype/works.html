@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Works — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  [data-ic] { display: inline-flex; align-items: center; }
+
+  /* Sidebar extras */
+  .side-foot { margin-top: 26px; padding: 16px; border-radius: var(--r-md); background: var(--paper-2); }
+  .side-cta { margin-bottom: 20px; }
+
+  /* Stats strip */
+  .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+  .stats > div { padding: 20px 22px; border-right: 1px solid var(--line); position: relative; }
+  .stats > div:last-child { border-right: 0; }
+  .stats .stat-v { font-size: clamp(1.4rem, 2vw, 1.9rem); }
+
+  /* Toolbar */
+  .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 22px 0 22px; }
+  .toolbar .search { flex: 1; min-width: 200px; max-width: 300px; }
+
+  /* Work cards */
+  .wk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+  .wk {
+    border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface);
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: transform .45s var(--e), box-shadow .45s var(--e), border-color .35s var(--e);
+  }
+  .wk:hover { transform: translateY(-3px); box-shadow: var(--sh-3); border-color: transparent; }
+  .wk-media { position: relative; aspect-ratio: 4/3; background: var(--paper-2); overflow: hidden; }
+  .wk-media svg { width: 100%; height: 100%; display: block; transition: transform .8s var(--e); }
+  .wk:hover .wk-media svg { transform: scale(1.04); }
+  .wk-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(12,12,13,.5), rgba(12,12,13,0) 52%); opacity: 0; transition: opacity .4s var(--e); }
+  .wk:hover .wk-media::after { opacity: 1; }
+  .wk-top { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; z-index: 2; }
+  .wk-acts { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 6px; z-index: 3; opacity: 0; transform: translateY(8px); transition: all .4s var(--e); }
+  .wk:hover .wk-acts { opacity: 1; transform: none; }
+  .act { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border-radius: var(--r-full); background: rgba(255,255,255,.9); backdrop-filter: blur(12px); font-size: .72rem; font-weight: 550; color: var(--ink); box-shadow: 0 2px 10px rgba(12,12,13,.14); transition: background .2s, transform .2s; cursor: pointer; }
+  .act:hover { background: #fff; transform: translateY(-1px); }
+  .act-ink { background: rgba(12,12,13,.78); color: var(--paper); }
+  .act-ink:hover { background: var(--ink); }
+  .wk-body { padding: 14px 16px 15px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .wk-stats { display: flex; align-items: center; gap: 14px; font-size: .72rem; color: var(--tx-3); font-variant-numeric: tabular-nums; }
+  .wk-stats span { display: inline-flex; align-items: center; gap: 4px; }
+  .wk-foot { padding: 10px 16px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: rgba(12,12,13,.014); }
+
+  /* List view */
+  .wk-list { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+  .wk-list table { min-width: 880px; }
+  .wk-list .scroll { overflow-x: auto; }
+  .thumb { width: 44px; height: 34px; border-radius: var(--r-xs); overflow: hidden; background: var(--paper-2); flex: none; }
+  .thumb svg { width: 100%; height: 100%; display: block; }
+  .rowacts { display: flex; gap: 4px; opacity: .34; transition: opacity .2s; }
+  tr:hover .rowacts { opacity: 1; }
+
+  @media (max-width: 1400px) { .wk-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+  @media (max-width: 1180px) { .stats { grid-template-columns: repeat(3, minmax(0,1fr)); } .stats > div { border-bottom: 1px solid var(--line); } }
+  @media (max-width: 900px) { .wk-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 620px) { .wk-grid { grid-template-columns: minmax(0,1fr); } .stats { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <a class="btn btn-sm btn-block side-cta" href="studio.html"><span data-ic="sparkles" data-sz="14"></span> Create new</a>
+
+    <div class="side-t">Studio</div>
+    <nav class="stack gap-2">
+      <a class="side-link" href="index.html"><span data-ic="grid" data-sz="16"></span> Dashboard</a>
+      <a class="side-link is-active" href="works.html"><span data-ic="layers" data-sz="16"></span> My Works <span class="cnt">24</span></a>
+      <a class="side-link" href="#published"><span data-ic="globe" data-sz="16"></span> Published <span class="cnt">18</span></a>
+      <a class="side-link" href="#drafts"><span data-ic="folder" data-sz="16"></span> Drafts <span class="cnt">4</span></a>
+    </nav>
+
+    <div class="side-t">Business</div>
+    <nav class="stack gap-2">
+      <a class="side-link" href="#analytics"><span data-ic="barChart" data-sz="16"></span> Analytics</a>
+      <a class="side-link" href="earnings.html"><span data-ic="dollar" data-sz="16"></span> Earnings</a>
+      <a class="side-link" href="account.html"><span data-ic="settings" data-sz="16"></span> Settings</a>
+    </nav>
+
+    <div class="side-t">Shortcuts</div>
+    <nav class="stack gap-2">
+      <a class="side-link" href="publish.html"><span data-ic="upload" data-sz="16"></span> Publish flow</a>
+      <a class="side-link" href="agents.html"><span data-ic="terminal" data-sz="16"></span> Agent Hub</a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="row-between" style="margin-bottom:8px">
+        <span class="small strong">Creator level</span>
+        <span class="badge badge-violet">Pro</span>
+      </div>
+      <div class="bar"><i style="width:72%"></i></div>
+      <p class="tiny faint" style="margin-top:8px">$12,840 of $18,000 to reach <b style="color:var(--tx-2)">Studio</b> tier — 8% platform fee and priority factory slots.</p>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-h rv in">
+      <div>
+        <nav class="crumb" style="margin-bottom:12px"><a href="index.html">Home</a> <span>/</span> <a href="works.html">Studio</a> <span>/</span> <span style="color:var(--tx)">My Works</span></nav>
+        <h1 class="h1">My Works</h1>
+        <p class="body" style="margin-top:8px;max-width:56ch">Everything you've made on Desmake — live listings, drafts and work in review. Each design can power any number of products.</p>
+      </div>
+      <div class="row gap-8">
+        <button class="btn btn-outline"><span data-ic="upload" data-sz="15"></span> Import files</button>
+        <a class="btn" href="studio.html"><span data-ic="plus" data-sz="15"></span> Create new</a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats rv in" data-d=".05">
+      <div><div class="stat"><div class="stat-v">24</div><div class="stat-k">Total designs</div></div></div>
+      <div><div class="stat"><div class="stat-v">18</div><div class="stat-k">Published</div><span class="trend trend-up" style="position:absolute;top:20px;right:22px"><span data-ic="trendingUp" data-sz="12"></span> +3</span></div></div>
+      <div><div class="stat"><div class="stat-v">4</div><div class="stat-k">Drafts</div></div></div>
+      <div><div class="stat"><div class="stat-v">148.2k</div><div class="stat-k">Total views</div><span class="trend trend-up" style="position:absolute;top:20px;right:22px"><span data-ic="trendingUp" data-sz="12"></span> 12.4%</span></div></div>
+      <div><div class="stat"><div class="stat-v">12,410</div><div class="stat-k">Total likes</div></div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs rv in" data-tabs="wk" data-d=".08" style="margin-top:30px">
+      <button class="tab is-active" data-tab="all">All <span class="cnt">24</span></button>
+      <button class="tab" data-tab="pub">Published <span class="cnt">18</span></button>
+      <button class="tab" data-tab="draft">Drafts <span class="cnt">4</span></button>
+      <button class="tab" data-tab="review">In Review <span class="cnt">2</span></button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar rv in">
+      <div class="input-wrap search">
+        <span class="ic" data-ic="search" data-sz="15"></span>
+        <input class="input input-sm" placeholder="Search your designs">
+      </div>
+      <button class="chip chip-sm"><span data-ic="filter" data-sz="13"></span> Adapters</button>
+      <button class="chip chip-sm"><span data-ic="calendar" data-sz="13"></span> Last 90 days</button>
+      <select class="select input-sm" style="width:auto;min-width:168px"><option>Sort: Recently edited</option><option>Sort: Most viewed</option><option>Sort: Most liked</option><option>Sort: Highest earning</option></select>
+      <div class="ml-auto row gap-8">
+        <span class="tiny faint hide-sm">Showing 12 of 24</span>
+        <div class="seg" id="viewSeg">
+          <button class="is-active" data-view="grid"><span data-ic="grid" data-sz="14"></span></button>
+          <button data-view="list"><span data-ic="list" data-sz="14"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div data-panels="wk">
+      <div data-panel="all">
+        <div class="wk-grid" id="wkGrid"></div>
+        <div class="wk-list hide" id="wkList">
+          <div class="scroll">
+            <table class="tbl">
+              <thead><tr><th colspan="2">Design</th><th>Status</th><th>Products</th><th class="num">Views</th><th class="num">Likes</th><th>Updated</th><th></th></tr></thead>
+              <tbody id="wkListBody"></tbody>
+            </table>
+          </div>
+          <div class="panel-f row-between"><span class="tiny faint">12 of 24 designs</span><button class="btn btn-xs btn-outline">Load more</button></div>
+        </div>
+
+        <div class="row" style="justify-content:center;margin-top:36px">
+          <button class="btn btn-outline"><span data-ic="refresh" data-sz="15"></span> Load 12 more</button>
+        </div>
+      </div>
+
+      <div data-panel="pub" class="hide"><div class="wk-grid" id="wkPub"></div></div>
+
+      <div data-panel="draft" class="hide"><div class="wk-grid" id="wkDraft"></div></div>
+
+      <div data-panel="review" class="hide">
+        <div class="note note-warn" style="margin-bottom:20px">
+          <span data-ic="clock" data-sz="16" style="color:var(--amber);flex:none"></span>
+          <span><b>2 designs are in content review.</b> Median review time today is 17 minutes. You'll be notified the moment they clear.</span>
+        </div>
+        <div class="wk-grid" id="wkReview"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const I = UI.icon;
+
+/* ---- Build "my works" from the shared catalogue ---- */
+const STATUS = [
+  { k: "pub", label: "Published", cls: "badge-moss" },
+  { k: "draft", label: "Draft", cls: "badge" },
+  { k: "review", label: "In review", cls: "badge-amber" }
+];
+const DATES = ["2 hours ago", "Yesterday", "Jul 28, 2026", "Jul 26, 2026", "Jul 22, 2026", "Jul 19, 2026", "Jul 14, 2026", "Jul 09, 2026", "Jul 04, 2026", "Jun 28, 2026", "Jun 21, 2026", "Jun 15, 2026"];
+const PATTERN = ["pub", "pub", "review", "pub", "pub", "draft", "pub", "pub", "pub", "draft", "review", "pub"];
+
+const WORKS = DB.DESIGNS.slice(0, 12).map((d, i) => ({
+  d: d,
+  status: STATUS.find(s => s.k === PATTERN[i]),
+  updated: DATES[i]
+}));
+
+function badge(s) { return `<span class="badge ${s.cls === "badge" ? "badge-outline" : s.cls}">${s.label}</span>`; }
+
+function card(w) {
+  const d = w.d;
+  return `<article class="wk">
+    <div class="wk-media">
+      ${Art.svg(d.seed)}
+      <div class="wk-top">
+        ${badge(w.status)}
+        ${d.aiGenerated ? `<span class="pill-glass" style="height:22px;padding:0 8px;font-size:.62rem">${I("sparkles", 11)} AI</span>` : "<span></span>"}
+      </div>
+      <div class="wk-acts">
+        <a class="act act-ink" href="studio.html">${I("edit", 12)} Edit</a>
+        <button class="act">${I("copy", 12)} Duplicate</button>
+        <button class="act">${I("box", 12)} Archive</button>
+      </div>
+    </div>
+    <div class="wk-body">
+      <div>
+        <div class="row-between gap-8">
+          <a class="h5" href="listing.html" style="letter-spacing:-.015em">${d.title}</a>
+          <span class="small strong tnum">${DB.money(d.priceCents)}</span>
+        </div>
+        <div class="tiny faint" style="margin-top:3px;text-transform:capitalize">${d.category} · ${d.adapters.length} product${d.adapters.length > 1 ? "s" : ""}</div>
+      </div>
+      <div class="row gap-4 mt-auto">
+        ${d.adapters.map(a => `<span class="badge badge-outline" style="text-transform:none">${DB.adapterById(a).name}</span>`).join("")}
+      </div>
+    </div>
+    <div class="wk-foot">
+      <div class="wk-stats">
+        <span>${I("eye", 12)} ${DB.compact(d.views)}</span>
+        <span>${I("heart", 12)} ${DB.compact(d.likes)}</span>
+        <span>${I("bag", 12)} ${d.sales}</span>
+      </div>
+      <span class="tiny faint">${w.updated}</span>
+    </div>
+  </article>`;
+}
+
+function listRow(w) {
+  const d = w.d;
+  return `<tr>
+    <td style="width:60px"><div class="thumb">${Art.svg(d.seed)}</div></td>
+    <td>
+      <a class="strong" href="listing.html">${d.title}</a>
+      <div class="tiny faint" style="text-transform:capitalize">${d.category} · ${DB.money(d.priceCents)}</div>
+    </td>
+    <td>${badge(w.status)}</td>
+    <td><span class="mono tiny">${d.adapters.length}</span> <span class="tiny faint">${d.adapters.map(a => DB.adapterById(a).name).join(", ")}</span></td>
+    <td class="num tnum">${DB.compact(d.views)}</td>
+    <td class="num tnum">${DB.compact(d.likes)}</td>
+    <td class="muted">${w.updated}</td>
+    <td style="width:120px">
+      <div class="rowacts">
+        <a class="btn btn-xs btn-ghost" href="studio.html" title="Edit">${I("edit", 13)}</a>
+        <button class="btn btn-xs btn-ghost" title="Duplicate">${I("copy", 13)}</button>
+        <button class="btn btn-xs btn-ghost" title="Archive">${I("box", 13)}</button>
+        <button class="btn btn-xs btn-ghost" title="More">${I("more", 13)}</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+document.getElementById("wkGrid").innerHTML = WORKS.map(card).join("");
+document.getElementById("wkListBody").innerHTML = WORKS.map(listRow).join("");
+document.getElementById("wkPub").innerHTML = WORKS.filter(w => w.status.k === "pub").map(card).join("");
+document.getElementById("wkDraft").innerHTML = WORKS.filter(w => w.status.k === "draft").map(card).join("");
+document.getElementById("wkReview").innerHTML = WORKS.filter(w => w.status.k === "review").map(card).join("");
+
+/* ---- Grid / list toggle ---- */
+document.getElementById("viewSeg").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-view]");
+  if (!b) return;
+  const list = b.dataset.view === "list";
+  document.getElementById("wkGrid").classList.toggle("hide", list);
+  document.getElementById("wkList").classList.toggle("hide", !list);
+});
+
+/* ---- Icons in static markup ---- */
+document.querySelectorAll("[data-ic]").forEach(el => { el.innerHTML = I(el.dataset.ic, +(el.dataset.sz || 16)); });
+UI.mount({ active: "works.html" });
+</script>
+</body>
+</html>

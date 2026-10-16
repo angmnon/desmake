@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kai Sugimoto — Desmake</title>
+<meta name="description" content="Kai Sugimoto — 3D designer and AI creator in Kyoto. Generative forms and quiet geometry, manufactured on demand.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  [data-ic] { display: inline-flex; align-items: center; }
+
+  /* ---- Cover ---- */
+  .cover { position: relative; height: clamp(200px, 24vw, 300px); overflow: hidden; background: var(--paper-2); }
+  .cover-art { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); }
+  .cover-art > div { overflow: hidden; }
+  .cover-art svg { width: 100%; height: 100%; object-fit: cover; }
+  .cover-veil {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(to bottom, rgba(247,246,243,.1) 0%, rgba(247,246,243,.5) 55%, var(--paper) 100%),
+      linear-gradient(to right, rgba(12,12,13,.16), rgba(12,12,13,0) 45%);
+  }
+  .cover-bar { position: absolute; left: 0; right: 0; top: 18px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .glass-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 34px; padding: 0 15px; border-radius: var(--r-full);
+    background: rgba(255,255,255,.84);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 2px 12px rgba(12,12,13,.1);
+  }
+
+  /* ---- Profile head ---- */
+  .phead { position: relative; margin-top: clamp(-84px, -7vw, -60px); z-index: 3; }
+  .pav {
+    width: clamp(104px, 11vw, 148px); height: clamp(104px, 11vw, 148px);
+    border-radius: 50%; overflow: hidden;
+    box-shadow: 0 0 0 7px var(--paper), var(--sh-3);
+    flex: none; background: var(--paper-2);
+  }
+  .pav svg { width: 100%; height: 100%; }
+  .pgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: clamp(24px, 4vw, 64px); align-items: flex-end; }
+  .vbadge {
+    width: 21px; height: 21px; border-radius: 50%;
+    background: var(--cobalt); color: #fff;
+    display: grid; place-items: center; flex: none;
+  }
+  .meta-dot { display: inline-flex; align-items: center; gap: 9px; color: var(--tx-2); font-size: .875rem; }
+  .meta-dot + .meta-dot::before { content: ""; width: 3px; height: 3px; border-radius: 50%; background: var(--tx-3); }
+
+  /* ---- Stat bar ---- */
+  .statbar {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
+    overflow: hidden; box-shadow: var(--sh-1);
+  }
+  .statbar > div { padding: 20px 24px; border-right: 1px solid var(--line); }
+  .statbar > div:last-child { border-right: 0; }
+  .statbar .stat-v { font-size: 1.55rem; }
+
+  /* ---- Tabs ---- */
+  .tabwrap {
+    position: sticky; top: var(--nav-h); z-index: 40;
+    background: rgba(247,246,243,.88);
+    backdrop-filter: saturate(180%) blur(18px);
+    -webkit-backdrop-filter: saturate(180%) blur(18px);
+    border-bottom: 1px solid var(--line);
+  }
+  .tabwrap .tabs { border-bottom: 0; height: 58px; align-items: center; }
+  .tabwrap .tab { padding: 0; height: 58px; display: inline-flex; align-items: center; }
+  .tabwrap .tab.is-active::after { bottom: 0; }
+
+  /* ---- Works ---- */
+  .wgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px 28px; }
+  .commission {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    aspect-ratio: 4 / 5; text-align: center; padding: 30px;
+    border: 1.5px dashed var(--line-2); border-radius: var(--r-md);
+    background: rgba(255,255,255,.4);
+    transition: all .4s var(--e);
+  }
+  .commission:hover { border-color: var(--ink); background: var(--surface); transform: translateY(-4px); box-shadow: var(--sh-2); }
+  .cm-ic { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); }
+
+  /* ---- About ---- */
+  .about { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, .8fr); gap: clamp(32px, 5vw, 80px); align-items: start; }
+  .kv { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: .8438rem; }
+  .kv:last-child { border-bottom: 0; }
+  .kv .k { color: var(--tx-3); font-family: var(--mono); font-size: .6875rem; text-transform: uppercase; letter-spacing: .1em; }
+  .kv .v { font-weight: 500; text-align: right; }
+  .proc { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
+  .proc > div { background: var(--surface); padding: 24px 22px 26px; }
+  .proc .n { font-family: var(--mono); font-size: .6875rem; letter-spacing: .12em; color: var(--tx-3); margin-bottom: 14px; display: block; }
+
+  /* ---- Reviews ---- */
+  .revs { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); align-items: start; }
+  .distrow { display: grid; grid-template-columns: 28px minmax(0,1fr) 40px; align-items: center; gap: 10px; padding: 4px 0; font-size: .75rem; color: var(--tx-3); font-variant-numeric: tabular-nums; }
+  .rev-card { padding: 24px 0; border-bottom: 1px solid var(--line); }
+  .rev-card:first-child { padding-top: 0; }
+  .rev-card:last-child { border-bottom: 0; }
+  .rev-thumb { width: 62px; height: 62px; border-radius: var(--r-sm); overflow: hidden; flex: none; background: var(--paper-2); }
+  .stars { display: inline-flex; gap: 1px; color: var(--amber); }
+
+  /* ---- Creator cards ---- */
+  .ccard { display: block; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); transition: transform .45s var(--e), box-shadow .45s var(--e), border-color .3s; }
+  .ccard:hover { transform: translateY(-4px); box-shadow: var(--sh-3); border-color: transparent; }
+  .cc-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); }
+  .cc-strip > div { aspect-ratio: 1; overflow: hidden; }
+  .cc-strip svg { width: 100%; height: 100%; }
+
+  @media (max-width: 1100px) {
+    .wgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .revs { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .pgrid { grid-template-columns: minmax(0, 1fr); align-items: flex-start; }
+    .about { grid-template-columns: minmax(0, 1fr); }
+    .statbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .statbar > div:nth-child(2) { border-right: 0; }
+    .statbar > div:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    .proc { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .wgrid { grid-template-columns: minmax(0, 1fr); }
+    .cover-art { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<!-- ══════════ COVER ══════════ -->
+<div class="cover">
+  <div class="cover-art" id="coverArt"></div>
+  <div class="cover-veil"></div>
+  <div class="container-wide cover-bar">
+    <nav class="crumb glass-pill">
+      <a href="index.html">Home</a>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      <a href="explore.html">Creators</a>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>
+      <span style="color:var(--tx)">Kai Sugimoto</span>
+    </nav>
+    <a class="glass-pill" href="#" style="font-size:.8125rem;font-weight:500">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8l7.6-4M8.2 13.2l7.6 4"/></svg>
+      Share profile
+    </a>
+  </div>
+</div>
+
+<!-- ══════════ PROFILE HEAD ══════════ -->
+<section style="padding-bottom:clamp(28px,3.4vw,44px)">
+  <div class="container-wide">
+    <div class="phead rv in">
+      <div class="pgrid">
+        <div>
+          <div class="pav" id="pav"></div>
+
+          <div class="row gap-12 wrap" style="margin-top:20px">
+            <h1 class="h1" style="letter-spacing:-.04em">Kai Sugimoto</h1>
+            <span class="vbadge" title="Verified creator" data-ic="check" data-s="12"></span>
+            <span class="badge badge-signal">Top 1% seller</span>
+          </div>
+
+          <div class="row gap-14 wrap" style="margin-top:12px">
+            <span class="meta-dot"><span data-ic="palette" data-s="15" style="color:var(--tx-3)"></span> 3D Designer · AI Creator</span>
+            <span class="meta-dot"><span data-ic="pin" data-s="15" style="color:var(--tx-3)"></span> Kyoto, JP</span>
+            <span class="meta-dot"><span data-ic="clock" data-s="15" style="color:var(--tx-3)"></span> Replies in ~2h</span>
+            <span class="meta-dot"><span class="dot dot-live"></span> Available for commissions</span>
+          </div>
+
+          <p class="lead pretty" style="max-width:58ch;margin-top:18px">
+            Generative forms and quiet geometry. Building objects that feel inevitable — drawn in code, refined by hand, and manufactured wherever the buyer happens to be.
+          </p>
+
+          <div class="row gap-10 wrap" style="margin-top:26px">
+            <button class="btn btn-lg" id="followBtn"><span data-ic="plus" data-s="16"></span> Follow</button>
+            <a class="btn btn-lg btn-outline" href="#"><span data-ic="message" data-s="16"></span> Message</a>
+            <button class="btn btn-outline btn-icon" style="width:48px;height:48px" aria-label="Save creator" data-ic="bookmark" data-s="17"></button>
+            <button class="btn btn-outline btn-icon" style="width:48px;height:48px" aria-label="More options" data-ic="more" data-s="17"></button>
+          </div>
+        </div>
+
+        <div class="stack gap-16" style="min-width:min(100%, 420px)">
+          <div class="statbar" id="statbar"></div>
+          <div class="row gap-10 wrap" style="justify-content:flex-end">
+            <span class="badge badge-moss"><span data-ic="shield" data-s="12"></span> ID verified</span>
+            <span class="badge badge-cobalt">Member since 2023</span>
+            <span class="badge badge-outline">98% on-time</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TABS ══════════ -->
+<div class="tabwrap">
+  <div class="container-wide">
+    <div class="tabs" data-tabs="ct">
+      <button class="tab is-active" data-tab="works">Works <span class="cnt">48</span></button>
+      <button class="tab" data-tab="about">About</button>
+      <button class="tab" data-tab="reviews">Reviews <span class="cnt">1,284</span></button>
+      <button class="tab" data-tab="collections">Collections <span class="cnt">6</span></button>
+      <div class="row gap-8 ml-auto hide-sm" style="padding-bottom:0">
+        <span class="small faint">Sort</span>
+        <select class="select input-sm" style="width:132px" aria-label="Sort works">
+          <option>Most recent</option><option>Best selling</option><option>Most liked</option><option>Price</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ PANELS ══════════ -->
+<section class="section" style="padding-top:clamp(38px,4.4vw,60px)">
+  <div class="container-wide" data-panels="ct">
+
+    <!-- ---------- WORKS ---------- -->
+    <div data-panel="works">
+      <div class="row-between wrap gap-16 rv in" style="margin-bottom:28px">
+        <div class="row gap-8 wrap" data-chipgroup="multi">
+          <button class="chip is-active">All works</button>
+          <button class="chip">Posters <span class="mono" style="font-size:.625rem;opacity:.6">21</span></button>
+          <button class="chip">Apparel <span class="mono" style="font-size:.625rem;opacity:.6">14</span></button>
+          <button class="chip">3D Objects <span class="mono" style="font-size:.625rem;opacity:.6">8</span></button>
+          <button class="chip">Stickers <span class="mono" style="font-size:.625rem;opacity:.6">5</span></button>
+        </div>
+        <div class="row gap-10">
+          <span class="badge badge-violet"><span data-ic="sparkles" data-s="12"></span> 32 AI assisted</span>
+          <span class="small faint">Updated 2 hours ago</span>
+        </div>
+      </div>
+
+      <div class="wgrid" id="workGrid"></div>
+
+      <div class="center" style="margin-top:52px">
+        <button class="btn btn-outline btn-lg">Load 12 more works <span class="arw" data-ic="chevronDown" data-s="15"></span></button>
+        <div class="small faint" style="margin-top:14px">Showing 6 of 48 works</div>
+      </div>
+    </div>
+
+    <!-- ---------- ABOUT ---------- -->
+    <div data-panel="about" class="hide">
+      <div class="about">
+        <div class="rv in">
+          <div class="eyebrow eyebrow-dot">Statement</div>
+          <h2 class="h2 balance" style="margin:16px 0 22px;max-width:20ch">Objects that feel <span class="serif-i">inevitable</span></h2>
+          <div class="body pretty" style="color:var(--tx-2);max-width:64ch">
+            <p style="margin-bottom:16px">I trained as an industrial designer in Kyoto and spent six years shaping injection-moulded housings nobody ever looked at twice. That work taught me a discipline I still use: a form is finished when nothing else can be removed without the object failing.</p>
+            <p style="margin-bottom:16px">Since 2023 my practice has been half generative, half manual. I write small programs that produce thousands of variations — contour fields, decay gradients, orbital lattices — then spend days selecting the four or five that hold together. The machine proposes; I dispose.</p>
+            <p style="margin-bottom:16px">Everything published here is built as a single source file and adapted by Desmake into whatever the buyer needs: a 70×100 giclée, a DTG tee, a resin vase. I design for the constraint of every adapter simultaneously, which is harder and, I think, more honest.</p>
+          </div>
+
+          <div class="hr" style="margin:34px 0"></div>
+
+          <h3 class="h3" style="margin-bottom:20px">How I work</h3>
+          <div class="proc">
+            <div>
+              <span class="n">01 / SEED</span>
+              <div class="h4" style="margin-bottom:8px">Write the system</div>
+              <p class="small muted">A generative sketch in code — noise fields, geometry rules, palette constraints. Typically 400–2,000 outputs per session.</p>
+            </div>
+            <div>
+              <span class="n">02 / CURATE</span>
+              <div class="h4" style="margin-bottom:8px">Cull hard</div>
+              <p class="small muted">Print contact sheets, live with them for a week, keep under 1%. Most of the work is deciding what to throw away.</p>
+            </div>
+            <div>
+              <span class="n">03 / ADAPT</span>
+              <div class="h4" style="margin-bottom:8px">Prove the object</div>
+              <p class="small muted">Sample every adapter before publishing. If the tee fails, the poster does not ship either.</p>
+            </div>
+          </div>
+
+          <div class="hr" style="margin:34px 0"></div>
+
+          <h3 class="h3" style="margin-bottom:18px">Recognition</h3>
+          <div class="tl">
+            <div class="tl-item is-done">
+              <div class="row gap-10 wrap"><span class="mono faint">2026</span><span class="h5">Desmake Creator of the Year — shortlist</span></div>
+              <p class="small muted" style="margin-top:4px">Nominated for the Orbital Drift series across three adapters.</p>
+            </div>
+            <div class="tl-item is-done">
+              <div class="row gap-10 wrap"><span class="mono faint">2025</span><span class="h5">Tokyo Type Directors Club — Merit</span></div>
+              <p class="small muted" style="margin-top:4px">Contour Map 09, exhibited in the generative print category.</p>
+            </div>
+            <div class="tl-item is-done">
+              <div class="row gap-10 wrap"><span class="mono faint">2024</span><span class="h5">Kyoto Design Week — solo show</span></div>
+              <p class="small muted" style="margin-top:4px">“Signal Decay”, 22 prints and 6 printed objects.</p>
+            </div>
+            <div class="tl-item is-done">
+              <div class="row gap-10 wrap"><span class="mono faint">2023</span><span class="h5">Joined Desmake as a founding creator</span></div>
+              <p class="small muted" style="margin-top:4px">First 100 sales within eleven days of the first listing.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="stack gap-20 rv in" data-d=".08">
+          <div class="card">
+            <div class="eyebrow" style="margin-bottom:6px">Studio details</div>
+            <div class="kv"><span class="k">Based in</span><span class="v">Kyoto, Japan</span></div>
+            <div class="kv"><span class="k">Member since</span><span class="v">March 2023</span></div>
+            <div class="kv"><span class="k">Response time</span><span class="v">Under 2 hours</span></div>
+            <div class="kv"><span class="k">Languages</span><span class="v">日本語 · English</span></div>
+            <div class="kv"><span class="k">On-time rate</span><span class="v" style="color:var(--moss)">98.4%</span></div>
+            <div class="kv"><span class="k">Repeat buyers</span><span class="v">37%</span></div>
+            <div class="kv"><span class="k">Commissions</span><span class="v">Open — from $480</span></div>
+          </div>
+
+          <div class="card">
+            <div class="eyebrow" style="margin-bottom:14px">Adapters supported</div>
+            <div id="adapterChips" class="row gap-8 wrap"></div>
+            <div class="hr" style="margin:18px 0"></div>
+            <div class="eyebrow" style="margin-bottom:14px">Specialties</div>
+            <div class="row gap-8 wrap">
+              <span class="chip chip-sm">Generative systems</span><span class="chip chip-sm">Parametric form</span>
+              <span class="chip chip-sm">Risograph</span><span class="chip chip-sm">Monochrome</span>
+              <span class="chip chip-sm">Editorial print</span><span class="chip chip-sm">Product design</span>
+            </div>
+            <div class="hr" style="margin:18px 0"></div>
+            <div class="eyebrow" style="margin-bottom:14px">Tools</div>
+            <div class="row gap-8 wrap">
+              <span class="badge">Houdini</span><span class="badge">p5.js</span><span class="badge">Blender</span>
+              <span class="badge">Illustrator</span><span class="badge">Desmake Studio</span>
+            </div>
+          </div>
+
+          <div class="card card-ink">
+            <div class="row gap-10" style="margin-bottom:12px">
+              <span data-ic="factory" data-s="18" style="color:var(--signal)"></span>
+              <div class="h5">Manufacturing footprint</div>
+            </div>
+            <p class="small" style="color:var(--tx-inv-2);margin-bottom:16px">Works route automatically to the nearest qualified node.</p>
+            <div class="stack gap-10">
+              <div class="row-between small"><span style="color:var(--tx-inv-2)">Osaka Print Lab</span><span class="mono">42%</span></div>
+              <div class="bar bar-ink"><i style="width:42%"></i></div>
+              <div class="row-between small"><span style="color:var(--tx-inv-2)">Rotterdam Additive</span><span class="mono">31%</span></div>
+              <div class="bar bar-ink"><i style="width:31%"></i></div>
+              <div class="row-between small"><span style="color:var(--tx-inv-2)">Austin DTG Works</span><span class="mono">27%</span></div>
+              <div class="bar bar-ink"><i style="width:27%"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- REVIEWS ---------- -->
+    <div data-panel="reviews" class="hide">
+      <div class="revs">
+        <div class="rv in">
+          <div class="card">
+            <div class="stat" style="gap:10px">
+              <div class="row gap-12" style="align-items:baseline">
+                <div class="stat-v" style="font-size:3.4rem">4.9</div>
+                <div class="stack gap-4">
+                  <span class="stars" id="bigStars"></span>
+                  <span class="tiny faint">1,284 reviews</span>
+                </div>
+              </div>
+            </div>
+            <div class="hr" style="margin:20px 0 14px"></div>
+            <div id="dist"></div>
+            <div class="hr" style="margin:16px 0"></div>
+            <div class="grid g-2" style="gap:16px">
+              <div class="stat"><div class="stat-v" style="font-size:1.15rem">4.9</div><div class="stat-k">Print quality</div></div>
+              <div class="stat"><div class="stat-v" style="font-size:1.15rem">4.8</div><div class="stat-k">Accuracy</div></div>
+              <div class="stat"><div class="stat-v" style="font-size:1.15rem">5.0</div><div class="stat-k">Communication</div></div>
+              <div class="stat"><div class="stat-v" style="font-size:1.15rem">4.7</div><div class="stat-k">Delivery</div></div>
+            </div>
+          </div>
+          <div class="note note-moss" style="margin-top:16px">
+            <span data-ic="shield" data-s="15" style="flex:none;color:var(--moss)"></span>
+            <span>Every review is tied to a verified, manufactured order. No invited reviews, ever.</span>
+          </div>
+        </div>
+
+        <div class="rv in" data-d=".06">
+          <div class="row-between wrap gap-16" style="margin-bottom:20px">
+            <div class="row gap-8 wrap" data-chipgroup="single">
+              <button class="chip is-active">All reviews</button>
+              <button class="chip">With photos <span class="mono" style="font-size:.625rem;opacity:.6">312</span></button>
+              <button class="chip">5 stars</button>
+              <button class="chip">Critical</button>
+            </div>
+            <select class="select input-sm" style="width:150px" aria-label="Sort reviews">
+              <option>Most recent</option><option>Most helpful</option><option>Highest rated</option>
+            </select>
+          </div>
+          <div id="revList"></div>
+          <div class="center" style="margin-top:32px">
+            <button class="btn btn-outline">Show more reviews</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- COLLECTIONS ---------- -->
+    <div data-panel="collections" class="hide">
+      <div class="grid g-3 rv in" id="collGrid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ SIMILAR CREATORS ══════════ -->
+<section class="section section-paper2">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <div>
+        <div class="eyebrow eyebrow-dot">Adjacent practices</div>
+        <h2 class="h2" style="margin-top:14px">Creators in the same orbit</h2>
+      </div>
+      <a class="link-u small" href="explore.html">Browse all creators <span data-ic="arrowRight" data-s="14"></span></a>
+    </div>
+    <div class="grid g-4" id="ccGrid"></div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+(function () {
+  var HANDLE = "kaisu";
+  var c = DB.creatorByHandle(HANDLE);
+  var works = DB.byCreator(HANDLE);
+
+  function icons(root) {
+    (root || document).querySelectorAll("[data-ic]").forEach(function (el) {
+      el.innerHTML = UI.icon(el.dataset.ic, parseInt(el.dataset.s, 10) || 16);
+      delete el.dataset.ic;
+    });
+  }
+  function stars(n, size) {
+    var s = "";
+    for (var i = 0; i < 5; i++) s += (i < n ? UI.iconFill("star", size || 13) : UI.icon("star", size || 13));
+    return s;
+  }
+
+  /* ---- cover mosaic ---- */
+  document.getElementById("coverArt").innerHTML =
+    ["cover-a", "cover-b", "cover-c", "cover-d", "cover-e", "cover-f"]
+      .map(function (s) { return "<div>" + Art.svg(s) + "</div>"; }).join("");
+
+  /* ---- avatar ---- */
+  document.getElementById("pav").innerHTML = Art.avatar(HANDLE);
+
+  /* ---- stat bar ---- */
+  var STATS = [
+    { v: DB.compact(c.followers), k: "Followers", sub: "+312 this week" },
+    { v: DB.compact(c.sales), k: "Sales", sub: "across 6 adapters" },
+    { v: c.works, k: "Works", sub: "48 published" },
+    { v: c.rating.toFixed(1), k: "Rating", sub: "1,284 reviews" }
+  ];
+  document.getElementById("statbar").innerHTML = STATS.map(function (s) {
+    return '<div class="stat"><div class="stat-v">' + s.v + "</div>" +
+      '<div class="stat-k">' + s.k + "</div>" +
+      '<div class="tiny faint" style="margin-top:2px">' + s.sub + "</div></div>";
+  }).join("");
+
+  /* ---- works grid + commission tile ---- */
+  document.getElementById("workGrid").innerHTML =
+    works.map(function (d, i) { return UI.work(d, { mockup: i % 2 === 0 }); }).join("") +
+    '<a class="work" href="#">' +
+      '<div class="commission">' +
+        '<span class="cm-ic">' + UI.icon("wand", 20) + "</span>" +
+        '<div class="h4">Commission a piece</div>' +
+        '<p class="small muted" style="max-width:26ch">Custom generative work for brands, editorial and product. Two slots open for Q4.</p>' +
+        '<span class="btn btn-outline btn-sm">Start a brief ' + UI.icon("arrowRight", 13) + "</span>" +
+      "</div>" +
+      '<div class="work-meta"><div><div class="work-title">Custom work</div>' +
+      '<div class="work-sub">Kai Sugimoto · direct brief</div></div>' +
+      '<div class="work-price">from $480</div></div></a>';
+
+  /* ---- adapter chips (about) ---- */
+  document.getElementById("adapterChips").innerHTML = DB.ADAPTERS.map(function (a) {
+    return '<span class="chip chip-sm">' + UI.icon(a.icon, 13) + " " + a.name + "</span>";
+  }).join("");
+
+  /* ---- reviews ---- */
+  document.getElementById("bigStars").innerHTML = stars(5, 15);
+  var DIST = [["5", 88], ["4", 9], ["3", 2], ["2", 0.6], ["1", 0.4]];
+  document.getElementById("dist").innerHTML = DIST.map(function (d) {
+    return '<div class="distrow"><span>' + d[0] + "★</span>" +
+      '<span class="bar"><i style="width:' + d[1] + '%"></i></span>' +
+      "<span>" + d[1] + "%</span></div>";
+  }).join("");
+
+  var REVIEWS = [
+    { n: "Marta Kovač", loc: "Zagreb, HR", p: "Orbital Drift — Poster · 50×70cm", d: "Jul 24, 2026", r: 5, seed: "Orbital Drift",
+      t: "The gradient work survives the print, which is rare. I compared it against a proof from my usual fine-art studio and Desmake matched it at a third of the cost. Kai answered a sizing question within the hour." },
+    { n: "James Thornton", loc: "Manchester, UK", p: "Ember Field — T-Shirt · L · Bone", d: "Jul 19, 2026", r: 5, seed: "Ember Field",
+      t: "Third tee I've bought from this shop. The DTG registration is clean even on the fine linework, and the cotton hasn't lost shape after a dozen washes." },
+    { n: "Yuki Sano", loc: "Kyoto, JP", p: "Contour Map 09 — Business Card · 200pc", d: "Jul 8, 2026", r: 5, seed: "Contour Map 09",
+      t: "Ordered these for a studio launch. The blind emboss on the contour lines reads beautifully in person. Delivered two days ahead of the estimate." },
+    { n: "Priya Nair", loc: "Bengaluru, IN", p: "Deep Field — Phone Case", d: "Jun 30, 2026", r: 4, seed: "Deep Field",
+      t: "Colour is slightly cooler than on screen, but the UV print is sharp and the case itself feels sturdy. Would happily order again — just calibrate expectations on the blues." }
+  ];
+  document.getElementById("revList").innerHTML = REVIEWS.map(function (r) {
+    return '<article class="rev-card">' +
+      '<div class="row-top gap-14">' +
+        '<span class="av av-lg">' + Art.avatar("rev-" + r.n) + "</span>" +
+        '<div style="min-width:0;flex:1">' +
+          '<div class="row-between wrap gap-12">' +
+            "<div><div class=\"h5\">" + r.n + '</div><div class="tiny faint">' + r.loc + " · " + r.d + "</div></div>" +
+            '<span class="stars">' + stars(r.r) + "</span>" +
+          "</div>" +
+          '<div class="row gap-8 wrap" style="margin:10px 0 10px">' +
+            '<span class="badge badge-moss">' + UI.icon("check", 11) + " Verified purchase</span>" +
+            '<span class="tag-inline">' + r.p + "</span>" +
+          "</div>" +
+          '<p class="body pretty" style="color:var(--tx-2);max-width:70ch">' + r.t + "</p>" +
+          '<div class="row gap-16" style="margin-top:14px">' +
+            '<button class="small faint row gap-6">' + UI.icon("heart", 14) + " Helpful</button>" +
+            '<button class="small faint row gap-6">' + UI.icon("message", 14) + " Reply</button>" +
+          "</div>" +
+        "</div>" +
+        '<span class="rev-thumb hide-sm">' + Art.svg(r.seed) + "</span>" +
+      "</div></article>";
+  }).join("");
+
+  /* ---- collections ---- */
+  var COLL = [
+    { t: "Decay Studies", n: 12, sub: "2024 — ongoing", seeds: ["Signal Decay", "Ember Field", "Inkfall"] },
+    { t: "Orbital Series", n: 9, sub: "Published Mar 2026", seeds: ["Orbital Drift", "Deep Field", "Meridian 04"] },
+    { t: "Contour Atlas", n: 14, sub: "Print only", seeds: ["Contour Map 09", "Long Wave", "Salt Flats"] },
+    { t: "Quiet Objects", n: 6, sub: "3D printed", seeds: ["Vessel Study 12", "Modular Vase", "Form Follows"] },
+    { t: "Kyoto Notes", n: 4, sub: "Risograph edition", seeds: ["Nocturne", "Blue Hour", "Paper Cut No.7"] },
+    { t: "Machine Drafts", n: 3, sub: "Unreleased", seeds: ["Prism Ritual", "Static Garden", "Neon Verse"] }
+  ];
+  document.getElementById("collGrid").innerHTML = COLL.map(function (x) {
+    return '<a class="ccard" href="explore.html">' +
+      '<div class="cc-strip">' + x.seeds.map(function (s) { return "<div>" + Art.svg(s) + "</div>"; }).join("") + "</div>" +
+      '<div style="padding:18px 20px 20px">' +
+        '<div class="row-between gap-12"><div class="h4">' + x.t + "</div>" +
+        '<span class="badge">' + x.n + " works</span></div>" +
+        '<div class="small faint" style="margin-top:5px">' + x.sub + "</div>" +
+      "</div></a>";
+  }).join("");
+
+  /* ---- similar creators ---- */
+  var others = DB.CREATORS.filter(function (x) { return x.handle !== HANDLE; }).slice(0, 4);
+  document.getElementById("ccGrid").innerHTML = others.map(function (x) {
+    var w = DB.byCreator(x.handle).slice(0, 3);
+    while (w.length < 3) w.push(DB.DESIGNS[w.length]);
+    return '<a class="ccard" href="creator.html">' +
+      '<div class="cc-strip">' + w.map(function (d) { return "<div>" + Art.svg(d.seed) + "</div>"; }).join("") + "</div>" +
+      '<div style="padding:16px 18px 18px">' +
+        '<div class="row gap-10">' +
+          '<span class="av">' + Art.avatar(x.handle) + "</span>" +
+          '<div style="min-width:0">' +
+            '<div class="row gap-6"><span class="h5">' + x.name + "</span>" +
+            (x.verified ? '<span class="verified">' + UI.iconFill("check", 13) + "</span>" : "") + "</div>" +
+            '<div class="tiny faint">' + x.city + "</div>" +
+          "</div>" +
+        "</div>" +
+        '<div class="row-between" style="margin-top:14px">' +
+          '<span class="tiny faint">' + DB.compact(x.followers) + " followers · " + x.works + " works</span>" +
+          '<span class="badge badge-outline">' + x.rating.toFixed(1) + "★</span>" +
+        "</div>" +
+      "</div></a>";
+  }).join("");
+
+  /* ---- follow toggle ---- */
+  var fb = document.getElementById("followBtn");
+  fb.addEventListener("click", function () {
+    var on = fb.classList.toggle("btn-outline");
+    fb.innerHTML = on
+      ? UI.icon("check", 16) + " Following"
+      : UI.icon("plus", 16) + " Follow";
+  });
+
+  icons();
+  UI.mount({ active: "creator.html" });
+})();
+</script>
+</body>
+</html>

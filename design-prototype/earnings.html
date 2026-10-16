@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Earnings — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  [data-ic] { display: inline-flex; align-items: center; }
+
+  .side-foot { margin-top: 26px; padding: 16px; border-radius: var(--r-md); background: var(--paper-2); }
+  .side-cta { margin-bottom: 20px; }
+
+  /* Big stats */
+  .estats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .estat { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); padding: 22px 24px 24px; position: relative; overflow: hidden; }
+  .estat .stat-v { font-size: clamp(1.6rem, 2.3vw, 2.2rem); }
+  .estat-ink { background: var(--ink); border-color: var(--ink); color: var(--tx-inv); }
+  .estat-ink .stat-k { color: var(--tx-inv-3); }
+  .estat-ink .spot { width: 260px; height: 260px; background: var(--signal); opacity: .3; top: -150px; right: -100px; }
+  .estat .ic-bg { position: absolute; right: 18px; top: 18px; color: var(--tx-3); opacity: .32; }
+
+  /* Chart */
+  .chart-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; }
+  .chart { width: 100%; height: auto; display: block; }
+  .chart .gl { stroke: rgba(12,12,13,.08); stroke-width: 1; }
+  .chart .gl-avg { stroke: var(--signal); stroke-width: 1.2; stroke-dasharray: 5 4; opacity: .8; }
+  .chart .yl { font-family: var(--mono); font-size: 10px; fill: #8b8880; }
+  .chart .xl { font-family: var(--mono); font-size: 10.5px; fill: #8b8880; letter-spacing: .06em; }
+  .chart .vl { font-family: "Inter", sans-serif; font-size: 11.5px; font-weight: 600; fill: #0c0c0d; }
+  .chart .bar-r { fill: #0c0c0d; transition: fill .3s var(--e), opacity .3s; }
+  .chart g.b:hover .bar-r { opacity: .78; }
+
+  .split-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .split-row:last-child { border-bottom: 0; }
+  .split-row .nm { flex: 1; min-width: 0; font-size: .8125rem; font-weight: 500; }
+  .split-row .vv { font-size: .8125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .split-row .bar { flex: none; width: 96px; }
+
+  /* Stripe card */
+  .stripe-card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; display: grid; grid-template-columns: minmax(0,1fr) 300px; }
+  .stripe-l { padding: 24px 26px 26px; }
+  .stripe-r { border-left: 1px solid var(--line); background: var(--paper-2); padding: 24px 26px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+  .stripe-steps { display: flex; gap: 0; margin-top: 18px; }
+  .ss { flex: 1; padding-right: 16px; }
+  .ss-n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: .625rem; background: var(--ink); color: var(--paper); margin-bottom: 8px; }
+  .ss-pending .ss-n { background: transparent; color: var(--tx-3); box-shadow: inset 0 0 0 1px var(--line-2); }
+
+  /* Tables */
+  .amt-pos { color: var(--moss); font-weight: 600; }
+  .amt-neg { color: var(--signal); font-weight: 600; }
+  .tbl td, .tbl th { white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .scroll table { min-width: 720px; }
+
+  @media (max-width: 1180px) { .estats { grid-template-columns: repeat(2, minmax(0,1fr)); } .chart-grid { grid-template-columns: minmax(0,1fr); } .stripe-card { grid-template-columns: minmax(0,1fr); } .stripe-r { border-left: 0; border-top: 1px solid var(--line); } }
+  @media (max-width: 620px) { .estats { grid-template-columns: minmax(0,1fr); } .stripe-steps { flex-direction: column; gap: 14px; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <a class="btn btn-sm btn-block side-cta" href="studio.html"><span data-ic="sparkles" data-sz="14"></span> Create new</a>
+
+    <div class="side-t">Studio</div>
+    <nav class="stack gap-2">
+      <a class="side-link" href="index.html"><span data-ic="grid" data-sz="16"></span> Dashboard</a>
+      <a class="side-link" href="works.html"><span data-ic="layers" data-sz="16"></span> My Works <span class="cnt">24</span></a>
+      <a class="side-link" href="works.html"><span data-ic="globe" data-sz="16"></span> Published <span class="cnt">18</span></a>
+      <a class="side-link" href="works.html"><span data-ic="folder" data-sz="16"></span> Drafts <span class="cnt">4</span></a>
+    </nav>
+
+    <div class="side-t">Business</div>
+    <nav class="stack gap-2">
+      <a class="side-link" href="#analytics"><span data-ic="barChart" data-sz="16"></span> Analytics</a>
+      <a class="side-link is-active" href="earnings.html"><span data-ic="dollar" data-sz="16"></span> Earnings</a>
+      <a class="side-link" href="account.html"><span data-ic="settings" data-sz="16"></span> Settings</a>
+    </nav>
+
+    <div class="side-t">Shortcuts</div>
+    <nav class="stack gap-2">
+      <a class="side-link" href="publish.html"><span data-ic="upload" data-sz="16"></span> Publish flow</a>
+      <a class="side-link" href="orders.html"><span data-ic="package" data-sz="16"></span> Orders</a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="row-between" style="margin-bottom:8px">
+        <span class="small strong">Payout schedule</span>
+        <span class="badge badge-cobalt">Monthly</span>
+      </div>
+      <p class="tiny faint">Balances clear 14 days after delivery. Next run <b style="color:var(--tx-2)">Aug 1, 2026</b>.</p>
+      <button class="btn btn-xs btn-outline btn-block" style="margin-top:10px">Change schedule</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-h rv in">
+      <div>
+        <nav class="crumb" style="margin-bottom:12px"><a href="index.html">Home</a> <span>/</span> <a href="works.html">Studio</a> <span>/</span> <span style="color:var(--tx)">Earnings</span></nav>
+        <h1 class="h1">Earnings</h1>
+        <p class="body" style="margin-top:8px;max-width:56ch">Revenue from every product manufactured off your designs — net of production cost and the 10% platform fee.</p>
+      </div>
+      <div class="row gap-8">
+        <button class="btn btn-outline"><span data-ic="download" data-sz="15"></span> Export CSV</button>
+        <button class="btn"><span data-ic="dollar" data-sz="15"></span> Withdraw $4,620.00</button>
+      </div>
+    </div>
+
+    <!-- Stripe Connect setup -->
+    <div class="stripe-card rv in" data-d=".04" style="margin-bottom:22px">
+      <div class="stripe-l">
+        <div class="row gap-10">
+          <span class="badge badge-signal"><span data-ic="alert" data-sz="11"></span> Action required</span>
+          <span class="tiny faint">Payouts are paused until this is done</span>
+        </div>
+        <h2 class="h3" style="margin-top:12px">Connect Stripe to get paid automatically</h2>
+        <p class="body pretty" style="margin-top:6px;max-width:60ch">You're currently on manual bank transfer, which settles in 5–7 business days. Stripe Connect pays out on a 2-day rolling schedule, supports 46 countries and handles tax forms for you.</p>
+        <div class="stripe-steps">
+          <div class="ss"><div class="ss-n"><span data-ic="check" data-sz="11"></span></div><div class="small strong">Identity verified</div><div class="tiny faint">Completed Jun 12</div></div>
+          <div class="ss"><div class="ss-n"><span data-ic="check" data-sz="11"></span></div><div class="small strong">Tax profile</div><div class="tiny faint">W-8BEN on file</div></div>
+          <div class="ss ss-pending"><div class="ss-n">3</div><div class="small strong">Link Stripe account</div><div class="tiny faint">~2 minutes</div></div>
+        </div>
+      </div>
+      <div class="stripe-r">
+        <button class="btn btn-signal btn-block"><span data-ic="link" data-sz="15"></span> Connect Stripe</button>
+        <button class="btn btn-outline btn-block btn-sm">Keep bank transfer</button>
+        <div class="row gap-8" style="justify-content:center;margin-top:2px">
+          <span data-ic="lock" data-sz="13" style="color:var(--tx-3)"></span>
+          <span class="tiny faint">Desmake never sees your bank credentials</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Big stats -->
+    <div class="estats rv in" data-d=".06">
+      <div class="estat estat-ink grain">
+        <div class="spot"></div>
+        <div class="stat" style="position:relative">
+          <div class="stat-k">Total earnings</div>
+          <div class="stat-v">$<span data-count="12840">0</span>.00</div>
+          <div class="row gap-8" style="margin-top:4px">
+            <span class="trend" style="color:#9be8b8"><span data-ic="trendingUp" data-sz="12"></span> +61%</span>
+            <span class="tiny" style="color:var(--tx-inv-3)">vs. previous 6 months</span>
+          </div>
+        </div>
+      </div>
+      <div class="estat">
+        <span class="ic-bg" data-ic="clock" data-sz="18"></span>
+        <div class="stat">
+          <div class="stat-k">Pending</div>
+          <div class="stat-v">$<span data-count="1240">0</span>.00</div>
+          <div class="tiny faint" style="margin-top:4px">7 orders in production or transit</div>
+        </div>
+      </div>
+      <div class="estat">
+        <span class="ic-bg" data-ic="dollar" data-sz="18"></span>
+        <div class="stat">
+          <div class="stat-k">Available</div>
+          <div class="stat-v" style="color:var(--moss)">$<span data-count="4620">0</span>.00</div>
+          <div class="tiny faint" style="margin-top:4px">Cleared and ready to withdraw</div>
+        </div>
+      </div>
+      <div class="estat">
+        <span class="ic-bg" data-ic="truck" data-sz="18"></span>
+        <div class="stat">
+          <div class="stat-k">Last payout</div>
+          <div class="stat-v">$<span data-count="3200">0</span>.00</div>
+          <div class="tiny faint" style="margin-top:4px">Jul 1, 2026 · Bank transfer ····4821</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart + breakdown -->
+    <div class="chart-grid rv in">
+      <div class="panel">
+        <div class="panel-h">
+          <div>
+            <span class="h4">Monthly earnings</span>
+            <div class="tiny faint" style="margin-top:2px">Feb — Jul 2026 · net of fees</div>
+          </div>
+          <div class="seg">
+            <button class="is-active">6M</button><button>12M</button><button>All</button>
+          </div>
+        </div>
+        <div class="panel-b" style="padding:22px 20px 14px">
+          <svg class="chart" viewBox="0 0 720 250" id="chart" role="img" aria-label="Monthly earnings chart"></svg>
+        </div>
+        <div class="panel-f row-between">
+          <div class="row gap-16 wrap">
+            <span class="row gap-6 tiny muted"><i style="width:10px;height:10px;border-radius:3px;background:var(--ink);display:block"></i> Net earnings</span>
+            <span class="row gap-6 tiny muted"><i style="width:10px;height:10px;border-radius:3px;background:var(--signal);display:block"></i> Current month</span>
+            <span class="row gap-6 tiny muted"><i style="width:14px;height:2px;background:var(--signal);display:block"></i> 6-month average</span>
+          </div>
+          <span class="tiny mono faint">Avg $2,140 / mo</span>
+        </div>
+      </div>
+
+      <div class="stack gap-20">
+        <div class="panel">
+          <div class="panel-h"><span class="h4">Revenue by product</span><span class="tiny faint">Last 90 days</span></div>
+          <div class="panel-b" style="padding:8px 20px 16px" id="splitList"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><span class="h4">Next payout</span><span class="badge badge-amber">Scheduled</span></div>
+          <div class="panel-b">
+            <div class="row-between" style="align-items:flex-end">
+              <div class="stat"><div class="stat-v" style="font-size:1.7rem">$<span data-count="1240">0</span>.00</div><div class="stat-k">Aug 1, 2026</div></div>
+              <span class="tiny faint">in 4 days</span>
+            </div>
+            <div class="bar" style="margin-top:16px"><i style="width:78%"></i></div>
+            <p class="tiny faint" style="margin-top:8px">$960.00 of this balance has cleared the 14-day return window. The remainder clears Jul 31.</p>
+          </div>
+          <div class="panel-f"><button class="btn btn-sm btn-outline btn-block">Request early payout</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="panel rv in" style="margin-top:22px">
+      <div class="panel-h">
+        <div><span class="h4">Recent transactions</span><div class="tiny faint" style="margin-top:2px">Every sale, refund and adjustment</div></div>
+        <div class="row gap-8">
+          <button class="chip chip-sm"><span data-ic="filter" data-sz="13"></span> All types</button>
+          <button class="chip chip-sm"><span data-ic="calendar" data-sz="13"></span> July 2026</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table class="tbl">
+          <thead><tr><th>Date</th><th>Order ID</th><th colspan="2">Design</th><th>Type</th><th class="num">Amount</th><th>Status</th><th></th></tr></thead>
+          <tbody id="txBody"></tbody>
+        </table>
+      </div>
+      <div class="panel-f row-between">
+        <span class="tiny faint">Showing 8 of 214 transactions</span>
+        <div class="row gap-8">
+          <button class="btn btn-xs btn-outline"><span data-ic="chevronLeft" data-sz="12"></span></button>
+          <span class="mono tiny">1 / 27</span>
+          <button class="btn btn-xs btn-outline"><span data-ic="chevronRight" data-sz="12"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payouts -->
+    <div class="panel rv in" style="margin-top:22px">
+      <div class="panel-h">
+        <div><span class="h4">Payout history</span><div class="tiny faint" style="margin-top:2px">Settlements sent to your payout method</div></div>
+        <button class="btn btn-xs btn-outline"><span data-ic="download" data-sz="12"></span> Statements</button>
+      </div>
+      <div class="scroll">
+        <table class="tbl">
+          <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th class="num">Amount</th><th>Status</th><th></th></tr></thead>
+          <tbody id="poBody"></tbody>
+        </table>
+      </div>
+      <div class="panel-f row-between">
+        <span class="tiny faint">Payouts run on the 1st of each month for all cleared balances above $50.</span>
+        <a class="link-u small" href="account.html">Payout settings <span data-ic="arrowRight" data-sz="13"></span></a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const I = UI.icon;
+
+/* ============ Chart ============ */
+const MONTHS = [
+  { m: "FEB", v: 1180 }, { m: "MAR", v: 1640 }, { m: "APR", v: 1420 },
+  { m: "MAY", v: 2180 }, { m: "JUN", v: 2460 }, { m: "JUL", v: 3960 }
+];
+(function buildChart() {
+  const X0 = 54, X1 = 712, Y0 = 26, Y1 = 202, MAX = 4000;
+  const slot = (X1 - X0) / MONTHS.length, bw = Math.min(58, slot * 0.52);
+  const y = v => Y1 - (v / MAX) * (Y1 - Y0);
+  let s = "";
+
+  /* gridlines */
+  for (let v = 0; v <= MAX; v += 1000) {
+    s += `<line class="gl" x1="${X0}" y1="${y(v).toFixed(1)}" x2="${X1}" y2="${y(v).toFixed(1)}"/>`;
+    s += `<text class="yl" x="${X0 - 12}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${v === 0 ? "$0" : "$" + (v / 1000) + "k"}</text>`;
+  }
+
+  /* average line */
+  const avg = MONTHS.reduce((a, b) => a + b.v, 0) / MONTHS.length;
+  s += `<line class="gl-avg" x1="${X0}" y1="${y(avg).toFixed(1)}" x2="${X1}" y2="${y(avg).toFixed(1)}"/>`;
+
+  /* bars */
+  MONTHS.forEach((d, i) => {
+    const cx = X0 + slot * i + slot / 2;
+    const h = Y1 - y(d.v), last = i === MONTHS.length - 1;
+    s += `<g class="b">
+      <rect class="bar-r" x="${(cx - bw / 2).toFixed(1)}" y="${y(d.v).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(h, 2).toFixed(1)}" rx="6" ${last ? 'fill="#FF4D18"' : ""}/>
+      <text class="vl" x="${cx.toFixed(1)}" y="${(y(d.v) - 9).toFixed(1)}" text-anchor="middle" ${last ? 'fill="#FF4D18"' : ""}>$${d.v.toLocaleString()}</text>
+      <text class="xl" x="${cx.toFixed(1)}" y="${Y1 + 22}" text-anchor="middle">${d.m}</text>
+    </g>`;
+  });
+
+  /* baseline */
+  s += `<line x1="${X0}" y1="${Y1}" x2="${X1}" y2="${Y1}" stroke="rgba(12,12,13,.22)" stroke-width="1"/>`;
+  s += `<text class="xl" x="${X1}" y="${Y1 + 44}" text-anchor="end" fill="#c7c3ba">2026</text>`;
+  document.getElementById("chart").innerHTML = s;
+
+  /* bar growth on scroll into view — JS-driven SVG attribute animation,
+     so bars are always visible by default and grow when the chart scrolls in */
+  (function () {
+    const chart = document.getElementById("chart");
+    const bars = Array.prototype.slice.call(chart.querySelectorAll(".bar-r"));
+    if (!bars.length) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!("IntersectionObserver" in window)) return;
+    const anim = [];
+    const dur = 650, stagger = 55;
+    const io = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) return;
+      io.disconnect();
+      bars.forEach(function (b, i) {
+        const targetH = parseFloat(b.getAttribute("height") || "0");
+        const y0 = parseFloat(b.getAttribute("y") || "0");
+        const yEnd = y0 + targetH;
+        const start = performance.now() + i * stagger;
+        const step = function (t) {
+          const p = Math.min(1, Math.max(0, (t - start) / dur));
+          const e = 1 - Math.pow(1 - p, 4);
+          b.setAttribute("height", (targetH * e).toFixed(1));
+          b.setAttribute("y", (yEnd - targetH * e).toFixed(1));
+          if (p < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+    }, { rootMargin: "0px 0px -8% 0px" });
+    io.observe(chart);
+  })();
+})();
+
+/* ============ Revenue by product ============ */
+const SPLIT = [
+  { id: "tshirt", pct: 41, cents: 168400 },
+  { id: "poster", pct: 27, cents: 110900 },
+  { id: "sticker", pct: 14, cents: 57500 },
+  { id: "phonecase", pct: 10, cents: 41100 },
+  { id: "print3d", pct: 8, cents: 32900 }
+];
+document.getElementById("splitList").innerHTML = SPLIT.map(s => {
+  const a = DB.adapterById(s.id);
+  return `<div class="split-row">
+    <span style="color:var(--tx-3);flex:none">${I(a.icon, 15)}</span>
+    <span class="nm">${a.name}</span>
+    <span class="bar"><i style="width:${s.pct}%"></i></span>
+    <span class="vv" style="width:64px;text-align:right">${DB.money(s.cents)}</span>
+  </div>`;
+}).join("");
+
+/* ============ Transactions ============ */
+const TX = [
+  { d: "Jul 30, 2026", id: "DM-4831-0117", design: "Prism Ritual", ad: "tshirt", type: "Sale", cents: 3400, st: "Cleared" },
+  { d: "Jul 29, 2026", id: "DM-4830-0112", design: "Signal Decay", ad: "poster", type: "Sale", cents: 2800, st: "Cleared" },
+  { d: "Jul 28, 2026", id: "DM-4821-0093", design: "Meridian 04", ad: "poster", type: "Sale", cents: 5200, st: "Pending" },
+  { d: "Jul 26, 2026", id: "DM-4829-0104", design: "Ember Field", ad: "tshirt", type: "Refund", cents: -3200, st: "Refunded" },
+  { d: "Jul 24, 2026", id: "DM-4820-0088", design: "Vessel Study 12", ad: "print3d", type: "Sale", cents: 6800, st: "Cleared" },
+  { d: "Jul 22, 2026", id: "DM-4826-0099", design: "Contour Map 09", ad: "card", type: "Sale", cents: 4100, st: "Cleared" },
+  { d: "Jul 19, 2026", id: "DM-4818-0071", design: "Lagos Bloom", ad: "sticker", type: "Sale", cents: 9600, st: "Cleared" },
+  { d: "Jul 16, 2026", id: "DM-4817-0068", design: "Nocturne", ad: "poster", type: "Sale", cents: 2400, st: "Pending" }
+];
+const stBadge = { Cleared: "badge-moss", Pending: "badge-amber", Refunded: "badge-signal" };
+document.getElementById("txBody").innerHTML = TX.map(t => {
+  const a = DB.adapterById(t.ad);
+  const neg = t.cents < 0;
+  return `<tr>
+    <td class="muted">${t.d}</td>
+    <td><a class="mono tiny" href="order-detail.html" style="color:var(--cobalt)">${t.id}</a></td>
+    <td style="width:52px"><div style="width:34px;height:28px;border-radius:4px;overflow:hidden;background:var(--paper-2)"><div style="width:100%;height:100%">${Art.avatar(t.design)}</div></div></td>
+    <td><div class="strong">${t.design}</div><div class="tiny faint">${a.name} · ${a.method}</div></td>
+    <td><span class="badge ${neg ? "badge-signal" : "badge-outline"}">${t.type}</span></td>
+    <td class="num tnum ${neg ? "amt-neg" : "amt-pos"}">${neg ? "−" : "+"}${DB.money(Math.abs(t.cents))}</td>
+    <td><span class="row gap-6"><i class="dot ${t.st === "Cleared" ? "dot-live" : t.st === "Pending" ? "dot-amber" : "dot-signal"}"></i><span class="small">${t.st}</span></span></td>
+    <td style="width:44px"><button class="btn btn-xs btn-ghost" title="Details">${I("chevronRight", 13)}</button></td>
+  </tr>`;
+}).join("");
+
+/* ============ Payouts ============ */
+const PAYOUTS = [
+  { d: "Aug 1, 2026", m: "Bank transfer", acc: "Chase ····4821", ref: "PO-2026-08", cents: 124000, st: "Scheduled" },
+  { d: "Jul 1, 2026", m: "Bank transfer", acc: "Chase ····4821", ref: "PO-2026-07", cents: 320000, st: "Paid" },
+  { d: "Jun 1, 2026", m: "Bank transfer", acc: "Chase ····4821", ref: "PO-2026-06", cents: 246000, st: "Paid" },
+  { d: "May 1, 2026", m: "PayPal", acc: "a.okafor@studio.com", ref: "PO-2026-05", cents: 218000, st: "Paid" },
+  { d: "Apr 1, 2026", m: "PayPal", acc: "a.okafor@studio.com", ref: "PO-2026-04", cents: 142000, st: "Paid" }
+];
+document.getElementById("poBody").innerHTML = PAYOUTS.map(p => `<tr>
+  <td class="muted">${p.d}</td>
+  <td><div class="row gap-8"><span style="color:var(--tx-3)">${I(p.m === "PayPal" ? "globe" : "card", 15)}</span><div><div class="strong">${p.m}</div><div class="tiny faint">${p.acc}</div></div></div></td>
+  <td><span class="mono tiny">${p.ref}</span></td>
+  <td class="num tnum strong">${DB.money(p.cents)}</td>
+  <td><span class="badge ${p.st === "Paid" ? "badge-moss" : "badge-amber"}">${p.st}</span></td>
+  <td style="width:100px"><button class="btn btn-xs btn-ghost">${I("download", 13)} PDF</button></td>
+</tr>`).join("");
+
+/* ---- Icons in static markup ---- */
+document.querySelectorAll("[data-ic]").forEach(el => { el.innerHTML = I(el.dataset.ic, +(el.dataset.sz || 16)); });
+UI.mount({ active: "earnings.html" });
+</script>
+</body>
+</html>

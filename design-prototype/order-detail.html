@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order DM-4821-0093 — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .od-grid { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: clamp(24px, 3.2vw, 52px); align-items: start; }
+
+  .mk { position: relative; overflow: hidden; background: var(--paper-2); }
+  .mk svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* --- status hero --- */
+  .hero-ink { position: relative; overflow: hidden; border-radius: var(--r-lg); background: var(--ink); color: var(--tx-inv); padding: 26px 28px; }
+  .hero-ink .spot { width: 380px; height: 380px; background: var(--signal); opacity: .22; right: -120px; top: -160px; }
+  .hero-ink::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 96px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,77,24,.55), transparent);
+    opacity: .5; pointer-events: none;
+    animation: hero-flow 3.2s linear infinite;
+  }
+  @keyframes hero-flow { 0% { transform: translateX(-30%); } 100% { transform: translateX(130%); } }
+  .badge-amber { animation: amber-glow 2.4s ease-in-out infinite; }
+  @keyframes amber-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(181,117,0,0); }
+    50% { box-shadow: 0 0 14px 2px rgba(181,117,0,.3); }
+  }
+
+  /* --- timeline --- */
+  .tl-item.is-now::before { animation: tlpulse 2.4s var(--e) infinite; }
+  @keyframes tlpulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,77,24,.45); }
+    70% { box-shadow: 0 0 0 9px rgba(255,77,24,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,77,24,0); }
+  }
+  .tl-t { font-size: .9375rem; font-weight: 600; letter-spacing: -.014em; }
+  .tl-item:not(.is-done):not(.is-now) .tl-t { color: var(--tx-3); }
+  .tl-time { font-family: var(--mono); font-size: .6875rem; color: var(--tx-3); letter-spacing: .02em; }
+
+  /* --- items --- */
+  .oi { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 20px; padding: 20px 22px; border-bottom: 1px solid var(--line); align-items: start; }
+  .oi:last-child { border-bottom: 0; }
+  .oi-media { width: 96px; aspect-ratio: 4/5; border-radius: var(--r-md); box-shadow: var(--sh-1); }
+  .vpill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: var(--r-full); background: rgba(12,12,13,.05); font-size: .69rem; color: var(--tx-3); white-space: nowrap; }
+  .vpill b { color: var(--tx); font-weight: 550; }
+
+  /* --- misc --- */
+  .sum { position: sticky; top: calc(var(--nav-h) + 22px); }
+  .sum-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: .875rem; padding: 7px 0; }
+  .sum-row .k { color: var(--tx-2); }
+  .sum-row .v { font-variant-numeric: tabular-nums; font-weight: 550; }
+
+  .fact-mark { width: 44px; height: 44px; border-radius: var(--r-md); display: grid; place-items: center; background: var(--ink); color: var(--paper); flex: none; }
+  .kv { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 7px 0; font-size: .8125rem; }
+  .kv .k { color: var(--tx-3); }
+
+  .qc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .qc-cell { aspect-ratio: 1; border-radius: var(--r-sm); overflow: hidden; background: var(--paper-2); position: relative; }
+  .qc-cell.locked { display: grid; place-items: center; border: 1px dashed var(--line-2); background: transparent; color: var(--tx-3); }
+
+  @media (max-width: 1080px) { .od-grid { grid-template-columns: minmax(0, 1fr); } .sum { position: static; } }
+  @media (max-width: 620px) { .oi { grid-template-columns: 76px minmax(0, 1fr); padding: 16px; } .oi-media { width: 76px; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<section class="section-sm" style="padding-bottom:0">
+  <div class="container-wide">
+    <nav class="crumb rv in" style="margin-bottom:24px">
+      <a href="index.html">Home</a><span>/</span><a href="orders.html">Orders</a><span>/</span><span style="color:var(--tx)">DM-4821-0093</span>
+    </nav>
+
+    <div class="row-between wrap rv in" style="align-items:flex-end;margin-bottom:26px">
+      <div>
+        <div class="row gap-10 wrap" style="margin-bottom:12px">
+          <span class="badge badge-amber"><i class="dot dot-amber" style="width:5px;height:5px"></i> In production</span>
+          <span class="badge badge-outline">2 designs · 3 units</span>
+          <span class="tiny faint">Placed Jul 28, 2026 at 14:32 PDT</span>
+        </div>
+        <h1 class="h1 mono" style="letter-spacing:-.02em;font-size:clamp(1.6rem,3vw,2.4rem)">DM-4821-0093</h1>
+      </div>
+      <div class="row gap-10 wrap">
+        <button class="btn btn-sm btn-outline"><i data-ic="download" data-s="14"></i> Invoice PDF</button>
+        <button class="btn btn-sm btn-outline"><i data-ic="share" data-s="14"></i> Share status</button>
+        <a class="btn btn-sm" href="orders.html"><i data-ic="arrowLeft" data-s="14"></i> All orders</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-sm" style="padding-top:22px">
+  <div class="container-wide od-grid">
+
+    <!-- ============ LEFT ============ -->
+    <div class="stack gap-20">
+
+      <!-- status hero -->
+      <div class="hero-ink grain rv in">
+        <span class="spot"></span>
+        <div style="position:relative">
+          <div class="row-between wrap gap-20" style="align-items:flex-start">
+            <div>
+              <div class="eyebrow" style="color:var(--tx-inv-3)">Current stage — 3 of 6</div>
+              <div class="h2" style="margin-top:10px;letter-spacing:-.035em">Printing on the floor<br>at Shenzhen Print Lab.</div>
+              <p class="body" style="color:var(--tx-inv-2);margin-top:12px;max-width:52ch">Your two designs entered the DTG queue this morning. Colour proofs passed on the first pass — no reprints so far.</p>
+            </div>
+            <div class="stack gap-4" style="align-items:flex-end;text-align:right">
+              <span class="eyebrow" style="color:var(--tx-inv-3)">Estimated delivery</span>
+              <span class="h3" style="letter-spacing:-.03em">Aug 4 – Aug 6</span>
+              <span class="tiny" style="color:var(--tx-inv-3)">Standard · free shipping</span>
+            </div>
+          </div>
+
+          <div style="margin-top:26px">
+            <div class="row-between" style="margin-bottom:8px">
+              <span class="tiny mono" style="color:var(--tx-inv-2)">PAID → ASSIGNED → <b style="color:var(--signal)">IN PRODUCTION</b> → QC → SHIPPED → DELIVERED</span>
+              <span class="tiny mono" style="color:var(--tx-inv-2)">50%</span>
+            </div>
+            <div class="bar bar-ink bar-flow"><i style="width:50%"></i></div>
+          </div>
+
+          <div class="hr-ink" style="margin:22px 0 18px"></div>
+
+          <div class="row gap-32 wrap">
+            <div class="stack gap-3">
+              <span class="eyebrow" style="color:var(--tx-inv-3)">Order total</span>
+              <span class="h4 tnum">$86.40</span>
+            </div>
+            <div class="stack gap-3">
+              <span class="eyebrow" style="color:var(--tx-inv-3)">Job ID</span>
+              <span class="h4 mono" style="font-size:.9rem">job_5521</span>
+            </div>
+            <div class="stack gap-3">
+              <span class="eyebrow" style="color:var(--tx-inv-3)">Route</span>
+              <span class="h4" style="font-size:.9rem">Shenzhen → SFO</span>
+            </div>
+            <div class="stack gap-3">
+              <span class="eyebrow" style="color:var(--tx-inv-3)">Carbon</span>
+              <span class="h4" style="font-size:.9rem">1.4 kg CO₂e <span class="tiny" style="color:var(--tx-inv-3)">offset</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- timeline -->
+      <div class="panel rv in" data-d=".04">
+        <div class="panel-h">
+          <span class="row gap-10"><span class="h4">Manufacturing timeline</span><i class="dot dot-live"></i></span>
+          <span class="tiny faint mono">Auto-refreshing</span>
+        </div>
+        <div class="panel-b" style="padding:24px 26px">
+          <div class="tl">
+
+            <div class="tl-item is-done">
+              <div class="row-between wrap gap-10">
+                <span class="tl-t">Payment authorised &amp; captured</span>
+                <span class="tl-time">Jul 28 · 14:32</span>
+              </div>
+              <p class="small muted" style="margin-top:5px">Visa •••• 4242 charged $86.40. Creator royalties of $24.00 escrowed for Kai Sugimoto and Lena Østergaard.</p>
+              <div class="row gap-8 wrap" style="margin-top:9px">
+                <span class="badge badge-moss"><i data-ic="check" data-s="10"></i> Confirmed</span>
+                <span class="badge badge-outline">Receipt DM-R-88214</span>
+              </div>
+            </div>
+
+            <div class="tl-item is-done">
+              <div class="row-between wrap gap-10">
+                <span class="tl-t">Production assigned</span>
+                <span class="tl-time">Jul 28 · 18:05</span>
+              </div>
+              <p class="small muted" style="margin-top:5px">Routed to <b style="color:var(--tx)">Shenzhen Print Lab</b> — selected for DTG capability, ink match on Bone cotton and 1.2-day queue depth.</p>
+              <div class="row gap-8 wrap" style="margin-top:9px">
+                <span class="badge badge-outline">3 factories evaluated</span>
+                <span class="badge badge-outline">Best lead time</span>
+              </div>
+            </div>
+
+            <div class="tl-item is-now">
+              <div class="row-between wrap gap-10">
+                <span class="tl-t">In production</span>
+                <span class="tl-time" style="color:var(--signal)">Since Jul 29 · 09:12</span>
+              </div>
+              <p class="small muted" style="margin-top:5px">Garments pre-treated and printed; the giclée poster is drying on rack 4. Estimated completion Jul 31.</p>
+
+              <div class="terminal" style="margin-top:12px">
+                <div class="terminal-h">
+                  <span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
+                  <span style="margin-left:6px;color:rgba(247,246,243,.45);font-size:.6875rem">job_5521 — live factory feed</span>
+                </div>
+                <div class="terminal-b">
+<span class="c">09:12</span> <span class="s">queue.accept</span>   job_5521 <span class="p">→</span> line <span class="n">DTG-02</span>
+<span class="c">09:40</span> <span class="s">pretreat.ok</span>   2 × tee <span class="p">·</span> Bone <span class="p">·</span> 180 gsm
+<span class="c">11:05</span> <span class="s">print.start</span>   pass 1/2 <span class="p">·</span> CMYK+W
+<span class="c">12:48</span> <span class="k">colour.match</span>  ΔE <span class="n">1.4</span> <span class="p">(threshold 2.0)</span> <span class="s">PASS</span>
+<span class="c">14:20</span> <span class="s">cure.done</span>     165°C <span class="p">·</span> 90s
+<span class="c">15:02</span> <span class="s">giclee.start</span> 50×70cm <span class="p">·</span> 200 gsm matte
+<span class="c">—</span>     <span class="p">awaiting</span> rack dry <span class="p">(est. 18h)</span><span style="color:var(--signal)">▍</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="tl-item">
+              <div class="row-between wrap gap-10">
+                <span class="tl-t">Quality check</span>
+                <span class="tl-time">Expected Jul 31</span>
+              </div>
+              <p class="small muted" style="margin-top:5px">Photo QC on every unit: colour delta, registration, fabric defects. Images appear here before packing.</p>
+              <div class="qc-grid" style="margin-top:11px;max-width:340px">
+                <div class="qc-cell locked"><i data-ic="lock" data-s="14"></i></div>
+                <div class="qc-cell locked"><i data-ic="lock" data-s="14"></i></div>
+                <div class="qc-cell locked"><i data-ic="lock" data-s="14"></i></div>
+                <div class="qc-cell locked"><i data-ic="lock" data-s="14"></i></div>
+              </div>
+            </div>
+
+            <div class="tl-item">
+              <div class="row-between wrap gap-10">
+                <span class="tl-t">Shipped</span>
+                <span class="tl-time">Expected Aug 1</span>
+              </div>
+              <p class="small muted" style="margin-top:5px">Tracking number appears here and is emailed to mira.holt@studio.co the moment the parcel is scanned.</p>
+            </div>
+
+            <div class="tl-item">
+              <div class="row-between wrap gap-10">
+                <span class="tl-t">Delivered</span>
+                <span class="tl-time">Estimated Aug 4 – Aug 6</span>
+              </div>
+              <p class="small muted" style="margin-top:5px">Signature not required. The 14-day reprint guarantee starts on the delivery scan.</p>
+            </div>
+
+          </div>
+        </div>
+        <div class="panel-f">
+          <div class="row-between wrap gap-12 tiny muted">
+            <span class="row gap-8"><i data-ic="activity" data-s="14"></i> 7 events · last update 12 minutes ago</span>
+            <button class="link-u tiny" style="border-color:transparent">View raw event log</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- items -->
+      <div class="panel rv" data-d=".04">
+        <div class="panel-h">
+          <span class="h4">Items in this order</span>
+          <span class="tiny faint mono">2 designs · 3 units</span>
+        </div>
+        <div id="itemList"></div>
+        <div class="panel-f">
+          <div class="row-between wrap gap-12">
+            <span class="row gap-8 tiny muted"><i data-ic="layers" data-s="14"></i> Source files archived — reorder any time without re-uploading</span>
+            <button class="btn btn-xs btn-outline"><i data-ic="refresh" data-s="12"></i> Reorder all</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- factory -->
+      <div class="panel rv" data-d=".05">
+        <div class="panel-h"><span class="h4">Manufacturing partner</span><span class="badge badge-moss">Tier 1 verified</span></div>
+        <div class="panel-b">
+          <div class="row gap-14" style="align-items:flex-start">
+            <span class="fact-mark"><i data-ic="factory" data-s="20"></i></span>
+            <div style="flex:1;min-width:0">
+              <div class="row-between wrap gap-10">
+                <div>
+                  <div class="h4">Shenzhen Print Lab</div>
+                  <div class="tiny faint">Bao'an District, Shenzhen, CN · partner since 2024</div>
+                </div>
+                <div class="row gap-6">
+                  <span class="mono small strong">4.94</span>
+                  <span style="color:var(--amber);display:flex"><i data-ic="star" data-s="13"></i></span>
+                  <span class="tiny faint">(2,181)</span>
+                </div>
+              </div>
+              <p class="body" style="margin-top:10px">Direct-to-garment and giclée specialist running 14 lines. Certified for OEKO-TEX inks, water recycling and same-day colour proofing.</p>
+              <div class="row gap-8 wrap" style="margin-top:12px">
+                <span class="chip chip-sm">DTG / DTF</span>
+                <span class="chip chip-sm">Giclée</span>
+                <span class="chip chip-sm">OEKO-TEX</span>
+                <span class="chip chip-sm">ISO 9001</span>
+                <span class="chip chip-sm">98.6% on time</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hr" style="margin:18px 0"></div>
+
+          <div class="grid g-4" style="gap:12px">
+            <div class="stat"><div class="stat-v" style="font-size:1.25rem">1.2 d</div><div class="stat-k">Queue depth</div></div>
+            <div class="stat"><div class="stat-v" style="font-size:1.25rem">ΔE 1.4</div><div class="stat-k">Colour accuracy</div></div>
+            <div class="stat"><div class="stat-v" style="font-size:1.25rem">0.4%</div><div class="stat-k">Defect rate</div></div>
+            <div class="stat"><div class="stat-v" style="font-size:1.25rem">14</div><div class="stat-k">Active lines</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT ============ -->
+    <aside class="sum stack gap-16 rv in" data-d=".06">
+
+      <div class="panel">
+        <div class="panel-h"><span class="h4">Payment summary</span><span class="tiny faint mono">USD</span></div>
+        <div class="panel-b">
+          <div class="sum-row"><span class="k">Subtotal <span class="tiny faint">(3 units)</span></span><span class="v tnum">$80.00</span></div>
+          <div class="sum-row"><span class="k">Shipping <span class="tiny faint">Standard</span></span><span class="v" style="color:var(--moss)">Free</span></div>
+          <div class="sum-row"><span class="k">Sales tax <span class="tiny faint">CA 8.0%</span></span><span class="v tnum">$6.40</span></div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-top:14px;margin-top:10px;border-top:1px solid var(--line)">
+            <span class="h4">Total paid</span>
+            <span class="h3 tnum" style="letter-spacing:-.035em">$86.40</span>
+          </div>
+          <div class="hr" style="margin:16px 0"></div>
+          <div class="row gap-12">
+            <span class="badge badge-ink" style="height:26px;padding:0 9px">VISA</span>
+            <div class="stack gap-2" style="min-width:0">
+              <span class="small strong tnum">•••• •••• •••• 4242</span>
+              <span class="tiny faint">Charged Jul 28 · Receipt DM-R-88214</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="h5">Shipping address</span><button class="link-u tiny" style="border-color:transparent">Copy</button></div>
+        <div class="panel-b">
+          <div class="small strong">Mira H.</div>
+          <div class="small muted" style="line-height:1.6;margin-top:4px">
+            1841 Bry••• Street, Studio 4B<br>
+            San Francisco, CA 941••<br>
+            United States
+          </div>
+          <div class="tiny faint" style="margin-top:10px">+1 (415) •••-8841 · m•••@studio.co</div>
+          <div class="note" style="margin-top:14px;padding:10px 12px">
+            <i data-ic="shield" data-s="14" style="flex:none;margin-top:1px"></i>
+            <span class="tiny">Address is masked for privacy. The factory receives a tokenised label only.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="h5">Delivery</span><span class="badge badge-outline">Not shipped</span></div>
+        <div class="panel-b">
+          <div class="kv"><span class="k">Method</span><span class="strong">Standard ground</span></div>
+          <div class="kv"><span class="k">Carrier</span><span class="strong">Assigned at dispatch</span></div>
+          <div class="kv"><span class="k">Tracking</span><span class="faint mono">— pending —</span></div>
+          <div class="kv"><span class="k">Window</span><span class="strong">Aug 4 – Aug 6</span></div>
+          <button class="btn btn-sm btn-outline btn-block" style="margin-top:14px" disabled><i data-ic="truck" data-s="14"></i> Track package</button>
+          <div class="tiny faint center" style="margin-top:8px">Enabled once the parcel is scanned</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="h5">Need help?</span><span class="tiny faint">Avg. 8 min</span></div>
+        <div class="panel-b stack gap-10">
+          <button class="btn btn-block"><i data-ic="message" data-s="15"></i> Contact support</button>
+          <button class="btn btn-outline btn-block"><i data-ic="undo" data-s="15"></i> Request refund</button>
+          <button class="btn btn-ghost btn-block faint"><i data-ic="x" data-s="15"></i> Cancel order</button>
+          <div class="note note-warn" style="margin-top:4px">
+            <i data-ic="alert" data-s="15" style="flex:none;margin-top:1px"></i>
+            <span class="tiny">Production has started, so cancellation may incur a materials fee. Refunds for defects are always free.</span>
+          </div>
+        </div>
+        <div class="panel-f">
+          <div class="row gap-8 tiny muted"><i data-ic="clock" data-s="13"></i> Support hours: 24/7 for active orders</div>
+        </div>
+      </div>
+
+      <div class="card card-ink grain" style="padding:20px;overflow:hidden">
+        <div class="row gap-10" style="margin-bottom:10px">
+          <i data-ic="terminal" data-s="16" style="color:var(--signal)"></i>
+          <span class="h5">Watch via API</span>
+        </div>
+        <p class="tiny" style="color:var(--tx-inv-2);margin-bottom:12px">Subscribe an agent to this job and get a webhook on every state change.</p>
+        <div class="mono" style="font-size:.6875rem;color:var(--tx-inv-2);background:rgba(255,255,255,.05);border-radius:var(--r-sm);padding:9px 11px;overflow-x:auto;white-space:nowrap">GET /v1/jobs/job_5521/events</div>
+        <a class="btn btn-sm btn-inv-outline btn-block" style="margin-top:12px" href="agents.html">Open Agent Hub</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- Related -->
+<section class="section section-paper2">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <div>
+        <div class="eyebrow eyebrow-dot">Buy it again</div>
+        <h2 class="h2" style="margin-top:10px">More from these creators</h2>
+      </div>
+      <a class="link-u small" href="explore.html">Explore marketplace <i data-ic="arrowRight" data-s="14"></i></a>
+    </div>
+    <div class="grid g-5 rv" data-d=".05" id="relGrid"></div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const order = DB.ORDERS[0];
+  const UNIT = { "Signal Decay": 2600, "Meridian 04": 2800 };
+  const CREATOR = { "Signal Decay": "kaisu", "Meridian 04": "lenaost" };
+  const EXTRA = {
+    "Signal Decay": [["Size", "M"], ["Colour", "Bone"], ["Fabric", "180 gsm cotton"]],
+    "Meridian 04": [["Size", "50 × 70 cm"], ["Paper", "200 gsm matte"], ["Frame", "None"]]
+  };
+  const STAGE = { "Signal Decay": ["Printed &amp; cured", "badge-moss"], "Meridian 04": ["Drying — rack 4", "badge-amber"] };
+
+  document.getElementById("itemList").innerHTML = order.items.map(function (it) {
+    const ad = DB.adapterById(it.adapter);
+    const c = DB.creatorByHandle(CREATOR[it.design] || "kaisu");
+    const unit = UNIT[it.design] || 2800;
+    const st = STAGE[it.design] || ["Queued", "badge-outline"];
+    return '<div class="oi">' +
+      '<a class="oi-media mk" href="listing.html" aria-label="' + it.design + '">' + Art.mockup(ad.mockup, it.design, {}) + '</a>' +
+      '<div class="stack gap-10" style="min-width:0">' +
+        '<div>' +
+          '<a class="h4" href="listing.html">' + it.design + '</a>' +
+          '<div class="row gap-8 wrap" style="margin-top:6px">' +
+            '<span class="row gap-6 tiny muted"><span class="av av-xs">' + Art.avatar(c.handle) + '</span>' + c.name + '</span>' +
+            '<span class="tag-inline">·</span><span class="tiny muted">' + ad.name + ' · ' + ad.method + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="row gap-8 wrap">' +
+          (EXTRA[it.design] || []).map(function (v) { return '<span class="vpill">' + v[0] + ' <b>' + v[1] + '</b></span>'; }).join("") +
+        '</div>' +
+        '<div class="row gap-10 wrap">' +
+          '<span class="badge ' + st[1] + '">' + st[0] + '</span>' +
+          '<span class="tiny faint">Unit ' + DB.money(unit) + ' · qty ' + it.qty + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="stack gap-8" style="align-items:flex-end">' +
+        '<span class="h4 tnum">' + DB.money(unit * it.qty) + '</span>' +
+        '<button class="btn btn-xs btn-outline">Buy again</button>' +
+        '<button class="btn btn-xs btn-ghost faint">Report issue</button>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+
+  document.getElementById("relGrid").innerHTML =
+    DB.byCreator("kaisu").slice(0, 3).concat(DB.byCreator("lenaost").slice(0, 2))
+      .map(function (d) { return UI.work(d, { mockup: true }); }).join("");
+
+  document.querySelectorAll("[data-ic]").forEach(function (el) {
+    el.outerHTML = UI.icon(el.dataset.ic, parseInt(el.dataset.s, 10) || 16);
+  });
+
+  /* timeline row reveal — visual only, does not touch status classes */
+  (function () {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!("IntersectionObserver" in window)) return;
+    const items = document.querySelectorAll(".tl .tl-item");
+    if (!items.length) return;
+    const io = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) return;
+      io.disconnect();
+      items.forEach(function (el, i) {
+        el.style.opacity = "0";
+        el.style.transform = "translateY(10px)";
+        el.style.transition = "opacity .5s var(--e-out-expo), transform .5s var(--e-out-expo)";
+        setTimeout(function () {
+          el.style.opacity = "1";
+          el.style.transform = "none";
+        }, 90 + i * 110);
+      });
+    }, { rootMargin: "0px 0px -6% 0px" });
+    io.observe(document.querySelector(".tl"));
+  })();
+
+  UI.mount({ active: "order-detail.html" });
+})();
+</script>
+</body>
+</html>

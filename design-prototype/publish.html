@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Publish — D2M Engine — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  [data-ic] { display: inline-flex; align-items: center; }
+
+  /* Stepper shell */
+  .steps-wrap { overflow-x: auto; scrollbar-width: none; }
+  .steps-wrap::-webkit-scrollbar { display: none; }
+  .steps-wrap .steps { min-width: 760px; }
+  .steps .step { cursor: pointer; transition: opacity .25s var(--e); }
+  .steps .step:hover { opacity: .72; }
+  .steps .step-line { margin: 0 14px; }
+
+  /* Two column body */
+  .pub { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: clamp(24px, 3.2vw, 52px); align-items: start; margin-top: clamp(26px, 3vw, 40px); }
+  .pv { position: sticky; top: calc(var(--nav-h) + 22px); display: flex; flex-direction: column; gap: 18px; }
+  .pv-art { border-radius: var(--r-lg); overflow: hidden; aspect-ratio: 4/5; background: var(--paper-2); box-shadow: var(--sh-3); position: relative; }
+  .pv-art svg { width: 100%; height: 100%; display: block; }
+  .pv-badge { position: absolute; top: 14px; left: 14px; z-index: 2; }
+  .pv-zoom { position: absolute; right: 14px; bottom: 14px; z-index: 2; }
+  .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: .78rem; }
+  .meta-row:last-child { border-bottom: 0; }
+  .meta-row .k { font-family: var(--mono); font-size: .6875rem; text-transform: uppercase; letter-spacing: .1em; color: var(--tx-3); }
+  .meta-row .v { font-weight: 550; font-variant-numeric: tabular-nums; }
+  .pal { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .pal i { display: block; height: 40px; border-radius: var(--r-xs); box-shadow: inset 0 0 0 1px rgba(12,12,13,.08); }
+  .pal span { display: block; font-family: var(--mono); font-size: .5625rem; color: var(--tx-3); margin-top: 5px; text-align: center; letter-spacing: .02em; }
+
+  /* Adapter option cards */
+  .ad-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .ad-card { display: block; padding: 0; overflow: hidden; border-radius: var(--r-md); }
+  .ad-media { position: relative; aspect-ratio: 4/5; background: var(--paper-2); }
+  .ad-media svg { width: 100%; height: 100%; display: block; }
+  .ad-media .check { position: absolute; top: 10px; left: 10px; z-index: 2; box-shadow: 0 1px 4px rgba(12,12,13,.14); }
+  .ad-media .tagp { position: absolute; top: 10px; right: 10px; z-index: 2; }
+  .ad-body { padding: 12px 13px 13px; border-top: 1px solid var(--line); }
+  .ad-card.is-on .ad-body { background: rgba(12,12,13,.025); }
+
+  /* Rows */
+  .prow { display: grid; grid-template-columns: 40px minmax(0,1fr) 108px 96px; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .prow:last-child { border-bottom: 0; }
+  .thumb { width: 40px; height: 48px; border-radius: var(--r-xs); overflow: hidden; background: var(--paper-2); flex: none; }
+  .thumb svg { width: 100%; height: 100%; display: block; }
+  .thumb-sm { width: 34px; height: 40px; }
+
+  .tagline { display: flex; flex-wrap: wrap; gap: 7px; }
+  .tag-x { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px 0 11px; border-radius: var(--r-full); background: rgba(12,12,13,.05); font-size: .75rem; font-weight: 500; color: var(--tx-2); }
+  .tag-x button { display: grid; place-items: center; opacity: .4; transition: opacity .2s; }
+  .tag-x button:hover { opacity: 1; }
+
+  .checkline { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; font-size: .8125rem; }
+  .checkline .ok { width: 18px; height: 18px; border-radius: 50%; background: var(--moss-soft); color: var(--moss); display: grid; place-items: center; flex: none; margin-top: 1px; }
+  .checkline .warnk { background: var(--amber-soft); color: var(--amber); }
+  .checkline.lit .ok, .checkline.lit .warnk { animation: check-pop .45s var(--e-spring); }
+  @keyframes check-pop { 0% { transform: scale(.3); opacity: 0; } 60% { transform: scale(1.28); } 100% { transform: scale(1); opacity: 1; } }
+  .ad-card.is-on .check { animation: check-pop .4s var(--e-spring); }
+
+  .drop { border: 1.5px dashed var(--line-2); border-radius: var(--r-lg); padding: 34px 24px; text-align: center; background: rgba(12,12,13,.012); transition: all .3s var(--e); }
+  .drop:hover { border-color: var(--ink); background: rgba(12,12,13,.03); }
+
+  .lic { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+
+  /* Summary rail */
+  .sum { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0; }
+  .sum > div { padding: 16px 20px; border-right: 1px solid var(--line); }
+  .sum > div:last-child { border-right: 0; }
+
+  /* D2M band */
+  .d2m-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1px; background: var(--line-inv); border: 1px solid var(--line-inv); border-radius: var(--r-lg); overflow: hidden; }
+  .d2m-cell { background: var(--ink); padding: 26px 24px 30px; position: relative; }
+  .d2m-n { font-family: var(--mono); font-size: .6875rem; color: var(--signal); letter-spacing: .14em; }
+  .d2m-cell::after {
+    content: ""; position: absolute; inset: auto 0 0 0; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,77,24,.6), transparent);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform .5s var(--e-out-expo);
+  }
+  .d2m-cell:hover::after { transform: scaleX(1); }
+
+  @media (max-width: 1100px) { .ad-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } .d2m-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 960px) { .pub { grid-template-columns: minmax(0,1fr); } .pv { position: static; } }
+  @media (max-width: 620px) { .ad-grid { grid-template-columns: minmax(0,1fr); } .sum { grid-template-columns: minmax(0,1fr); } .sum > div { border-right: 0; border-bottom: 1px solid var(--line); } .prow { grid-template-columns: 40px minmax(0,1fr) 90px; } .lic { grid-template-columns: minmax(0,1fr); } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<section class="section-sm" style="padding-bottom:8px">
+  <div class="container-wide">
+    <nav class="crumb rv in" style="margin-bottom:24px">
+      <a href="index.html">Home</a> <span>/</span>
+      <a href="studio.html">Studio</a> <span>/</span>
+      <span style="color:var(--tx)">Publish</span>
+    </nav>
+
+    <div class="row-between wrap rv in" style="margin-bottom:28px">
+      <div>
+        <div class="eyebrow eyebrow-dot">D2M engine — design to manufacturing</div>
+        <h1 class="h1" style="margin-top:12px">Publish <span class="serif-i">Prism Ritual</span></h1>
+        <p class="body pretty" style="max-width:58ch;margin-top:10px">One artwork in, a manufacturable product line out. Desmake adapts your file to each production method, generates listings, and routes orders to the right factory.</p>
+      </div>
+      <div class="row gap-8">
+        <button class="btn btn-outline"><span data-ic="folder" data-sz="15"></span> Save draft</button>
+        <button class="btn btn-outline"><span data-ic="eye" data-sz="15"></span> Preview listing</button>
+      </div>
+    </div>
+
+    <!-- Stepper -->
+    <div class="panel rv in" style="padding:18px 22px">
+      <div class="steps-wrap">
+        <div class="steps" data-tabs="wiz">
+          <button class="step is-done" data-tab="upload"><span class="step-n"><span data-ic="check" data-sz="12"></span></span><span class="step-t">Upload</span></button>
+          <i class="step-line"></i>
+          <button class="step is-done" data-tab="analyse"><span class="step-n"><span data-ic="check" data-sz="12"></span></span><span class="step-t">Analyse</span></button>
+          <i class="step-line"></i>
+          <button class="step is-active" data-tab="adapt"><span class="step-n">3</span><span class="step-t">Adapt</span></button>
+          <i class="step-line"></i>
+          <button class="step" data-tab="dress"><span class="step-n">4</span><span class="step-t">Dress</span></button>
+          <i class="step-line"></i>
+          <button class="step" data-tab="review"><span class="step-n">5</span><span class="step-t">Review</span></button>
+          <i class="step-line"></i>
+          <button class="step" data-tab="publish"><span class="step-n">6</span><span class="step-t">Publish</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="pub">
+      <!-- LEFT — artwork preview -->
+      <aside class="pv rv in">
+        <div class="pv-art" id="pvArt">
+          <span class="pill-glass pv-badge"><span data-ic="sparkles" data-sz="12"></span> AI generated</span>
+          <span class="pill-glass pill-glass-dark pv-zoom mono">4096 × 5120</span>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">
+            <span class="h5">Source file</span>
+            <span class="badge badge-moss"><span data-ic="check" data-sz="11"></span> Print ready</span>
+          </div>
+          <div class="panel-b" style="padding:8px 20px 16px">
+            <div class="meta-row"><span class="k">Filename</span><span class="v mono" style="font-size:.7rem">prism-ritual-master.png</span></div>
+            <div class="meta-row"><span class="k">Dimensions</span><span class="v">4096 × 5120 px</span></div>
+            <div class="meta-row"><span class="k">Resolution</span><span class="v">300 DPI</span></div>
+            <div class="meta-row"><span class="k">Colour space</span><span class="v">sRGB → CMYK ready</span></div>
+            <div class="meta-row"><span class="k">File size</span><span class="v">24.8 MB</span></div>
+            <div class="meta-row"><span class="k">Transparency</span><span class="v">Alpha channel</span></div>
+          </div>
+          <div class="panel-f">
+            <div class="stack gap-8">
+              <span class="eyebrow">Extracted palette</span>
+              <div class="pal" id="pal"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="note note-signal">
+          <span data-ic="zap" data-sz="16" style="color:var(--signal);flex:none"></span>
+          <span><b>Adapters preview live.</b> Every mockup on this page is generated from your master file — no manual mockup work required.</span>
+        </div>
+      </aside>
+
+      <!-- RIGHT — step content -->
+      <div data-panels="wiz" class="rv in" data-d=".06">
+
+        <!-- STEP 1 — UPLOAD -->
+        <div data-panel="upload" class="hide">
+          <div class="panel">
+            <div class="panel-h">
+              <div><div class="eyebrow">Step 01</div><div class="h3" style="margin-top:5px">Upload your artwork</div></div>
+              <span class="badge badge-moss">Complete</span>
+            </div>
+            <div class="panel-b">
+              <div class="drop">
+                <div class="row gap-12" style="justify-content:center;margin-bottom:12px"><span data-ic="upload" data-sz="24" style="color:var(--tx-3)"></span></div>
+                <div class="h4">Drop a file, or browse</div>
+                <p class="small muted" style="margin-top:6px">PNG, SVG, PDF or TIFF up to 250 MB. Minimum 3000 px on the long edge for apparel and posters.</p>
+                <div class="row gap-8" style="justify-content:center;margin-top:16px">
+                  <button class="btn btn-sm"><span data-ic="folder" data-sz="14"></span> Browse files</button>
+                  <a class="btn btn-sm btn-outline" href="studio.html"><span data-ic="sparkles" data-sz="14"></span> Generate in Studio</a>
+                </div>
+              </div>
+
+              <div class="card-flat" style="margin-top:18px;display:flex;align-items:center;gap:14px">
+                <div class="thumb" id="upThumb"></div>
+                <div style="flex:1;min-width:0">
+                  <div class="row-between" style="margin-bottom:6px">
+                    <span class="small strong">prism-ritual-master.png</span>
+                    <span class="mono tiny faint">24.8 MB · 100%</span>
+                  </div>
+                  <div class="bar"><i style="width:100%"></i></div>
+                </div>
+                <span class="badge badge-moss">Uploaded</span>
+              </div>
+
+              <div class="grid g-2" style="margin-top:20px;gap:14px">
+                <div><div class="eyebrow" style="margin-bottom:8px">Accepted</div>
+                  <div class="checkline"><span class="ok"><span data-ic="check" data-sz="11"></span></span><span>Vector or raster, 300 DPI at final print size</span></div>
+                  <div class="checkline"><span class="ok"><span data-ic="check" data-sz="11"></span></span><span>Transparent background for apparel and stickers</span></div>
+                </div>
+                <div><div class="eyebrow" style="margin-bottom:8px">Rights</div>
+                  <div class="checkline"><span class="ok"><span data-ic="check" data-sz="11"></span></span><span>You own or licensed every element in the file</span></div>
+                  <div class="checkline"><span class="ok warnk"><span data-ic="alert" data-sz="11"></span></span><span>AI-assisted work must be declared — we do this for you</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-f row-between">
+              <span class="tiny faint">Autosaved 2 minutes ago</span>
+              <button class="btn btn-sm" data-go="analyse">Continue to analyse <span data-ic="arrowRight" data-sz="14" class="arw"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2 — ANALYSE -->
+        <div data-panel="analyse" class="hide">
+          <div class="panel">
+            <div class="panel-h">
+              <div><div class="eyebrow">Step 02</div><div class="h3" style="margin-top:5px">Machine analysis</div></div>
+              <span class="badge badge-moss">Complete · 8.4s</span>
+            </div>
+            <div class="panel-b">
+              <div class="terminal" style="margin-bottom:20px">
+                <div class="terminal-h">
+                  <i class="dot" style="background:#ff5f57"></i><i class="dot" style="background:#febc2e"></i><i class="dot" style="background:#28c840"></i>
+                  <span class="mono" style="margin-left:6px;color:rgba(247,246,243,.4)">d2m · analyse</span>
+                </div>
+                <div class="terminal-b"><pre style="margin:0;font-family:var(--mono);font-size:.72rem;line-height:1.8"><span class="c">$ desmake d2m analyse prism-ritual-master.png</span>
+<span class="p">→</span> decode         <span class="s">ok</span>   4096×5120 · rgba8 · 24.8MB
+<span class="p">→</span> vectorise      <span class="s">ok</span>   1,284 paths recovered
+<span class="p">→</span> palette        <span class="s">ok</span>   5 dominant colours extracted
+<span class="p">→</span> classify       <span class="s">ok</span>   abstract <span class="n">0.94</span> · geometric <span class="n">0.61</span>
+<span class="p">→</span> safe-area      <span class="s">ok</span>   bleed 3mm applied to all adapters
+<span class="p">→</span> colour-profile <span class="s">ok</span>   sRGB → FOGRA51 delta-E <span class="n">1.8</span>
+<span class="p">→</span> content-policy <span class="s">ok</span>   no flagged material
+<span class="c">✓ 6 adapters compatible — 3 recommended</span></pre></div>
+              </div>
+
+              <div class="grid g-2" style="gap:20px">
+                <div>
+                  <div class="eyebrow" style="margin-bottom:10px">Detected attributes</div>
+                  <div class="meta-row"><span class="k">Style</span><span class="v">Abstract · Prism</span></div>
+                  <div class="meta-row"><span class="k">Composition</span><span class="v">Centred, high contrast</span></div>
+                  <div class="meta-row"><span class="k">Complexity</span><span class="v">Medium (4/7)</span></div>
+                  <div class="meta-row"><span class="k">Ink coverage</span><span class="v">62%</span></div>
+                  <div class="meta-row"><span class="k">Min. line weight</span><span class="v">0.42 mm</span></div>
+                </div>
+                <div>
+                  <div class="eyebrow" style="margin-bottom:10px">Production checks</div>
+                  <div class="checkline"><span class="ok"><span data-ic="check" data-sz="11"></span></span><span>DTG colour gamut — all colours reproducible</span></div>
+                  <div class="checkline"><span class="ok"><span data-ic="check" data-sz="11"></span></span><span>Giclée at 50×70 cm — 312 effective DPI</span></div>
+                  <div class="checkline"><span class="ok"><span data-ic="check" data-sz="11"></span></span><span>Die-cut contour auto-generated</span></div>
+                  <div class="checkline"><span class="ok warnk"><span data-ic="alert" data-sz="11"></span></span><span>3D print — depth map required for relief output</span></div>
+                </div>
+              </div>
+
+              <div style="margin-top:20px">
+                <div class="eyebrow" style="margin-bottom:10px">Suggested categories</div>
+                <div class="row gap-8 wrap" data-chipgroup="multi">
+                  <button class="chip chip-sm is-active">Abstract</button>
+                  <button class="chip chip-sm is-active">Geometric</button>
+                  <button class="chip chip-sm">Poster art</button>
+                  <button class="chip chip-sm">Gradient</button>
+                  <button class="chip chip-sm">Editorial</button>
+                </div>
+              </div>
+            </div>
+            <div class="panel-f row-between">
+              <button class="btn btn-sm btn-ghost" data-go="upload"><span data-ic="arrowLeft" data-sz="14"></span> Back</button>
+              <button class="btn btn-sm" data-go="adapt">Choose adapters <span data-ic="arrowRight" data-sz="14" class="arw"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3 — ADAPT -->
+        <div data-panel="adapt">
+          <div class="panel">
+            <div class="panel-h">
+              <div><div class="eyebrow">Step 03</div><div class="h3" style="margin-top:5px">Adapt to products</div></div>
+              <span class="badge badge-ink" id="adCount">3 of 6 selected</span>
+            </div>
+            <div class="panel-b">
+              <p class="small muted pretty" style="max-width:64ch;margin-bottom:18px">Each adapter is a full manufacturing recipe — substrate, print method, colour profile, bleed and factory routing. Toggle the ones you want to sell. You can add more at any time without re-uploading.</p>
+
+              <div class="ad-grid" id="adGrid" data-optgroup="multi"></div>
+
+              <div class="note" style="margin-top:20px">
+                <span data-ic="info" data-sz="16" style="color:var(--cobalt);flex:none"></span>
+                <span><b>Recommended by the engine:</b> T-Shirt, Poster and Sticker Pack. This artwork's ink coverage and contrast score highest on those three methods — expected return rate below 1.4%.</span>
+              </div>
+            </div>
+            <div class="panel-f row-between">
+              <button class="btn btn-sm btn-ghost" data-go="analyse"><span data-ic="arrowLeft" data-sz="14"></span> Back</button>
+              <div class="row gap-12">
+                <span class="small muted tnum" id="adSum">Est. bundle margin $39.80</span>
+                <button class="btn btn-sm" data-go="dress">Continue to dress <span data-ic="arrowRight" data-sz="14" class="arw"></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4 — DRESS -->
+        <div data-panel="dress" class="hide">
+          <div class="panel">
+            <div class="panel-h">
+              <div><div class="eyebrow">Step 04</div><div class="h3" style="margin-top:5px">Dress the listing</div></div>
+              <span class="badge badge-violet"><span data-ic="sparkles" data-sz="11"></span> AI drafted</span>
+            </div>
+            <div class="panel-b">
+              <div class="stack gap-20">
+                <div class="field">
+                  <label class="label row-between"><span>Listing title</span><span class="tiny faint mono">42 / 80</span></label>
+                  <input class="input input-lg" value="Prism Ritual — Abstract Composition">
+                  <span class="hint">Generated from your artwork. Titles with a subject and a style term convert 23% better.</span>
+                </div>
+
+                <div class="field">
+                  <label class="label row-between"><span>Description</span>
+                    <button class="btn btn-xs btn-outline"><span data-ic="refresh" data-sz="12"></span> Rewrite</button>
+                  </label>
+                  <textarea class="textarea" style="min-height:132px">A layered study in translucency: overlapping prisms of ember, cobalt and bone drift across a warm paper ground, each intersection mixing into a new tone. Printed with archival pigment inks, the composition holds its contrast at any scale — bold enough for a wall, quiet enough to live with. Part of the Ritual series, generated and refined in Desmake Studio.</textarea>
+                  <span class="hint">Tone: editorial · Reading level: grade 8 · 68 words</span>
+                </div>
+
+                <div class="field">
+                  <label class="label row-between"><span>Auto tags</span><span class="tiny faint">Click to remove · 9 tags</span></label>
+                  <div class="tagline" id="tagline"></div>
+                  <span class="hint">Tags drive marketplace search and agent discovery through the catalog API.</span>
+                </div>
+
+                <div class="grid g-2" style="gap:14px">
+                  <div class="field">
+                    <label class="label">Primary category</label>
+                    <select class="select"><option>Abstract</option><option>Geometric</option><option>Minimal</option><option>Typography</option></select>
+                  </div>
+                  <div class="field">
+                    <label class="label">Licence</label>
+                    <select class="select"><option>Standard — personal &amp; small commercial</option><option>Extended — unlimited commercial</option><option>Exclusive — single buyer</option></select>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="row-between" style="margin-bottom:6px">
+                    <span class="label">Price per product</span>
+                    <span class="tiny faint">Suggested from 14,200 comparable listings</span>
+                  </div>
+                  <div id="priceRows"></div>
+                </div>
+
+                <div class="card-flat" style="background:var(--violet-soft);border-color:transparent">
+                  <div class="row gap-10">
+                    <span data-ic="wand" data-sz="16" style="color:var(--violet);flex:none"></span>
+                    <div>
+                      <div class="small strong">Dressed automatically</div>
+                      <p class="tiny muted" style="margin-top:3px">Title, description, tags, categories and pricing were drafted by the D2M engine from your artwork and live market data. Everything is editable — nothing is published until you approve it.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-f row-between">
+              <button class="btn btn-sm btn-ghost" data-go="adapt"><span data-ic="arrowLeft" data-sz="14"></span> Back</button>
+              <button class="btn btn-sm" data-go="review">Review <span data-ic="arrowRight" data-sz="14" class="arw"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 5 — REVIEW -->
+        <div data-panel="review" class="hide">
+          <div class="stack gap-20">
+            <div class="panel">
+              <div class="panel-h">
+                <div><div class="eyebrow">Step 05</div><div class="h3" style="margin-top:5px">Review your product line</div></div>
+                <span class="badge">3 listings</span>
+              </div>
+              <div style="overflow-x:auto">
+                <table class="tbl" style="min-width:660px">
+                  <thead>
+                    <tr>
+                      <th style="width:64px"></th><th>Product</th><th>Method</th><th>Lead</th>
+                      <th class="num">Retail</th><th class="num">Cost</th><th class="num">Your cut</th><th class="num">30-day est.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="revBody"></tbody>
+                  <tfoot id="revFoot"></tfoot>
+                </table>
+              </div>
+              <div class="panel-f">
+                <div class="sum">
+                  <div><div class="stat"><div class="stat-v" id="sumBundle">$39.80</div><div class="stat-k">Margin per bundle</div></div></div>
+                  <div><div class="stat"><div class="stat-v" id="sumMonth">$2,171</div><div class="stat-k">Est. 30-day revenue</div></div></div>
+                  <div><div class="stat"><div class="stat-v">6 factories</div><div class="stat-k">Routing coverage</div></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-h"><span class="h4">Listing preview</span><span class="tiny faint">How buyers and agents will see it</span></div>
+              <div class="panel-b">
+                <div class="row-top gap-16 wrap">
+                  <div class="thumb" style="width:96px;height:120px;border-radius:var(--r-sm)" id="revThumb"></div>
+                  <div style="flex:1;min-width:220px">
+                    <div class="h4">Prism Ritual — Abstract Composition</div>
+                    <div class="row gap-8" style="margin-top:6px">
+                      <span class="av av-xs" id="revAv"></span>
+                      <span class="small muted">Amara Okafor</span>
+                      <span class="badge badge-moss">Verified</span>
+                      <span class="badge badge-violet"><span data-ic="sparkles" data-sz="11"></span> AI</span>
+                    </div>
+                    <p class="small muted pretty" style="margin-top:10px;max-width:60ch">A layered study in translucency: overlapping prisms of ember, cobalt and bone drift across a warm paper ground, each intersection mixing into a new tone…</p>
+                    <div class="row gap-6 wrap" style="margin-top:12px" id="revTags"></div>
+                  </div>
+                  <div class="stack" style="align-items:flex-end;gap:4px">
+                    <span class="h3 tnum">from $12.00</span>
+                    <span class="tiny faint">3 products · ships worldwide</span>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-f row-between">
+                <div class="row gap-8"><i class="dot dot-live"></i><span class="tiny muted">Content review typically completes in under 20 minutes</span></div>
+                <button class="btn btn-sm btn-outline"><span data-ic="externalLink" data-sz="13"></span> Open full preview</button>
+              </div>
+            </div>
+
+            <div class="row-between wrap gap-16">
+              <button class="btn btn-ghost" data-go="dress"><span data-ic="arrowLeft" data-sz="15"></span> Back to dress</button>
+              <button class="btn btn-lg btn-signal" data-go="publish"><span data-ic="upload" data-sz="16"></span> Publish to marketplace</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 6 — PUBLISH -->
+        <div data-panel="publish" class="hide">
+          <div class="panel">
+            <div class="panel-h">
+              <div><div class="eyebrow">Step 06</div><div class="h3" style="margin-top:5px">Go live</div></div>
+              <span class="badge badge-amber">Awaiting your approval</span>
+            </div>
+            <div class="panel-b">
+              <div class="stack gap-18">
+                <div>
+                  <div class="label" style="margin-bottom:10px">Visibility</div>
+                  <div class="lic" data-optgroup="single">
+                    <label class="opt is-on"><span class="check radio is-on"></span><span><span class="h5">Public</span><span class="hint" style="display:block;margin-top:3px">Listed in marketplace search, feeds and the agent catalog API.</span></span></label>
+                    <label class="opt"><span class="check radio"></span><span><span class="h5">Unlisted</span><span class="hint" style="display:block;margin-top:3px">Reachable by direct link only. Good for client work.</span></span></label>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="label" style="margin-bottom:10px">Release</div>
+                  <div class="lic" data-optgroup="single">
+                    <label class="opt is-on"><span class="check radio is-on"></span><span><span class="h5">Publish now</span><span class="hint" style="display:block;margin-top:3px">Live as soon as content review clears.</span></span></label>
+                    <label class="opt"><span class="check radio"></span><span><span class="h5">Schedule</span><span class="hint" style="display:block;margin-top:3px">Pick a drop date and time zone.</span></span></label>
+                  </div>
+                </div>
+
+                <div class="stack gap-10">
+                  <label class="row-top gap-10" style="cursor:pointer"><span class="check is-on"></span><span class="small">I own the rights to this artwork and accept the <a class="link-u" href="#">Creator Terms</a> and manufacturing standards.</span></label>
+                  <label class="row-top gap-10" style="cursor:pointer"><span class="check is-on"></span><span class="small">Declare AI assistance on the listing (required for generated work).</span></label>
+                  <label class="row-top gap-10" style="cursor:pointer"><span class="check"></span><span class="small">Notify my 31.6k followers when this goes live.</span></label>
+                </div>
+
+                <div class="card-ink" style="border-radius:var(--r-md);padding:20px 22px">
+                  <div class="row-between wrap gap-16">
+                    <div>
+                      <div class="eyebrow" style="color:var(--tx-inv-3)">Ready to manufacture</div>
+                      <div class="h3" style="margin-top:6px">3 listings · 6 factories · 0 inventory</div>
+                      <p class="small" style="color:var(--tx-inv-2);margin-top:6px;max-width:44ch">Orders route automatically to the nearest capable factory. You never touch a box.</p>
+                    </div>
+                    <button class="btn btn-lg btn-signal"><span data-ic="upload" data-sz="16"></span> Publish to marketplace</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-f row-between">
+              <button class="btn btn-sm btn-ghost" data-go="review"><span data-ic="arrowLeft" data-sz="14"></span> Back</button>
+              <span class="tiny faint">You can unpublish or edit prices at any time from <a class="link-u" href="works.html">My Works</a>.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- D2M value prop band -->
+<section class="section section-ink grain" style="margin-top:clamp(56px,7vw,104px);position:relative;overflow:hidden">
+  <div class="spot" style="width:520px;height:520px;background:#ff4d18;top:-180px;right:-120px;opacity:.22"></div>
+  <div class="container-wide" style="position:relative">
+    <div class="sec-head">
+      <div>
+        <div class="eyebrow eyebrow-dot">Why D2M</div>
+        <h2 class="h2 balance" style="margin-top:12px;max-width:22ch">Designers make files.<br>Desmake makes them <span class="serif-i">products</span>.</h2>
+      </div>
+      <p class="body" style="color:var(--tx-inv-2);max-width:40ch">The gap between a beautiful file and a shippable object is tooling, colour science, packaging and logistics. The D2M engine closes it in one pass — so publishing a product costs the same as posting an image.</p>
+    </div>
+
+    <div class="d2m-grid">
+      <div class="d2m-cell">
+        <div class="d2m-n">01</div>
+        <div class="h4" style="margin-top:14px">Adapters, not templates</div>
+        <p class="small" style="color:var(--tx-inv-2);margin-top:8px">Each adapter carries substrate, ink, bleed, colour profile and tolerance data. Your file is re-rendered per method — never stretched onto a stock photo.</p>
+      </div>
+      <div class="d2m-cell">
+        <div class="d2m-n">02</div>
+        <div class="h4" style="margin-top:14px">Auto-dressed listings</div>
+        <p class="small" style="color:var(--tx-inv-2);margin-top:8px">Title, copy, tags and price bands are drafted from the artwork itself plus live comparables, then handed to you for a 30-second edit.</p>
+      </div>
+      <div class="d2m-cell">
+        <div class="d2m-n">03</div>
+        <div class="h4" style="margin-top:14px">Factory routing</div>
+        <p class="small" style="color:var(--tx-inv-2);margin-top:8px">Orders go to the nearest certified partner with capacity — 41 facilities across 14 countries, scored on quality, lead time and carbon.</p>
+      </div>
+      <div class="d2m-cell">
+        <div class="d2m-n">04</div>
+        <div class="h4" style="margin-top:14px">Agent readable</div>
+        <p class="small" style="color:var(--tx-inv-2);margin-top:8px">Every published product is exposed through MCP and REST, so agents can search, quote and order it without a human in the loop.</p>
+      </div>
+    </div>
+
+    <div class="row-between wrap gap-24" style="margin-top:40px">
+      <div class="row gap-40 wrap">
+        <div class="stat"><div class="stat-v">48 sec</div><div class="stat-k" style="color:var(--tx-inv-3)">Median file → listing</div></div>
+        <div class="stat"><div class="stat-v">$0</div><div class="stat-k" style="color:var(--tx-inv-3)">Upfront cost per product</div></div>
+        <div class="stat"><div class="stat-v">1.4%</div><div class="stat-k" style="color:var(--tx-inv-3)">Return rate, network wide</div></div>
+        <div class="stat"><div class="stat-v">41</div><div class="stat-k" style="color:var(--tx-inv-3)">Certified factories</div></div>
+      </div>
+      <a class="btn btn-lg btn-paper" href="works.html">See it in My Works <span data-ic="arrowRight" data-sz="15" class="arw"></span></a>
+    </div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const I = UI.icon;
+const SEED = "Prism Ritual";
+const SELECTED = ["tshirt", "poster", "sticker"];
+const FEE = 0.10;
+const cutOf = (a) => a.retailCents - a.costCents - Math.round(a.retailCents * FEE);
+const PROJ = { tshirt: 38, poster: 54, sticker: 96, card: 12, phonecase: 22, print3d: 6 };
+const REC = { tshirt: "Recommended", poster: "Recommended", sticker: "Best margin" };
+
+/* ---- Artwork preview ---- */
+document.getElementById("pvArt").insertAdjacentHTML("afterbegin", Art.svg(SEED));
+document.getElementById("upThumb").innerHTML = Art.svg(SEED);
+document.getElementById("revThumb").innerHTML = Art.svg(SEED);
+document.getElementById("revAv").innerHTML = Art.avatar("amaraok");
+
+/* ---- Palette ---- */
+const pal = Art.paletteOf(SEED);
+const cols = [pal.bg].concat(pal.c).slice(0, 5);
+document.getElementById("pal").innerHTML = cols.map(c =>
+  `<div><i style="background:${c}"></i><span>${c.toUpperCase()}</span></div>`
+).join("");
+
+/* ---- Step 3 · adapter cards ---- */
+document.getElementById("adGrid").innerHTML = DB.ADAPTERS.map(a => {
+  const on = SELECTED.includes(a.id);
+  return `<label class="opt ad-card${on ? " is-on" : ""}">
+    <div class="ad-media">
+      <span class="check${on ? " is-on" : ""}"></span>
+      ${REC[a.id] ? `<span class="pill-glass tagp" style="font-size:.62rem;height:22px;padding:0 8px">${REC[a.id]}</span>` : ""}
+      ${Art.mockup(a.mockup, SEED, {})}
+    </div>
+    <div class="ad-body">
+      <div class="row-between" style="gap:8px">
+        <span class="h5">${a.name}</span>
+        <span class="small strong tnum">${DB.money(a.retailCents)}</span>
+      </div>
+      <div class="row-between" style="gap:8px;margin-top:5px">
+        <span class="mono tiny faint">${a.method}</span>
+        <span class="tiny faint">${a.lead} days</span>
+      </div>
+      <div class="hr" style="margin:10px 0"></div>
+      <div class="row-between">
+        <span class="tiny faint">Your cut</span>
+        <span class="tiny strong tnum" style="color:var(--moss)">${DB.money(cutOf(a))}</span>
+      </div>
+    </div>
+  </label>`;
+}).join("");
+
+/* live counter on the adapt step */
+const adGrid = document.getElementById("adGrid");
+function syncAdapt() {
+  const cards = [...adGrid.querySelectorAll(".ad-card")];
+  const on = cards.filter(c => c.classList.contains("is-on")).length;
+  document.getElementById("adCount").textContent = on + " of 6 selected";
+  let total = 0;
+  cards.forEach((c, i) => { if (c.classList.contains("is-on")) total += cutOf(DB.ADAPTERS[i]); });
+  document.getElementById("adSum").textContent = "Est. bundle margin " + DB.money(total);
+}
+adGrid.addEventListener("click", () => setTimeout(syncAdapt, 0));
+
+/* ---- Step 4 · tags + price rows ---- */
+const TAGS = ["ai-generated", "abstract", "prism", "gradient", "ember", "cobalt", "print-ready", "editorial", "wall-art"];
+document.getElementById("tagline").innerHTML = TAGS.map(t =>
+  `<span class="tag-x">${t}<button aria-label="Remove ${t}">${I("x", 11)}</button></span>`
+).join("") + `<button class="chip chip-sm">${I("plus", 12)} Add tag</button>`;
+
+document.getElementById("priceRows").innerHTML = SELECTED.map(id => {
+  const a = DB.adapterById(id);
+  return `<div class="prow">
+    <div class="thumb">${Art.mockup(a.mockup, SEED, {})}</div>
+    <div>
+      <div class="small strong">${a.name}</div>
+      <div class="tiny faint">Cost ${DB.money(a.costCents)} · fee 10% · suggested band ${DB.money(a.retailCents - 400)}–${DB.money(a.retailCents + 900)}</div>
+    </div>
+    <div class="input-wrap">
+      <input class="input input-sm tnum" value="${(a.retailCents / 100).toFixed(2)}" style="padding-left:26px">
+      <span class="ic" style="left:11px">$</span>
+    </div>
+    <div class="stack" style="align-items:flex-end;gap:1px">
+      <span class="small strong tnum" style="color:var(--moss)">${DB.money(cutOf(a))}</span>
+      <span class="tiny faint">your cut</span>
+    </div>
+  </div>`;
+}).join("");
+
+/* ---- Step 5 · review table ---- */
+let tRetail = 0, tCost = 0, tCut = 0, tMonth = 0;
+document.getElementById("revBody").innerHTML = SELECTED.map(id => {
+  const a = DB.adapterById(id);
+  const cut = cutOf(a), month = cut * PROJ[a.id];
+  tRetail += a.retailCents; tCost += a.costCents; tCut += cut; tMonth += month;
+  return `<tr>
+    <td><div class="thumb thumb-sm">${Art.mockup(a.mockup, SEED, {})}</div></td>
+    <td><div class="strong">${a.name}</div><div class="tiny faint">Prism Ritual — Abstract Composition</div></td>
+    <td><span class="mono tiny">${a.method}</span></td>
+    <td class="muted">${a.lead} days</td>
+    <td class="num tnum">${DB.money(a.retailCents)}</td>
+    <td class="num tnum muted">−${DB.money(a.costCents)}</td>
+    <td class="num tnum strong" style="color:var(--moss)">${DB.money(cut)}</td>
+    <td class="num tnum">${DB.money(month)}<div class="tiny faint">${PROJ[a.id]} units</div></td>
+  </tr>`;
+}).join("");
+
+document.getElementById("revFoot").innerHTML = `<tr>
+  <td></td>
+  <td class="strong">Total — 3 products</td>
+  <td colspan="2" class="tiny faint">Platform fee 10% · no listing fee</td>
+  <td class="num tnum strong">${DB.money(tRetail)}</td>
+  <td class="num tnum muted">−${DB.money(tCost)}</td>
+  <td class="num tnum strong" style="color:var(--moss)">${DB.money(tCut)}</td>
+  <td class="num tnum strong">${DB.money(tMonth)}</td>
+</tr>`;
+document.getElementById("sumBundle").textContent = DB.money(tCut);
+document.getElementById("sumMonth").textContent = DB.money(tMonth).split(".")[0];
+document.getElementById("revTags").innerHTML = TAGS.slice(0, 5).map(t => `<span class="chip chip-sm">${t}</span>`).join("");
+
+/* ---- Stepper navigation ---- */
+function goto(step) {
+  const s = document.querySelector('.steps [data-tab="' + step + '"]');
+  if (s) s.click();
+  window.scrollTo({ top: document.querySelector(".pub").offsetTop - 90, behavior: "smooth" });
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-go]");
+  if (b) goto(b.dataset.go);
+});
+
+/* ---- Icons in static markup ---- */
+function hydrate(root) {
+  (root || document).querySelectorAll("[data-ic]").forEach(el => {
+    if (el.dataset.done) return;
+    el.innerHTML = I(el.dataset.ic, +(el.dataset.sz || 16));
+    el.dataset.done = "1";
+  });
+}
+hydrate();
+UI.mount({ active: "publish.html" });
+syncAdapt();
+
+/* ---- Checkline stagger pop (visual only) ---- */
+(function () {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!("IntersectionObserver" in window)) return;
+  const lines = Array.prototype.slice.call(document.querySelectorAll(".checkline"));
+  if (!lines.length) return;
+  const io = new IntersectionObserver(function (entries) {
+    if (!entries[0].isIntersecting) return;
+    io.disconnect();
+    lines.forEach(function (el, i) {
+      setTimeout(function () { el.classList.add("lit"); }, 120 + i * 130);
+    });
+  }, { rootMargin: "0px 0px -6% 0px" });
+  const holder = lines[0].parentElement;
+  io.observe(holder);
+})();
+</script>
+</body>
+</html>

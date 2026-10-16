@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signal Decay — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .lh { display: grid; grid-template-columns: minmax(0, 1.2fr) 420px; gap: clamp(28px,4vw,64px); align-items: start; }
+  .lh-main { position: sticky; top: calc(var(--nav-h) + 24px); }
+  .gallery { display: grid; gap: 16px; }
+  .g-main { border-radius: var(--r-lg); overflow: hidden; background: var(--paper-2); aspect-ratio: 5/6; box-shadow: var(--sh-2); transition: opacity .18s var(--e), transform .18s var(--e); }
+  .g-main.switching { opacity: .35; transform: scale(.985); }
+  .g-thumbs { display: flex; gap: 10px; }
+  .g-thumbs > div { width: 80px; height: 100px; border-radius: var(--r-sm); overflow: hidden; border: 2px solid transparent; cursor: pointer; transition: border-color .25s, box-shadow .25s var(--e), transform .25s var(--e); background: var(--paper-2); }
+  .g-thumbs > div.is-active { border-color: var(--ink); box-shadow: 0 0 0 1px rgba(255,77,24,.35); }
+  .g-thumbs > div:hover { transform: translateY(-2px); }
+  .buy-panel { border-radius: var(--r-xl); overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+  .bp-head { padding: 24px 24px 20px; border-bottom: 1px solid var(--line); }
+  .bp-body { padding: 22px 24px; }
+  .bp-foot { padding: 18px 24px; border-top: 1px solid var(--line); background: rgba(12,12,13,.015); }
+  .var-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 18px; }
+  .var-opt {
+    height: 44px; display: grid; place-items: center;
+    border-radius: var(--r-sm);
+    border: 1.5px solid var(--line-2);
+    font-size: .78rem; font-weight: 500;
+    cursor: pointer; transition: all .25s var(--e);
+    text-align:center
+  }
+  .var-opt:hover { border-color: var(--tx-3); }
+  .var-opt.is-active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .ship-bar { display: flex; align-items: center; gap: 18px; padding: 14px 16px; border-radius: var(--r-md); background: var(--cobalt-soft); font-size: .8125rem; margin: 16px 0; }
+  .reviews { max-width: 720px; }
+  .review-card { padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .review-card:last-child { border-bottom: 0; }
+  @media (max-width: 960px) { .lh { grid-template-columns: minmax(0,1fr); } .lh-main { position: static; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<section class="section-sm">
+  <div class="container-wide">
+    <nav class="crumb rv in" style="margin-bottom:26px">
+      <a href="index.html">Home</a> <span class="crumb">/</span>
+      <a href="explore.html?cat=abstract">Abstract</a> <span class="crumb">/</span>
+      <span style="color:var(--tx)">Signal Decay</span>
+    </nav>
+
+    <div class="lh">
+      <!-- Gallery -->
+      <div class="rv in">
+        <div class="gallery">
+          <div class="g-main" id="mainImg"></div>
+          <div class="g-thumbs" id="thumbs"></div>
+        </div>
+      </div>
+
+      <!-- Buy panel -->
+      <div class="rv in" data-d=".08">
+        <div class="buy-panel">
+          <div class="bp-head">
+            <div class="row-between wrap gap-12">
+              <div>
+                <div class="row gap-8 mb-8">
+                  <h1 class="h2" style="letter-spacing:-.03em">Signal Decay</h1>
+                  <span id="lstHeart"></span>
+                </div>
+                <div class="row gap-10">
+                  <a class="row gap-6" href="creator.html" id="cLink"></a>
+                  <span class="badge badge-moss">Verified creator</span>
+                </div>
+              </div>
+              <div class="stack" style="align-items:flex-end">
+                <div class="h3 tnum">$32.00</div>
+                <div class="tiny faint">Poster · A2</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bp-body">
+            <label class="label">Product type</label>
+            <div class="seg" data-tabs="ptype" style="margin:10px 0 14px;width:100%">
+              <button class="is-active" data-tab="poster">Poster</button><button data-tab="tshirt">T-Shirt</button><button data-tab="sticker">Sticker Pack</button>
+            </div>
+
+            <div data-panels="ptype">
+              <div data-panel="poster">
+                <label class="label">Size</label>
+                <div class="var-grid" data-chipgroup="single">
+                  <div class="var-opt is-active">A3 (29.7×42cm)</div>
+                  <div class="var-opt">A2 (42×59.4cm)</div>
+                  <div class="var-opt">A1 (59.4×84.1cm)</div>
+                  <div class="var-opt">50×70 cm</div>
+                  <div class="var-opt">40×50 cm</div>
+                  <div class="var-opt">30×40 cm</div>
+                </div>
+                <div class="ship-bar">${icon("truck", 16)}<span><b>Ships in 2–4 business days</b> — Giclée print on 200 gsm archival paper</span></div>
+              </div>
+              <div data-panel="tshirt" class="hide">
+                <label class="label">Size</label>
+                <div class="var-grid" data-chipgroup="single">
+                  <div class="var-opt is-active">S</div><div class="var-opt">M</div><div class="var-opt">L</div><div class="var-opt">XL</div><div class="var-opt">XXL</div>
+                </div>
+                <label class="label" style="margin-top:14px">Colour</label>
+                <div class="var-grid" data-chipgroup="single">
+                  <div class="var-opt is-active">White</div><div class="var-opt">Black</div><div class="var-opt">Bone</div><div class="var-opt">Heather Grey</div>
+                </div>
+                <div class="ship-bar">${icon("truck", 16)}<span><b>Ships in 3–5 business days</b> — DTG print on premium cotton</span></div>
+              </div>
+              <div data-panel="sticker" class="hide">
+                <label class="label">Finish</label>
+                <div class="var-grid" data-chipgroup="single">
+                  <div class="var-opt is-active">Gloss</div><div class="var-opt">Matte</div><div class="var-opt">Holographic</div>
+                </div>
+                <div class="ship-bar">${icon("truck", 16)}<span><b>Ships in 2–3 business days</b> — Die-cut vinyl sticker sheet</span></div>
+              </div>
+            </div>
+
+            <div class="row gap-12" style="margin-top:20px">
+              <div class="field" style="flex:1"><input class="input input-lg" type="number" value="1" min="1" max="99"/></div>
+              <a class="btn btn-lg btn-signal full" href="checkout.html" data-fly-to-cart data-fly-src="#mainImg">Add to cart — $32.00</a>
+            </div>
+          </div>
+
+          <div class="bp-foot">
+            <div class="row-between small muted">
+              <span>${icon("shield", 14)} Secure checkout via Stripe</span>
+              <span>${icon("refresh", 14)} Free returns within 14 days</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Creator card -->
+        <div class="card mt-24 rv" data-d=".14">
+          <div class="row gap-12" style="padding:18px 20px;border-bottom:1px solid var(--line)">
+            <span class="av av-lg" id="cAv"></span>
+            <div style="min-width:0">
+              <div class="h5">Kai Sugimoto</div>
+              <div class="tiny faint">Kyoto, JP · 48 works · 3,120 sales</div>
+            </div>
+            <a class="btn btn-outline btn-sm ml-auto" href="creator.html">Visit shop</a>
+          </div>
+          <p class="body" style="padding:16px 20px 18px;color:var(--tx-2)">Generative forms and quiet geometry. Building objects that feel inevitable.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Description & Reviews -->
+<section class="section section-paper2">
+  <div class="container-wide">
+    <div class="grid" style="grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(32px,5vw,72px)">
+      <div class="rv">
+        <h2 class="h2" style="margin-bottom:20px">About this design</h2>
+        <div class="body pretty" style="color:var(--tx-2)">
+          <p style="margin-bottom:16px">Signal Decay explores the tension between digital precision and organic entropy. The composition uses a controlled gradient mesh overlaid with sharp geometric interruptions — each element placed to feel both intentional and slightly off-kilter.</p>
+          <p style="margin-bottom:16px">Available as a museum-quality giclée poster, heavyweight DTG-printed T-shirt, or die-cut vinyl sticker pack. Every product is manufactured on demand from the same source file, ensuring colour fidelity across all formats.</p>
+        </div>
+        <div class="hr" style="margin:28px 0"></div>
+        <div class="grid g-3" style="gap:12px">
+          <div class="stat"><div class="stat-v" style="font-size:1.2rem">400×500 px</div><div class="stat-k">Resolution</div></div>
+          <div class="stat"><div class="stat-v" style="font-size:1.2rem">sRGB</div><div class="stat-k">Color space</div></div>
+          <div class="stat"><div class="stat-v" style="font-size:1.2rem">PNG</div><div class="stat-k">Format</div></div>
+        </div>
+        <div class="hr" style="margin:28px 0"></div>
+        <h3 class="h3" style="margin-bottom:18px">Tags</h3>
+        <div class="row gap-8 wrap">
+          <span class="chip chip-sm">abstract</span><span class="chip chip-sm">ai-generated</span><span class="chip chip-sm">gradient</span><span class="chip chip-sm">geometric</span><span class="chip chip-sm">poster-art</span>
+        </div>
+      </div>
+
+      <div class="rv" data-d=".06">
+        <div class="row-between" style="margin-bottom:20px">
+          <h3 class="h3">Reviews <span class="mono faint">(47)</span></h3>
+          <div class="seg"><button class="is-active">All</button><button>With photos</button></div>
+        </div>
+        <div class="reviews">
+          <div class="review-card">
+            <div class="row gap-10 mb-8">
+              <span class="av">${Art.avatar("rev1")}</span>
+              <div><div class="small strong">Marta K.</div><div class="tiny faint">Bought Poster · A2 · Jul 2026</div></div>
+              <div class="ml-auto mono" style="font-size:.75rem;color:var(--moss)"><span class="r5"></span></div>
+            </div>
+            <p class="body" style="color:var(--tx-2)">The colours are even more vivid in person. Print quality rivals my local fine-art studio at half the price. Will order again.</p>
+          </div>
+          <div class="review-card">
+            <div class="row gap-10 mb-8">
+              <span class="av">${Art.avatar("rev2")}</span>
+              <div><div class="small strong">James T.</div><div class="tiny faint">Bought T-Shirt · L · Jun 2026</div></div>
+              <div class="ml-auto mono" style="font-size:.75rem;color:var(--moss)"><span class="r4"></span></div>
+            </div>
+            <p class="body" style="color:var(--tx-2)">Great fit, soft cotton. The design pops against the white tee. Shipping was faster than expected.</p>
+          </div>
+          <div class="review-card">
+            <div class="row gap-10 mb-8">
+              <span class="av">${Art.avatar("rev3")}</span>
+              <div><div class="small strong">Yuki S.</div><div class="tiny faint">Bought Sticker Pack · Gloss · Jul 2026</div></div>
+              <div class="ml-auto mono" style="font-size:.75rem;color:var(--moss)"><span class="r5"></span></div>
+            </div>
+            <p class="body" style="color:var(--tx-2)">Die cut quality is excellent. Used them on my laptop and water bottle. Already getting compliments.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Related -->
+<section class="section">
+  <div classcontainer-wide">
+    <div class="sec-head rv">
+      <h2 class="h2">More from Kai Sugimoto</h2>
+      <a class="link-u small" href="creator.html">View all works <span id="arw1"></span></a>
+    </div>
+    <div class="rail" style="margin-top:20px" id="relatedRail"></div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const I = UI.icon;
+document.getElementById("arw1").outerHTML = I("arrowRight", 14);
+document.getElementById("lstHeart").outerHTML = `<button class="pop-ico" data-heart aria-pressed="false" aria-label="Like this design" style="color:var(--tx-3);display:inline-flex">${I("heart", 17)}</button>`;
+document.querySelectorAll(".r5").forEach(el => el.innerHTML = I("star", 13) + I("star", 13) + I("star", 13) + I("star", 13) + I("star", 13));
+document.querySelectorAll(".r4").forEach(el => el.innerHTML = I("star", 13) + I("star", 13) + I("star", 13) + I("star", 13) + UI.iconFill("star", 13));
+
+const d = DB.DESIGNS[0];
+document.getElementById("mainImg").innerHTML = Art.mockup("poster", d.seed, {});
+document.getElementById("thumbs").innerHTML = ["poster","tshirt","sticker"].map((k,i) =>
+  `<div class="${i===0?'is-active':''}">${Art.mockup(k, d.seed, {})}</div>`
+).join("");
+
+/* gallery crossfade */
+const thumbs = document.querySelectorAll("#thumbs > div");
+const kinds = ["poster", "tshirt", "sticker"];
+thumbs.forEach((t, i) => {
+  t.addEventListener("click", () => {
+    if (t.classList.contains("is-active")) return;
+    thumbs.forEach(x => x.classList.remove("is-active"));
+    t.classList.add("is-active");
+    const main = document.getElementById("mainImg");
+    main.classList.add("switching");
+    setTimeout(() => {
+      main.innerHTML = Art.mockup(kinds[i], d.seed, {});
+      main.classList.remove("switching");
+    }, 170);
+  });
+});
+
+const c = DB.creatorByHandle(d.creator);
+document.getElementById("cLink").innerHTML = `<span class="av av-sm">${Art.avatar(c.handle)}</span><span class="small strong">${c.name}</span>`;
+document.getElementById("cAv").innerHTML = Art.avatar(c.handle);
+
+document.getElementById("relatedRail").innerHTML =
+  DB.byCreator(d.creator).slice(0, 6).map(w => UI.work(w)).join("");
+
+UI.mount({ active: "listing.html" });
+</script>
+</body>
+</html>

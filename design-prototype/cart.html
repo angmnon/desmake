@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cart — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .cart-grid { display: grid; grid-template-columns: minmax(0, 1fr) 384px; gap: clamp(24px, 3.2vw, 52px); align-items: start; }
+
+  .mk { position: relative; overflow: hidden; background: var(--paper-2); }
+  .mk svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* --- cart item --- */
+  .ci { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 22px; padding: 24px; border-bottom: 1px solid var(--line); transition: background .3s var(--e); }
+  .ci:last-child { border-bottom: 0; }
+  .ci:hover { background: rgba(12, 12, 13, .014); }
+  .ci-media { width: 112px; aspect-ratio: 4/5; border-radius: var(--r-md); box-shadow: var(--sh-1); transition: transform .5s var(--e), box-shadow .5s var(--e); }
+  .ci:hover .ci-media { transform: translateY(-3px); box-shadow: var(--sh-2); }
+  .ci-title { font-size: 1.02rem; font-weight: 600; letter-spacing: -.018em; line-height: 1.25; }
+  .ci-title:hover { color: var(--signal); }
+  .ci-x { width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--tx-3); flex: none; transition: all .22s var(--e); }
+  .ci-x:hover { background: var(--signal-soft); color: var(--signal); }
+
+  .vpill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: var(--r-full); background: rgba(12, 12, 13, .05); font-size: .72rem; color: var(--tx-3); white-space: nowrap; }
+  .vpill b { color: var(--tx); font-weight: 550; }
+
+  /* --- quantity --- */
+  .qty { display: inline-flex; align-items: center; height: 36px; border: 1px solid var(--line-2); border-radius: var(--r-full); overflow: hidden; background: var(--surface); }
+  .qty button { width: 34px; align-self: stretch; display: grid; place-items: center; color: var(--tx-2); transition: background .2s, color .2s; }
+  .qty button:hover { background: rgba(12, 12, 13, .06); color: var(--tx); }
+  .qty input { width: 40px; height: 100%; border: 0; background: transparent; text-align: center; font-size: .8125rem; font-weight: 600; font-variant-numeric: tabular-nums; outline: none; -moz-appearance: textfield; }
+  .qty input::-webkit-outer-spin-button, .qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* --- summary --- */
+  .sum { position: sticky; top: calc(var(--nav-h) + 22px); }
+  .sum-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: .875rem; padding: 8px 0; }
+  .sum-row .k { color: var(--tx-2); display: inline-flex; align-items: center; gap: 6px; }
+  .sum-row .v { font-variant-numeric: tabular-nums; font-weight: 550; }
+  .sum-total { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-top: 16px; margin-top: 12px; border-top: 1px solid var(--line); }
+
+  .trust { display: flex; gap: 11px; align-items: flex-start; font-size: .75rem; color: var(--tx-2); line-height: 1.45; }
+  .trust svg { color: var(--tx-3); flex: none; margin-top: 1px; }
+  .paylogo { height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid var(--line); display: inline-grid; place-items: center; font-family: var(--mono); font-size: .625rem; letter-spacing: .06em; color: var(--tx-3); background: var(--surface); }
+
+  /* --- saved for later --- */
+  .saved { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); transition: all .3s var(--e); }
+  .saved:hover { border-color: var(--line-2); box-shadow: var(--sh-1); }
+  .saved-media { width: 68px; aspect-ratio: 4/5; border-radius: var(--r-sm); }
+
+  .ship-meter { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: var(--r-md); background: var(--moss-soft); }
+
+  @media (max-width: 1080px) { .cart-grid { grid-template-columns: minmax(0, 1fr); } .sum { position: static; } }
+  @media (max-width: 620px) { .ci { grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 18px 16px; } .ci-media { width: 84px; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<section class="section-sm" style="padding-bottom:0">
+  <div class="container-wide">
+    <nav class="crumb rv in" style="margin-bottom:24px">
+      <a href="index.html">Home</a><span>/</span><span style="color:var(--tx)">Cart</span>
+    </nav>
+
+    <div class="row-between wrap rv in" style="align-items:flex-end;margin-bottom:30px">
+      <div>
+        <div class="eyebrow eyebrow-dot">Basket review</div>
+        <div class="row gap-14" style="margin-top:10px">
+          <h1 class="h1">Your cart</h1>
+          <span class="badge badge-ink" style="height:26px;padding:0 10px;transform:translateY(4px)">3 items</span>
+        </div>
+        <p class="body" style="margin-top:10px;max-width:56ch">Everything here is manufactured on demand after checkout — nothing sits in a warehouse.</p>
+      </div>
+      <a class="link-u small" href="explore.html"><i data-ic="arrowLeft" data-s="14"></i> Continue shopping</a>
+    </div>
+  </div>
+</section>
+
+<section class="section-sm" style="padding-top:26px">
+  <div class="container-wide cart-grid">
+
+    <!-- ============ LEFT: items ============ -->
+    <div class="stack gap-24">
+
+      <div class="ship-meter rv in">
+        <i data-ic="truck" data-s="18" style="color:var(--moss)"></i>
+        <div style="flex:1;min-width:0">
+          <div class="row-between" style="margin-bottom:7px">
+            <span class="small strong">Free shipping unlocked</span>
+            <span class="tiny mono" style="color:var(--moss)">$80.00 / $50.00</span>
+          </div>
+          <div class="bar"><i style="width:100%;background:var(--moss)"></i></div>
+        </div>
+        <span class="badge badge-moss">Saved $6.90</span>
+      </div>
+
+      <div class="panel rv in" data-d=".04">
+        <div class="panel-h">
+          <span class="row gap-10">
+            <span class="h4">Items</span>
+            <span class="mono faint">3 · 4 units</span>
+          </span>
+          <div class="row gap-8">
+            <button class="btn btn-xs btn-outline"><i data-ic="heart" data-s="12"></i> Save all</button>
+            <button class="btn btn-xs btn-ghost faint">Clear cart</button>
+          </div>
+        </div>
+        <div id="cartList"></div>
+        <div class="panel-f">
+          <div class="row-between wrap gap-12 tiny muted">
+            <span class="row gap-8"><i data-ic="factory" data-s="14"></i> Routed to 3 factories across 2 regions</span>
+            <span class="row gap-8"><i data-ic="zap" data-s="14"></i> Estimated production start: within 4 hours</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="note rv" data-d=".06">
+        <i data-ic="info" data-s="16" style="flex:none;margin-top:1px"></i>
+        <span><b>Made on demand.</b> Items ship separately from the factory closest to you. You'll get one tracking number per shipment, and a single invoice.</span>
+      </div>
+
+      <!-- saved for later -->
+      <div class="rv" data-d=".08">
+        <div class="row-between" style="margin-bottom:14px">
+          <h2 class="h4">Saved for later <span class="mono faint">(2)</span></h2>
+          <a class="link-u tiny" href="#">View all saved</a>
+        </div>
+        <div class="grid g-2" style="gap:12px" id="savedList"></div>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT: summary ============ -->
+    <aside class="sum stack gap-16 rv in" data-d=".06">
+      <div class="panel">
+        <div class="panel-h"><span class="h4">Order summary</span><span class="tiny faint mono">USD</span></div>
+        <div class="panel-b">
+          <div class="sum-row"><span class="k">Subtotal <span class="tiny faint">(4 units)</span></span><span class="v tnum">$80.00</span></div>
+          <div class="sum-row"><span class="k">Estimated shipping</span><span class="v" style="color:var(--moss)">Free</span></div>
+          <div class="sum-row"><span class="k">Sales tax <span class="tiny faint">(8.0%)</span></span><span class="v tnum">$6.40</span></div>
+          <div class="sum-row"><span class="k">Creator royalties <span class="tiny faint">incl.</span></span><span class="v tnum faint">$24.00</span></div>
+
+          <div class="sum-total">
+            <div class="stack gap-2">
+              <span class="h4">Total</span>
+              <span class="tiny faint">Duties included · no hidden fees</span>
+            </div>
+            <span class="h2 tnum" style="letter-spacing:-.04em">$86.40</span>
+          </div>
+
+          <div class="hr" style="margin:18px 0"></div>
+
+          <label class="label" for="promo">Promo code</label>
+          <div class="input-wrap" style="margin-top:7px">
+            <input class="input" id="promo" placeholder="Enter code" value="MAKE10"/>
+            <button class="btn btn-xs suffix" style="right:6px">Apply</button>
+          </div>
+          <div class="row gap-8" style="margin-top:10px">
+            <span class="badge badge-moss"><i data-ic="check" data-s="10"></i> MAKE10</span>
+            <span class="tiny faint">10% off first order — applied at checkout</span>
+          </div>
+
+          <a class="btn btn-lg btn-signal btn-block" href="checkout.html" style="margin-top:20px">
+            Proceed to checkout <span class="arw"><i data-ic="arrowRight" data-s="16"></i></span>
+          </a>
+          <div class="row gap-8" style="justify-content:center;margin-top:12px">
+            <i data-ic="lock" data-s="13" style="color:var(--tx-3)"></i>
+            <span class="tiny faint">Secure 256-bit encrypted checkout</span>
+          </div>
+        </div>
+        <div class="panel-f">
+          <div class="row gap-6 wrap" style="justify-content:center">
+            <span class="paylogo">VISA</span><span class="paylogo">MC</span><span class="paylogo">AMEX</span>
+            <span class="paylogo">APPLE PAY</span><span class="paylogo">PAYPAL</span><span class="paylogo">KLARNA</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px">
+        <div class="eyebrow" style="margin-bottom:14px">Why buy here</div>
+        <div class="stack gap-14">
+          <div class="trust"><i data-ic="shield" data-s="16"></i><span><b style="color:var(--tx)">Payments by Stripe.</b> Card details never touch Desmake servers.</span></div>
+          <div class="trust"><i data-ic="refresh" data-s="16"></i><span><b style="color:var(--tx)">14-day free returns.</b> Misprint or damage? Reprinted at no cost.</span></div>
+          <div class="trust"><i data-ic="globe" data-s="16"></i><span><b style="color:var(--tx)">Local manufacturing.</b> Produced near you — 62% less freight carbon.</span></div>
+          <div class="trust"><i data-ic="dollar" data-s="16"></i><span><b style="color:var(--tx)">Creators get 30%.</b> Royalties paid on every unit, forever.</span></div>
+        </div>
+      </div>
+
+      <div class="card card-ink grain" style="padding:20px;overflow:hidden">
+        <div class="row gap-10" style="margin-bottom:10px">
+          <i data-ic="sparkles" data-s="16" style="color:var(--signal)"></i>
+          <span class="h5">Agent checkout</span>
+        </div>
+        <p class="tiny" style="color:var(--tx-inv-2);margin-bottom:14px">Let a connected agent place and track this order for you with the <span class="mono">orders.write</span> scope.</p>
+        <a class="btn btn-sm btn-inv-outline btn-block" href="agents.html">Open Agent Hub</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- Recommendations -->
+<section class="section section-paper2">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <div>
+        <div class="eyebrow eyebrow-dot">Pairs well</div>
+        <h2 class="h2" style="margin-top:10px">Complete the set</h2>
+      </div>
+      <a class="link-u small" href="explore.html">Browse everything <i data-ic="arrowRight" data-s="14"></i></a>
+    </div>
+    <div class="grid g-5 rv" data-d=".05" id="recGrid"></div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const CART = [
+    { seed: "Signal Decay", title: "Signal Decay", creator: "kaisu", adapter: "tshirt",
+      form: "Unisex heavyweight", variants: [["Size", "M"], ["Colour", "Bone"]],
+      unit: 3200, qty: 1, factory: "Shenzhen Print Lab" },
+    { seed: "Meridian 04", title: "Meridian 04", creator: "lenaost", adapter: "poster",
+      form: "50 × 70 cm", variants: [["Paper", "200 gsm matte"], ["Frame", "None"]],
+      unit: 2800, qty: 1, factory: "Berlin Giclée Studio" },
+    { seed: "Prism Ritual", title: "Prism Ritual", creator: "amaraok", adapter: "sticker",
+      form: "Pack of 6", variants: [["Finish", "Gloss"], ["Cut", "Die cut"]],
+      unit: 1000, qty: 2, factory: "Austin DTG Works" }
+  ];
+
+  const SAVED = [
+    { seed: "Vessel Study 12", title: "Vessel Study 12", creator: "elifk", adapter: "print3d", unit: 6800 },
+    { seed: "Nocturne", title: "Nocturne", creator: "yuwen", adapter: "poster", unit: 3200 }
+  ];
+
+  function cartRow(it) {
+    const c = DB.creatorByHandle(it.creator);
+    const ad = DB.adapterById(it.adapter);
+    return '<div class="ci">' +
+      '<a class="ci-media mk" href="listing.html" aria-label="' + it.title + '">' + Art.mockup(ad.mockup, it.seed, {}) + '</a>' +
+      '<div class="stack gap-12" style="min-width:0">' +
+        '<div class="row-top" style="justify-content:space-between">' +
+          '<div style="min-width:0">' +
+            '<a class="ci-title" href="listing.html">' + it.title + '</a>' +
+            '<div class="row gap-10 wrap" style="margin-top:7px">' +
+              '<span class="row gap-6 tiny muted"><span class="av av-xs">' + Art.avatar(c.handle) + '</span>' + c.name + '</span>' +
+              '<span class="tag-inline">·</span>' +
+              '<span class="tiny muted">' + ad.name + ' · ' + it.form + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<button class="ci-x" aria-label="Remove item"><i data-ic="x" data-s="15"></i></button>' +
+        '</div>' +
+        '<div class="row gap-8 wrap">' +
+          it.variants.map(function (v) { return '<span class="vpill">' + v[0] + ' <b>' + v[1] + '</b></span>'; }).join("") +
+          '<span class="vpill">' + ad.method + '</span>' +
+        '</div>' +
+        '<div class="row gap-8 tiny faint wrap">' +
+          '<i data-ic="factory" data-s="13"></i><span>' + it.factory + '</span>' +
+          '<span class="tag-inline">·</span>' +
+          '<i data-ic="clock" data-s="13"></i><span>Ships in ' + ad.lead + ' business days</span>' +
+        '</div>' +
+        '<div class="row-between wrap gap-16" style="margin-top:2px">' +
+          '<div class="row gap-14">' +
+            '<div class="qty">' +
+              '<button aria-label="Decrease"><i data-ic="minus" data-s="14"></i></button>' +
+              '<input type="number" value="' + it.qty + '" min="1" max="99" aria-label="Quantity"/>' +
+              '<button aria-label="Increase"><i data-ic="plus" data-s="14"></i></button>' +
+            '</div>' +
+            '<span class="tiny faint tnum">' + DB.money(it.unit) + ' each</span>' +
+          '</div>' +
+          '<div class="row gap-16">' +
+            '<button class="link-u tiny faint hide-sm" style="border-color:transparent">Move to saved</button>' +
+            '<span class="h4 tnum">' + DB.money(it.unit * it.qty) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function savedRow(it) {
+    const c = DB.creatorByHandle(it.creator);
+    const ad = DB.adapterById(it.adapter);
+    return '<div class="saved">' +
+      '<div class="saved-media mk">' + Art.mockup(ad.mockup, it.seed, {}) + '</div>' +
+      '<div class="stack gap-6" style="min-width:0">' +
+        '<div class="small strong" style="letter-spacing:-.014em">' + it.title + '</div>' +
+        '<div class="tiny faint">' + c.name + ' · ' + ad.name + '</div>' +
+        '<div class="row-between" style="margin-top:auto">' +
+          '<span class="small strong tnum">' + DB.money(it.unit) + '</span>' +
+          '<button class="btn btn-xs btn-outline">Move to cart</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  document.getElementById("cartList").innerHTML = CART.map(cartRow).join("");
+  document.getElementById("savedList").innerHTML = SAVED.map(savedRow).join("");
+  document.getElementById("recGrid").innerHTML =
+    [4, 9, 13, 17, 24].map(function (i) { return UI.work(DB.DESIGNS[i], { mockup: true }); }).join("");
+
+  // inflate icon placeholders
+  document.querySelectorAll("[data-ic]").forEach(function (el) {
+    el.outerHTML = UI.icon(el.dataset.ic, parseInt(el.dataset.s, 10) || 16);
+  });
+
+  // quantity stepper
+  document.addEventListener("click", function (e) {
+    const b = e.target.closest(".qty button");
+    if (!b) return;
+    const box = b.closest(".qty");
+    const input = box.querySelector("input");
+    const dir = b === box.firstElementChild ? -1 : 1;
+    input.value = Math.min(99, Math.max(1, (parseInt(input.value, 10) || 1) + dir));
+  });
+
+  UI.mount({ active: "cart.html" });
+})();
+</script>
+</body>
+</html>

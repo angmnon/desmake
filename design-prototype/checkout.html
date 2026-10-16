@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .co-grid { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: clamp(24px, 3.2vw, 56px); align-items: start; }
+
+  .mk { position: relative; overflow: hidden; background: var(--paper-2); }
+  .mk svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .stepbar { padding: 16px 24px; border: 1px solid var(--line); border-radius: var(--r-full); background: var(--surface); box-shadow: var(--sh-1); }
+
+  .fgrid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+  .c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; }
+  .c6 { grid-column: span 6; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; } .c12 { grid-column: span 12; }
+
+  .stepno {
+    width: 30px; height: 30px; border-radius: 50%; flex: none;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: .6875rem; font-weight: 600;
+    background: var(--ink); color: var(--paper);
+  }
+  .stepno.done { background: var(--moss); }
+
+  .card-num { position: relative; }
+  .card-num .brands { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; }
+  .brand-chip { height: 20px; padding: 0 6px; border-radius: 3px; display: grid; place-items: center; font-family: var(--mono); font-size: .5625rem; letter-spacing: .04em; background: rgba(12,12,13,.06); color: var(--tx-3); }
+  .brand-chip.on { background: var(--ink); color: var(--paper); }
+
+  .addr-box { border: 1px dashed var(--line-2); border-radius: var(--r-md); padding: 16px 18px; background: rgba(12,12,13,.014); }
+
+  .sum { position: sticky; top: calc(var(--nav-h) + 22px); }
+  .sum-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: .875rem; padding: 7px 0; }
+  .sum-row .k { color: var(--tx-2); }
+  .sum-row .v { font-variant-numeric: tabular-nums; font-weight: 550; }
+  .mini { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .mini:last-child { border-bottom: 0; }
+  .mini-media { width: 52px; aspect-ratio: 4/5; border-radius: var(--r-xs); box-shadow: var(--sh-1); position: relative; }
+  .mini-qty { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--r-full); background: var(--ink); color: var(--paper); font-family: var(--mono); font-size: .5625rem; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--surface); }
+
+  .secure-strip { display: flex; align-items: center; gap: 10px; padding: 11px 15px; border-radius: var(--r-md); background: rgba(12,12,13,.04); font-size: .75rem; color: var(--tx-2); }
+  .paylogo { height: 26px; padding: 0 9px; border-radius: 5px; border: 1px solid var(--line); display: inline-grid; place-items: center; font-family: var(--mono); font-size: .625rem; letter-spacing: .06em; color: var(--tx-3); background: var(--surface); }
+
+  @media (max-width: 1080px) { .co-grid { grid-template-columns: minmax(0, 1fr); } .sum { position: static; } }
+  @media (max-width: 700px) { .c3, .c4, .c5, .c6, .c7, .c8 { grid-column: span 12; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<section class="section-sm" style="padding-bottom:0">
+  <div class="container-wide">
+    <nav class="crumb rv in" style="margin-bottom:24px">
+      <a href="index.html">Home</a><span>/</span><a href="cart.html">Cart</a><span>/</span><span style="color:var(--tx)">Checkout</span>
+    </nav>
+
+    <div class="row-between wrap rv in" style="align-items:flex-end;margin-bottom:26px">
+      <div>
+        <div class="eyebrow eyebrow-dot">Secure checkout</div>
+        <h1 class="h1" style="margin-top:10px">Checkout</h1>
+      </div>
+      <div class="row gap-10 wrap">
+        <span class="badge badge-moss"><i data-ic="lock" data-s="11"></i> PCI DSS Level 1</span>
+        <span class="badge badge-cobalt">Powered by Stripe</span>
+        <span class="badge badge-outline">Order #DM-4823-0107</span>
+      </div>
+    </div>
+
+    <!-- Stepper -->
+    <div class="stepbar rv in" data-d=".04">
+      <div class="steps">
+        <a class="step is-done" href="#s1"><span class="step-n"><i data-ic="check" data-s="12"></i></span><span class="step-t">Shipping</span></a>
+        <span class="step-line" style="background:var(--moss)"></span>
+        <a class="step is-done" href="#s2"><span class="step-n"><i data-ic="check" data-s="12"></i></span><span class="step-t">Payment</span></a>
+        <span class="step-line" style="background:var(--moss)"></span>
+        <a class="step is-active" href="#s3"><span class="step-n">3</span><span class="step-t">Review</span></a>
+        <span class="step-line"></span>
+        <span class="step"><span class="step-n">4</span><span class="step-t">Confirm</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-sm" style="padding-top:26px">
+  <div class="container-wide co-grid">
+
+    <!-- ============ LEFT: flow ============ -->
+    <div class="stack gap-20">
+
+      <!-- ---------- STEP 1 — SHIPPING ---------- -->
+      <div class="panel rv in" id="s1">
+        <div class="panel-h">
+          <span class="row gap-12">
+            <span class="stepno done"><i data-ic="check" data-s="14"></i></span>
+            <span class="stack gap-2">
+              <span class="h4">Shipping details</span>
+              <span class="tiny faint">Where your order gets manufactured to</span>
+            </span>
+          </span>
+          <span class="badge badge-moss">Complete</span>
+        </div>
+        <div class="panel-b">
+          <div class="fgrid">
+            <div class="field c8">
+              <label class="label" for="email">Email address</label>
+              <div class="input-wrap">
+                <span class="ic"><i data-ic="message" data-s="15"></i></span>
+                <input class="input" id="email" type="email" value="mira.holt@studio.co" placeholder="you@studio.com"/>
+              </div>
+              <span class="hint">Order confirmation and factory updates are sent here.</span>
+            </div>
+            <div class="field c4">
+              <label class="label" for="country">Country / Region</label>
+              <select class="select" id="country">
+                <option>United States</option><option>United Kingdom</option><option>Germany</option>
+                <option>Japan</option><option>Netherlands</option><option>Australia</option><option>Canada</option>
+              </select>
+              <span class="hint">Determines factory routing.</span>
+            </div>
+
+            <div class="c12"><div class="hr" style="margin:4px 0"></div></div>
+
+            <div class="field c6">
+              <label class="label" for="fname">Full name</label>
+              <input class="input" id="fname" value="Mira Holt" placeholder="First and last name"/>
+            </div>
+            <div class="field c6">
+              <label class="label" for="phone">Phone</label>
+              <input class="input" id="phone" type="tel" value="+1 (415) 220-8841" placeholder="For delivery updates"/>
+            </div>
+            <div class="field c12">
+              <label class="label" for="addr1">Address line 1</label>
+              <input class="input" id="addr1" value="1841 Bryant Street" placeholder="Street address"/>
+            </div>
+            <div class="field c12">
+              <label class="label" for="addr2">Address line 2 <span class="faint" style="font-weight:400">— optional</span></label>
+              <input class="input" id="addr2" value="Studio 4B" placeholder="Apartment, suite, unit"/>
+            </div>
+            <div class="field c5">
+              <label class="label" for="city">City</label>
+              <input class="input" id="city" value="San Francisco"/>
+            </div>
+            <div class="field c4">
+              <label class="label" for="state">State / Province</label>
+              <select class="select" id="state">
+                <option>California</option><option>New York</option><option>Texas</option><option>Washington</option><option>Illinois</option>
+              </select>
+            </div>
+            <div class="field c3">
+              <label class="label" for="zip">ZIP / Postal</label>
+              <input class="input tnum" id="zip" value="94110"/>
+            </div>
+
+            <div class="c12">
+              <label class="row gap-12" style="cursor:pointer;padding:14px 0 2px">
+                <span class="switch is-on"></span>
+                <span class="stack gap-2">
+                  <span class="small strong">Billing address same as shipping</span>
+                  <span class="tiny faint">Turn off to enter a separate billing address for your invoice.</span>
+                </span>
+              </label>
+              <label class="row gap-12" style="cursor:pointer;padding:10px 0 0">
+                <span class="check is-on"></span>
+                <span class="small">Save this address to my account</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="hr" style="margin:22px 0 18px"></div>
+
+          <div class="label" style="margin-bottom:10px">Delivery speed</div>
+          <div class="stack gap-10" data-optgroup="single">
+            <label class="opt is-on">
+              <span class="check radio is-on"></span>
+              <span class="stack gap-3" style="flex:1;min-width:0">
+                <span class="row-between"><span class="small strong">Standard — on-demand production</span><span class="small strong" style="color:var(--moss)">Free</span></span>
+                <span class="tiny faint">Arrives Aug 4 – Aug 6 · manufactured at the nearest partner factory</span>
+              </span>
+            </label>
+            <label class="opt">
+              <span class="check radio"></span>
+              <span class="stack gap-3" style="flex:1;min-width:0">
+                <span class="row-between"><span class="small strong">Express</span><span class="small strong tnum">$12.00</span></span>
+                <span class="tiny faint">Arrives Aug 1 – Aug 2 · priority queue at the factory + expedited freight</span>
+              </span>
+            </label>
+            <label class="opt">
+              <span class="check radio"></span>
+              <span class="stack gap-3" style="flex:1;min-width:0">
+                <span class="row-between"><span class="small strong">Carbon-neutral ground</span><span class="small strong tnum">$4.00</span></span>
+                <span class="tiny faint">Arrives Aug 6 – Aug 9 · offset freight, recycled packaging</span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="panel-f">
+          <div class="row-between wrap gap-12">
+            <span class="row gap-8 tiny muted"><i data-ic="pin" data-s="14"></i> Routing to <b style="color:var(--tx)">Austin DTG Works</b> · 1,240 mi closer than default</span>
+            <button class="btn btn-sm btn-outline">Edit shipping</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- STEP 2 — PAYMENT ---------- -->
+      <div class="panel rv" data-d=".04" id="s2">
+        <div class="panel-h">
+          <span class="row gap-12">
+            <span class="stepno done"><i data-ic="check" data-s="14"></i></span>
+            <span class="stack gap-2">
+              <span class="h4">Payment method</span>
+              <span class="tiny faint">Charged only when the factory accepts the job</span>
+            </span>
+          </span>
+          <span class="row gap-8">
+            <span class="badge badge-cobalt"><i data-ic="lock" data-s="10"></i> Stripe</span>
+          </span>
+        </div>
+        <div class="panel-b">
+
+          <div class="label" style="margin-bottom:10px">Saved methods</div>
+          <div class="stack gap-10" data-optgroup="single" style="margin-bottom:20px">
+            <label class="opt is-on">
+              <span class="check radio is-on"></span>
+              <span class="row" style="flex:1;min-width:0;gap:12px">
+                <span class="brand-chip on" style="height:24px;font-size:.625rem">VISA</span>
+                <span class="stack gap-2" style="min-width:0">
+                  <span class="small strong tnum">•••• •••• •••• 4242</span>
+                  <span class="tiny faint">Mira Holt · expires 09 / 28</span>
+                </span>
+                <span class="badge badge-outline ml-auto">Default</span>
+              </span>
+            </label>
+            <label class="opt">
+              <span class="check radio"></span>
+              <span class="row" style="flex:1;min-width:0;gap:12px">
+                <span class="brand-chip" style="height:24px;font-size:.625rem">MC</span>
+                <span class="stack gap-2" style="min-width:0">
+                  <span class="small strong tnum">•••• •••• •••• 8891</span>
+                  <span class="tiny faint">Holt Studio LLC · expires 03 / 27</span>
+                </span>
+              </span>
+            </label>
+            <label class="opt">
+              <span class="check radio"></span>
+              <span class="row" style="flex:1;min-width:0;gap:12px">
+                <span class="brand-chip" style="height:24px;font-size:.625rem">PAY</span>
+                <span class="stack gap-2" style="min-width:0">
+                  <span class="small strong">Apple Pay</span>
+                  <span class="tiny faint">Authenticate with Touch ID at confirmation</span>
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div class="hr" style="margin:20px 0"></div>
+
+          <div class="row-between" style="margin-bottom:14px">
+            <span class="label">Or add a new card</span>
+            <span class="row gap-5">
+              <span class="brand-chip on">VISA</span><span class="brand-chip">MC</span><span class="brand-chip">AMEX</span><span class="brand-chip">DISC</span>
+            </span>
+          </div>
+
+          <div class="fgrid">
+            <div class="field c12">
+              <label class="label" for="cnum">Card number</label>
+              <div class="card-num">
+                <input class="input tnum" id="cnum" inputmode="numeric" placeholder="4242 4242 4242 4242" value="4242 4242 4242 4242"/>
+                <span class="brands"><span class="brand-chip on">VISA</span></span>
+              </div>
+            </div>
+            <div class="field c4">
+              <label class="label" for="exp">Expiry</label>
+              <input class="input tnum" id="exp" placeholder="MM / YY" value="09 / 28"/>
+            </div>
+            <div class="field c4">
+              <label class="label" for="cvc">CVC</label>
+              <div class="input-wrap">
+                <input class="input tnum" id="cvc" placeholder="123" value="•••"/>
+                <span class="suffix"><i data-ic="help" data-s="14" style="color:var(--tx-3)"></i></span>
+              </div>
+            </div>
+            <div class="field c4">
+              <label class="label" for="zipc">Billing ZIP</label>
+              <input class="input tnum" id="zipc" value="94110"/>
+            </div>
+            <div class="field c12">
+              <label class="label" for="cname">Cardholder name</label>
+              <input class="input" id="cname" value="Mira Holt" placeholder="Name as printed on card"/>
+            </div>
+          </div>
+
+          <label class="row gap-12" style="cursor:pointer;margin-top:16px">
+            <span class="check is-on"></span>
+            <span class="small">Securely save this card for faster checkout and agent-placed orders</span>
+          </label>
+
+          <div class="secure-strip" style="margin-top:18px">
+            <i data-ic="shield" data-s="16" style="color:var(--moss);flex:none"></i>
+            <span>Card data is tokenised in the browser and sent directly to Stripe. Desmake stores only the last four digits and a token reference.</span>
+          </div>
+        </div>
+        <div class="panel-f">
+          <div class="row gap-6 wrap">
+            <span class="paylogo">STRIPE</span><span class="paylogo">3D SECURE</span><span class="paylogo">PCI DSS</span>
+            <span class="paylogo">SCA READY</span><span class="paylogo">TLS 1.3</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- STEP 3 — REVIEW ---------- -->
+      <div class="panel rv" data-d=".04" id="s3" style="border-color:var(--line-2);box-shadow:var(--sh-2)">
+        <div class="panel-h">
+          <span class="row gap-12">
+            <span class="stepno">3</span>
+            <span class="stack gap-2">
+              <span class="h4">Review &amp; place order</span>
+              <span class="tiny faint">Last stop before the factory queue</span>
+            </span>
+          </span>
+          <span class="badge badge-signal">Action required</span>
+        </div>
+        <div class="panel-b">
+
+          <div class="eyebrow" style="margin-bottom:12px">Items · 3 designs, 4 units</div>
+          <div id="reviewItems"></div>
+
+          <div class="hr" style="margin:20px 0"></div>
+
+          <div class="grid g-2" style="gap:16px">
+            <div class="addr-box">
+              <div class="row-between" style="margin-bottom:10px">
+                <span class="eyebrow">Ship to</span>
+                <button class="link-u tiny" style="border-color:transparent"><i data-ic="edit" data-s="12"></i> Edit</button>
+              </div>
+              <div class="small strong">Mira Holt</div>
+              <div class="small muted" style="line-height:1.55">1841 Bryant Street, Studio 4B<br>San Francisco, CA 94110<br>United States</div>
+              <div class="tiny faint" style="margin-top:8px">+1 (415) 220-8841 · mira.holt@studio.co</div>
+            </div>
+            <div class="addr-box">
+              <div class="row-between" style="margin-bottom:10px">
+                <span class="eyebrow">Pay with</span>
+                <button class="link-u tiny" style="border-color:transparent"><i data-ic="edit" data-s="12"></i> Change</button>
+              </div>
+              <div class="row gap-10" style="margin-bottom:8px">
+                <span class="brand-chip on" style="height:24px;font-size:.625rem">VISA</span>
+                <span class="small strong tnum">•••• 4242</span>
+              </div>
+              <div class="small muted">Mira Holt · expires 09 / 28</div>
+              <div class="tiny faint" style="margin-top:8px">Billing address same as shipping</div>
+            </div>
+          </div>
+
+          <div class="note note-moss" style="margin-top:16px">
+            <i data-ic="truck" data-s="16" style="flex:none;margin-top:1px"></i>
+            <span><b>Standard delivery, free.</b> Estimated arrival <b>Aug 4 – Aug 6</b>. Items ship from 3 partner factories and may arrive in separate parcels.</span>
+          </div>
+
+          <div class="hr" style="margin:20px 0"></div>
+
+          <div class="stack gap-12">
+            <label class="row-top gap-12" style="cursor:pointer">
+              <span class="check is-on"></span>
+              <span class="small muted">I agree to the <a class="link-u" href="#">Terms of Sale</a>, the <a class="link-u" href="#">Print-on-Demand Policy</a> and confirm that my order is manufactured specifically for me and is not eligible for return unless defective.</span>
+            </label>
+            <label class="row-top gap-12" style="cursor:pointer">
+              <span class="check"></span>
+              <span class="small muted">Send me production updates and new drops from the creators I bought from.</span>
+            </label>
+          </div>
+
+          <button class="btn btn-lg btn-signal btn-block" style="margin-top:22px;height:56px;font-size:1rem">
+            <i data-ic="lock" data-s="16"></i> Place order — $86.40
+          </button>
+
+          <div class="row gap-16 wrap" style="justify-content:center;margin-top:14px">
+            <span class="row gap-6 tiny faint"><i data-ic="shield" data-s="13"></i> Buyer protection</span>
+            <span class="row gap-6 tiny faint"><i data-ic="refresh" data-s="13"></i> 14-day reprint guarantee</span>
+            <span class="row gap-6 tiny faint"><i data-ic="lock" data-s="13"></i> 256-bit encryption</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="row gap-10 rv" data-d=".05" style="justify-content:space-between;flex-wrap:wrap">
+        <a class="link-u small" href="cart.html"><i data-ic="arrowLeft" data-s="14"></i> Back to cart</a>
+        <span class="tiny faint">Need help? <a class="link-u" href="#">Talk to a human</a> · Avg. reply 8 min</span>
+      </div>
+    </div>
+
+    <!-- ============ RIGHT: summary ============ -->
+    <aside class="sum stack gap-16 rv in" data-d=".06">
+      <div class="panel">
+        <div class="panel-h">
+          <span class="h4">Order summary</span>
+          <a class="link-u tiny" href="cart.html">Edit</a>
+        </div>
+        <div class="panel-b">
+          <div id="miniItems"></div>
+
+          <div class="hr" style="margin:14px 0"></div>
+
+          <div class="sum-row"><span class="k">Subtotal</span><span class="v tnum">$80.00</span></div>
+          <div class="sum-row"><span class="k">Shipping <span class="tiny faint">Standard</span></span><span class="v" style="color:var(--moss)">Free</span></div>
+          <div class="sum-row"><span class="k">Sales tax <span class="tiny faint">CA 8.0%</span></span><span class="v tnum">$6.40</span></div>
+          <div class="sum-row"><span class="k">Promo <span class="badge badge-moss" style="margin-left:4px">MAKE10</span></span><span class="v tnum" style="color:var(--moss)">−$0.00</span></div>
+
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-top:16px;margin-top:12px;border-top:1px solid var(--line)">
+            <div class="stack gap-2">
+              <span class="h4">Total due</span>
+              <span class="tiny faint">USD · charged today</span>
+            </div>
+            <span class="h2 tnum" style="letter-spacing:-.04em">$86.40</span>
+          </div>
+        </div>
+        <div class="panel-f">
+          <div class="row gap-8">
+            <i data-ic="dollar" data-s="14" style="color:var(--tx-3)"></i>
+            <span class="tiny muted"><b style="color:var(--tx)">$24.00</b> of this order goes to creators as royalties.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="h5">What happens next</span><span class="tiny faint mono">4 steps</span></div>
+        <div class="panel-b">
+          <div class="tl">
+            <div class="tl-item is-now">
+              <div class="small strong">Payment authorised</div>
+              <div class="tiny faint">Funds held, not captured until the factory accepts.</div>
+            </div>
+            <div class="tl-item">
+              <div class="small strong">Job routed to factory</div>
+              <div class="tiny faint">Within ~4 hours, based on your location and material.</div>
+            </div>
+            <div class="tl-item">
+              <div class="small strong">Production &amp; quality check</div>
+              <div class="tiny faint">Photo QC before anything is packed.</div>
+            </div>
+            <div class="tl-item">
+              <div class="small strong">Shipped with tracking</div>
+              <div class="tiny faint">Live tracking in your order detail page.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-ink grain" style="padding:20px;overflow:hidden">
+        <div class="row gap-10" style="margin-bottom:10px">
+          <i data-ic="shield" data-s="16" style="color:var(--signal)"></i>
+          <span class="h5">Desmake guarantee</span>
+        </div>
+        <p class="tiny" style="color:var(--tx-inv-2)">If a print arrives damaged, off-colour or late, we reprint and reship it free — no photo evidence marathon, no restocking fee.</p>
+        <div class="hr-ink" style="margin:14px 0"></div>
+        <div class="row gap-6 wrap">
+          <span class="paylogo" style="background:transparent;border-color:var(--line-inv);color:var(--tx-inv-3)">VISA</span>
+          <span class="paylogo" style="background:transparent;border-color:var(--line-inv);color:var(--tx-inv-3)">MC</span>
+          <span class="paylogo" style="background:transparent;border-color:var(--line-inv);color:var(--tx-inv-3)">AMEX</span>
+          <span class="paylogo" style="background:transparent;border-color:var(--line-inv);color:var(--tx-inv-3)">APPLE PAY</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const CART = [
+    { seed: "Signal Decay", title: "Signal Decay", creator: "kaisu", adapter: "tshirt", variant: "T-Shirt · M · Bone", unit: 3200, qty: 1 },
+    { seed: "Meridian 04", title: "Meridian 04", creator: "lenaost", adapter: "poster", variant: "Poster · 50 × 70 cm", unit: 2800, qty: 1 },
+    { seed: "Prism Ritual", title: "Prism Ritual", creator: "amaraok", adapter: "sticker", variant: "Sticker Pack · Gloss", unit: 1000, qty: 2 }
+  ];
+
+  document.getElementById("reviewItems").innerHTML = CART.map(function (it) {
+    const c = DB.creatorByHandle(it.creator);
+    const ad = DB.adapterById(it.adapter);
+    return '<div class="mini">' +
+      '<div class="mini-media mk">' + Art.mockup(ad.mockup, it.seed, {}) + '<span class="mini-qty">×' + it.qty + '</span></div>' +
+      '<div class="stack gap-3" style="min-width:0">' +
+        '<span class="small strong">' + it.title + '</span>' +
+        '<span class="tiny faint">' + it.variant + '</span>' +
+        '<span class="tiny faint">by ' + c.name + ' · ' + ad.method + ' · ' + ad.lead + ' days</span>' +
+      '</div>' +
+      '<span class="small strong tnum">' + DB.money(it.unit * it.qty) + '</span>' +
+    '</div>';
+  }).join("");
+
+  document.getElementById("miniItems").innerHTML = CART.map(function (it) {
+    const ad = DB.adapterById(it.adapter);
+    return '<div class="mini">' +
+      '<div class="mini-media mk">' + Art.mockup(ad.mockup, it.seed, {}) + '<span class="mini-qty">×' + it.qty + '</span></div>' +
+      '<div class="stack gap-2" style="min-width:0">' +
+        '<span class="small strong">' + it.title + '</span>' +
+        '<span class="tiny faint">' + it.variant + '</span>' +
+      '</div>' +
+      '<span class="small tnum">' + DB.money(it.unit * it.qty) + '</span>' +
+    '</div>';
+  }).join("");
+
+  document.querySelectorAll("[data-ic]").forEach(function (el) {
+    el.outerHTML = UI.icon(el.dataset.ic, parseInt(el.dataset.s, 10) || 16);
+  });
+
+  UI.mount({ active: "checkout.html" });
+})();
+</script>
+</body>
+</html>

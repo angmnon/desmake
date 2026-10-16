@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Hub — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .ah-hero { padding: clamp(40px,5vw,64px) 0 32px; }
+  .ah-grid { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,.85fr); gap: clamp(24px,3.5vw,48px); align-items: start; }
+  .agent-card { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; transition: all .35s var(--e); }
+  .agent-card:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+  .ac-head { padding: 20px 22px; border-bottom: 1px solid var(--line); }
+  .ac-body { padding: 18px 22px; }
+  .scope-card { border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; margin-bottom: 10px; transition: all .25s var(--e); }
+  .scope-card:hover { border-color: var(--line-2); }
+  .log-row { display: flex; align-items: center; gap: 14px; padding: 11px 16px; font-size: .8125rem; border-bottom: 1px solid var(--line); transition: background .2s; }
+  .log-row:hover { background: rgba(12,12,13,.02); }
+  .log-row:last-child { border-bottom: 0; }
+  .log-status { width: 48px; text-align: center; font-family: var(--mono); font-size: .6875rem; font-weight: 600; flex: none; }
+  .log-200 { color: var(--moss); } .log-201 { color: var(--cobalt); } .log-202 { color: var(--amber); } .log-403 { color: var(--signal); }
+  .playground { position: relative; border-radius: var(--r-lg); overflow: hidden; }
+  .pg-input { width: 100%; height: 52px; padding: 0 56px 0 18px; border-radius: var(--r-md) 0 0 var(--r-md); border: none; font-size: .875rem; outline: none; background: #0a0a0b; color: rgba(247,246,243,.85); }
+  .pg-send { position: absolute; right: 6px; top: 6px; width: 40px; height: 40px; border-radius: var(--r-sm); background: var(--signal); color: #fff; display: grid; place-items: center; cursor: pointer; }
+  .pg-output { max-height: 260px; overflow-y: auto; padding: 16px 18px; font-size: .78rem; line-height: 1.7; color: rgba(247,246,243,.7); white-space: pre-wrap; word-break: break-word; }
+  @media (max-width: 960px) { .ah-grid { grid-template-columns: minmax(0,1fr); } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<section class="section-sm ah-hero">
+  <div class="container-wide">
+    <nav class="crumb rv in" style="margin-bottom:26px"><a href="index.html">Home</a> <span class="crumb">/</span> <span style="color:var(--tx)">Agent Hub</span></nav>
+
+    <div class="rv in">
+      <div class="eyebrow eyebrow-dot">Agent access center</div>
+      <h1 class="display balance">Connect your agents<br>to the factory floor.</h1>
+      <p class="lead pretty" style="margin-top:18px;max-width:54ch">Give your AI agents, workflows and tools scoped access to Desmake's marketplace, design engine and manufacturing network. Every action is metered, logged and auditable.</p>
+      <div class="row gap-12 wrap" style="margin-top:28px">
+        <a class="btn btn-lg btn-signal"><span id="ahNew"></span> New agent</a>
+        <a class="btn btn-lg btn-outline"><span id="ahDocs"></span> View docs</a>
+        <a class="btn btn-lg btn-outline"><span id="ahSdk"></span> TypeScript SDK</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Connected agents -->
+<section class="section-sm">
+  <div class="container-wide">
+    <div class="sec-head rv">
+      <h2 class="h2">Connected agents</h2>
+      <div class="seg"><button class="is-active">All</button><button>Active</button><button>Paused</button></div>
+    </div>
+    <div class="grid g-2" id="agentGrid"></div>
+  </div>
+</section>
+
+<!-- Dashboard split -->
+<section class="section section-paper2">
+  <div class="container-wide ah-grid">
+    <!-- Left: scopes + keys -->
+    <div class="stack gap-24">
+      <!-- Scopes -->
+      <div class="panel rv">
+        <div class="panel-h">
+          <span class="h4">Permission scopes</span>
+          <span class="tiny faint">What your agents can do</span>
+        </div>
+        <div class="panel-b" id="scopeList"></div>
+      </div>
+
+      <!-- API Keys -->
+      <div class="panel rv">
+        <div class="panel-h row-between">
+          <span class="h4">API keys</span>
+          <a class="btn btn-xs btn-outline"><span data-ic="key" data-s="13"></span> Create key</a>
+        </div>
+        <div class="panel-b">
+          <table class="tbl">
+            <thead><tr><th>Name</th><th>Key (masked)</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+            <tbody id="keysBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Usage stats -->
+      <div class="grid g-3 rv">
+        <div class="card"><div class="stat"><div class="stat-v">21,455</div><div class="stat-k">Total calls this month</div></div></div>
+        <div class="card"><div class="stat"><div class="stat-v">$0.00</div><div class="stat-k">API cost (free tier)</div></div></div>
+        <div class="card"><div class="stat"><div class="stat-v">99.97%</div><div class="stat-k">Uptime SLA</div></div></div>
+      </div>
+    </div>
+
+    <!-- Right: activity log + playground -->
+    <div class="stack gap-24">
+      <!-- Live log -->
+      <div class="panel rv">
+        <div class="panel-h row-between">
+          <span class="row gap-8"><span class="h4">Activity log</span><i class="dot dot-live"></i></span>
+          <span class="tiny mono faint">Last 7 days</span>
+        </div>
+        <div id="logList"></div>
+      </div>
+
+      <!-- Playground -->
+      <div class="panel rv">
+        <div class="panel-h">
+          <span class="h4">Playground</span>
+          <span class="tiny faint">Test an API call</span>
+        </div>
+        <div class="playground terminal">
+          <div style="position:relative">
+            <input class="pg-input" placeholder='Try: catalog.search("minimal poster")' value='catalog.search("minimal poster")'/>
+            <button class="pg-send"><span data-ic="arrowRight" data-s="16"></span></button>
+          </div>
+          <div class="pg-output" id="pgOut">{ "success": true, "data": {
+  "results": [
+    { "id": "dsg_1042", "title": "Signal Decay",
+      "creator": "kaisu", "priceCents": 3200,
+      "adapters": ["poster","tshirt","sticker"] },
+    { "id": "dsg_1057", "title": "Nocturne",
+      "creator": "yuwen", "priceCents": 2800,
+      "adapters": ["poster","card","tshirt"] },
+    { "id": "dsg_1069", "title": "Contour Map 09",
+      "creator": "kaisu", "priceCents": 4200,
+      "adapters": ["poster","card","tshirt"] },
+    { "id": "dsg_1073", "title": "Salt Flats",
+      "creator": "lenaost", "priceCents": 4200,
+      "adapters": ["poster","card"] }
+  ],
+  "pagination": { "page": 1, "pageSize": 12, "total": 84 }
+}}</div>
+        </div>
+      </div>
+
+      <!-- Code snippets -->
+      <div class="panel rv">
+        <div class="panel-h">
+          <span class="h4">Quick start</span>
+        </div>
+        <div class="tabs" data-tabs="snip" style="padding:0 20px;border-bottom:none;margin-bottom:16px">
+          <button class="tab is-active" data-tab="ts">TypeScript</button>
+          <button class="tab" data-tab="py">Python</button>
+          <button class="tab" data-tab="curl">cURL</button>
+        </div>
+        <div data-panels="snip">
+          <div data-panel="ts"><div class="terminal"><div class="terminal-b"><pre style="margin:0;font-size:.72rem;line-height:1.75"><span class="k">import</span> { DesmakeClient } <span class="k">from</span> <span class="s">'@desmake/sdk'</span>;
+
+<span class="k">const</span> client = <span class="k">new</span> DesmakeClient({
+  apiKey: process.env.DESMAKE_API_KEY
+});
+
+<span class="c">// Search the catalogue</span>
+<span class="k">const</span> results = <span class="k">await</span> client.catalog.search({
+  q: <span class="s">'minimal poster'</span>,
+  limit: <span class="n">12</span>,
+  adapters: [<span class="s">'poster'</span>, <span class="s">'tshirt'</span>]
+});
+
+<span class="c">// Generate a new design via AI</span>
+<span class="k">const</span> design = <span class="k">await</span> client.design.generate({
+  prompt: <span class="s">'brutalist geometric poster in ember palette'</span>,
+  style: <span class="s">'abstract'</span>
+});
+
+<span class="c">// Publish it through D2M engine</span>
+<span class="k">const</span> listing = <span class="k">await</span> client.design.publish({
+  designId: design.id,
+  adapters: [<span class="s">'poster'</span>, <span class="s">'tshirt'</span>, <span class="s">'sticker'</span>]
+});</pre></div></div></div>
+          <div data-panel="py" class="hide"><div class="terminal"><div class="terminal-b"><pre style="margin:0;font-size:.72rem;line-height:1.75"><span class="k">from</span> desmake <span class="k">import</span> DesmakeClient
+
+client = DesmakeClient(api_key=os.environ[<span class="s">"DESMAKE_API_KEY"</span>])
+
+<span class="c"># Search the catalogue</span>
+results = client.catalog.search(
+    q=<span class="s">"minimal poster"</span>,
+    limit=<span class="n">12</span>,
+    adapters=[<span class="s">"poster"</span>, <span class="s">"tshirt"</span>]
+)
+
+<span class="c"># Generate a new design via AI</span>
+design = client.design.generate(
+    prompt=<span class="s">"brutalist geometric poster in ember palette"</span>,
+    style=<span class="s">"abstract"</span>
+)
+
+<span class="c"># Publish it through D2M engine</span>
+listing = client.design.publish(
+    design_id=design.id,
+    adapters=[<span class="s">"poster"</span>, <span class="s">"tshirt"</span>, <span class="s">"sticker"</span>]
+)</pre></div></div></div>
+          <div data-panel="curl" class="hide"><div class="terminal"><div class="terminal-b"><pre style="margin:0;font-size:.72rem;line-height:1.75"><span class="c"># Search the catalogue</span>
+curl -X GET <span class="s">"https://api.desmake.com/v1/catalog/search"</span> \
+  -H <span class="s">"Authorization: Bearer $DESMAKE_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"q":"minimal poster","limit":12}'</span>
+
+<span class="c"># Generate a design</span>
+curl -X POST <span class="s">"https://api.desmake.com/v1/design/generate"</span> \
+  -H <span class="s">"Authorization: Bearer $DESMAKE_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"prompt":"brutalist geometric poster"}'</span>
+
+<span class="c"># Publish to marketplace</span>
+curl -X POST <span class="s">"https://api.desmake.com/v1/design/publish"</span> \
+  -H <span class="s">"Authorization: Bearer $DESMAKE_API_KEY"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{"design_id":"dsg_xxx","adapters":["poster","tshirt"]}'</span></pre></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const I = UI.icon;
+/* Hero buttons */
+document.getElementById("ahNew").outerHTML = I("plus", 15);
+document.getElementById("ahDocs").outerHTML = I("terminal", 15);
+document.getElementById("ahSdk").outerHTML = I("code", 15);
+
+/* Agent cards */
+document.getElementById("agentGrid").innerHTML = DB.AGENTS.map(a => `
+  <div class="agent-card rv" data-tilt>
+    <div class="ac-head row-between">
+      <div class="row gap-12">
+        <div class="av av-lg">${Art.avatar(a.id)}</div>
+        <div>
+          <div class="h4">${a.name}</div>
+          <div class="tiny faint">${a.vendor} · ${a.type}</div>
+        </div>
+      </div>
+      <span class="badge ${a.status==='active'?'badge-moss':a.status==='paused'?'badge-amber':'badge-cobalt'}">${a.status}</span>
+    </div>
+    <div class="ac-body">
+      <div class="row gap-8 wrap mb-12">
+        ${a.scopes.map(s => `<span class="chip chip-sm">${s.replace('.',' ')}</span>`).join("")}
+      </div>
+      <div class="row-between small muted">
+        <span>${DB.compact(a.calls)} calls this month</span>
+        <span>${a.lastActive}</span>
+      </div>
+      <div class="hr mt-12"></div>
+      <div class="row-between mt-12">
+        <span class="mono tiny">${a.key}</span>
+        <div class="row gap-8">
+          <button class="btn btn-xs btn-outline">${I("copy", 12)}</button>
+          ${a.status!=='active'?`<button class="btn btn-xs btn-signal">Activate</button>`:`<button class="btn btn-xs btn-outline">${I("settings", 12)}</button>`}
+        </div>
+      </div>
+    </div>
+  </div>
+`).join("");
+
+/* Scopes */
+const riskIcon = r => ({low:I("shield",14),medium:I("alert",14),high:I("lock",14)})[r];
+const riskClass = r => ({low:"badge-moss",medium:"badge-amber",high:"badge-signal"})[r];
+document.getElementById("scopeList").innerHTML = DB.SCOPES.map(s => `
+  <div class="scope-card">
+    <div class="row-between">
+      <div class="row gap-10">
+        <div class="switch${s.on?' is-on':''}"></div>
+        <div>
+          <div class="small strong">${s.name}</div>
+          <div class="tiny faint" style="max-width:36ch">${s.desc}</div>
+        </div>
+      </div>
+      <span class="badge ${riskClass(s.risk)}">${s.risk} risk</span>
+    </div>
+  </div>
+`).join("");
+
+/* Keys */
+document.getElementById("keysBody").innerHTML = DB.AGENTS.filter(a => a.key).map(a => `
+  <tr>
+    <td class="strong">${a.name}</td>
+    <td class="mono tiny">${a.key}</td>
+    <td class="small muted">Jul 2026</td>
+    <td class="small muted">${a.lastActive}</td>
+    <td><button class="btn btn-xs btn-ghost">${I("copy", 12)}</button></td>
+  </tr>
+`).join("");
+
+/* Activity log — rows fade in one by one (visual only) */
+document.getElementById("logList").innerHTML = DB.AGENT_LOG.map(l => `
+  <div class="log-row">
+    <span class="mono tiny faint" style="width:60px;flex:none;text-align:right">${l.t}</span>
+    <span class="small strong" style="min-width:110px">${l.agent}</span>
+    <span class="mono tiny" style="min-width:140px;color:var(--cobalt)">${l.action}</span>
+    <span class="tiny faint" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.detail}</span>
+    <span class="log-status log-${l.status}">${l.status}</span>
+    <span class="mono tiny faint" style="width:44px;text-align:right">${l.ms}ms</span>
+  </div>
+`).join("");
+(function () {
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!("IntersectionObserver" in window)) return;
+  var rows = Array.prototype.slice.call(document.querySelectorAll("#logList .log-row"));
+  if (!rows.length) return;
+  rows.forEach(function (r, i) {
+    r.style.opacity = "0";
+    r.style.transform = "translateX(8px)";
+    r.style.transition = "opacity .45s var(--e), transform .45s var(--e)";
+    setTimeout(function () { r.style.opacity = "1"; r.style.transform = "none"; }, 120 + i * 90);
+  });
+})();
+
+document.querySelectorAll("[data-ic]").forEach(el => { el.innerHTML = I(el.dataset.ic, +(el.dataset.s || 16)); });
+UI.mount({ active: "agents.html" });
+</script>
+</body>
+</html>

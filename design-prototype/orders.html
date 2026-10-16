@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .mk { position: relative; overflow: hidden; background: var(--paper-2); }
+  .mk svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .ord { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; transition: transform .4s var(--e), box-shadow .4s var(--e), border-color .3s var(--e); }
+  .ord:hover { transform: translateY(-2px); box-shadow: var(--sh-2); border-color: var(--line-2); }
+  .ord-h { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 16px 22px; border-bottom: 1px solid var(--line); }
+  .ord-b { padding: 20px 22px; display: grid; grid-template-columns: auto minmax(0, 1fr) 220px; gap: 24px; align-items: start; }
+  .ord-f { padding: 12px 22px; border-top: 1px solid var(--line); background: rgba(12,12,13,.015); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+
+  .thumbs { display: flex; }
+  .thumb { width: 66px; aspect-ratio: 4/5; border-radius: var(--r-sm); box-shadow: 0 0 0 3px var(--surface), var(--sh-1); margin-left: -14px; position: relative; transition: transform .4s var(--e); }
+  .thumb:first-child { margin-left: 0; }
+  .ord:hover .thumb { transform: translateY(-2px); }
+  .thumb-more { width: 66px; aspect-ratio: 4/5; border-radius: var(--r-sm); margin-left: -14px; display: grid; place-items: center; background: var(--paper-2); box-shadow: 0 0 0 3px var(--surface); font-family: var(--mono); font-size: .75rem; color: var(--tx-3); }
+
+  .meta-k { font-family: var(--mono); font-size: .625rem; text-transform: uppercase; letter-spacing: .12em; color: var(--tx-3); }
+  .meta-v { font-size: .8125rem; font-weight: 500; }
+
+  .track-strip { display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 11px; border-radius: var(--r-sm); background: rgba(12,12,13,.045); font-family: var(--mono); font-size: .6875rem; color: var(--tx-2); }
+  .track-strip:hover { background: rgba(12,12,13,.08); }
+
+  .stat-card { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); padding: 16px 18px; }
+
+  .search { max-width: 300px; }
+  .side-promo { margin-top: 26px; border: 1px solid var(--line); border-radius: var(--r-md); padding: 15px; background: var(--surface); }
+
+  @media (max-width: 1240px) { .ord-b { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 620px) { .ord-b { padding: 16px; } .ord-h { padding: 14px 16px; } .ord-f { padding: 12px 16px; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side">
+    <div class="side-t">Shopping</div>
+    <a class="side-link is-active" href="orders.html"><i data-ic="package" data-s="16"></i> Orders <span class="cnt">5</span></a>
+    <a class="side-link" href="cart.html"><i data-ic="cart" data-s="16"></i> Cart <span class="cnt">3</span></a>
+    <a class="side-link" href="#"><i data-ic="heart" data-s="16"></i> Saved <span class="cnt">12</span></a>
+    <a class="side-link" href="#"><i data-ic="refresh" data-s="16"></i> Returns <span class="cnt">1</span></a>
+
+    <div class="side-t">Account</div>
+    <a class="side-link" href="#"><i data-ic="pin" data-s="16"></i> Addresses</a>
+    <a class="side-link" href="#"><i data-ic="card" data-s="16"></i> Payment methods</a>
+    <a class="side-link" href="account.html"><i data-ic="settings" data-s="16"></i> Settings</a>
+    <a class="side-link" href="notifications.html"><i data-ic="bell" data-s="16"></i> Notifications <span class="cnt">3</span></a>
+
+    <div class="side-t">Support</div>
+    <a class="side-link" href="#"><i data-ic="help" data-s="16"></i> Help center</a>
+    <a class="side-link" href="#"><i data-ic="message" data-s="16"></i> Contact us</a>
+
+    <div class="side-promo">
+      <div class="row gap-8" style="margin-bottom:8px">
+        <i data-ic="sparkles" data-s="15" style="color:var(--signal)"></i>
+        <span class="small strong">Track with an agent</span>
+      </div>
+      <p class="tiny faint" style="margin-bottom:12px">Grant <span class="mono">manufacturing.read</span> and let your assistant watch every job.</p>
+      <a class="btn btn-xs btn-outline btn-block" href="agents.html">Connect</a>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <nav class="crumb rv in" style="margin-bottom:20px">
+      <a href="index.html">Home</a><span>/</span><span style="color:var(--tx)">Orders</span>
+    </nav>
+
+    <div class="page-h rv in">
+      <div>
+        <div class="eyebrow eyebrow-dot">Purchase history</div>
+        <h1 class="h1" style="margin-top:10px">Orders</h1>
+        <p class="body" style="margin-top:8px">Every order, from payment to factory floor to doorstep.</p>
+      </div>
+      <div class="row gap-10 wrap">
+        <div class="input-wrap search">
+          <span class="ic"><i data-ic="search" data-s="15"></i></span>
+          <input class="input input-sm" placeholder="Search order ID, design, factory"/>
+        </div>
+        <button class="btn btn-sm btn-outline"><i data-ic="calendar" data-s="14"></i> Last 90 days</button>
+        <button class="btn btn-sm btn-outline btn-icon" aria-label="Filters"><i data-ic="sliders" data-s="15"></i></button>
+        <button class="btn btn-sm"><i data-ic="download" data-s="14"></i> Export</button>
+      </div>
+    </div>
+
+    <!-- stats -->
+    <div class="grid g-4 rv in" data-d=".04" style="gap:12px;margin-bottom:26px">
+      <div class="stat-card">
+        <div class="stat"><div class="stat-v" style="font-size:1.6rem">24</div><div class="stat-k">Orders all time</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat">
+          <div class="stat-v row gap-8" style="font-size:1.6rem">1 <span class="dot dot-amber" style="width:8px;height:8px"></span></div>
+          <div class="stat-k">In production now</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat"><div class="stat-v" style="font-size:1.6rem">$2,184<span class="faint" style="font-size:1rem">.60</span></div><div class="stat-k">Lifetime spend</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat">
+          <div class="stat-v row gap-8" style="font-size:1.6rem">98% <span class="trend trend-up" style="font-size:.7rem"><i data-ic="trendingUp" data-s="12"></i>+3</span></div>
+          <div class="stat-k">On-time delivery</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- filters -->
+    <div class="tabs rv in" data-d=".06" data-tabs="ordf" style="margin-bottom:8px;overflow-x:auto">
+      <button class="tab is-active" data-tab="all">All <span class="cnt">5</span></button>
+      <button class="tab" data-tab="prod">In production <span class="cnt">1</span></button>
+      <button class="tab" data-tab="ship">Shipped <span class="cnt">1</span></button>
+      <button class="tab" data-tab="deliv">Delivered <span class="cnt">2</span></button>
+      <button class="tab" data-tab="attn">Needs attention <span class="cnt">1</span></button>
+    </div>
+
+    <div class="row-between wrap gap-12" style="padding:14px 0 20px">
+      <div class="row gap-8 wrap" data-chipgroup="multi">
+        <span class="chip chip-sm"><i data-ic="factory" data-s="12"></i> All factories</span>
+        <span class="chip chip-sm"><i data-ic="globe" data-s="12"></i> All regions</span>
+        <span class="chip chip-sm"><i data-ic="box" data-s="12"></i> All product types</span>
+      </div>
+      <div class="row gap-10">
+        <span class="tiny faint">Sort</span>
+        <div class="seg">
+          <button class="is-active">Newest</button><button>Oldest</button><button>Amount</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack gap-16" id="orderList"></div>
+
+    <div class="row" style="justify-content:center;margin-top:32px">
+      <button class="btn btn-outline"><i data-ic="refresh" data-s="14"></i> Load older orders</button>
+    </div>
+
+    <div class="note" style="margin-top:32px">
+      <i data-ic="info" data-s="16" style="flex:none;margin-top:1px"></i>
+      <span>Orders older than 24 months are archived. Invoices remain downloadable from <a class="link-u" href="#">Billing history</a> indefinitely.</span>
+    </div>
+  </main>
+</div>
+
+<div id="app-footer"></div>
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const STEP_INDEX = { paid: 1, in_production: 2, quality_check: 3, shipped: 4, delivered: 5, exception: 2 };
+  const TONE_CLASS = { moss: "badge-moss", amber: "badge-amber", cobalt: "badge-cobalt", violet: "badge-violet", signal: "badge-signal" };
+
+  function stateOf(id) {
+    return DB.ORDER_STATES.find(function (s) { return s.id === id; }) || DB.ORDER_STATES[0];
+  }
+
+  function designSeed(name) {
+    const d = DB.DESIGNS.find(function (x) { return x.title === name; });
+    return d ? d.seed : name;
+  }
+
+  function orderCard(o) {
+    const st = stateOf(o.state);
+    const units = o.items.reduce(function (n, i) { return n + i.qty; }, 0);
+    const pct = Math.round((STEP_INDEX[o.state] / 5) * 100);
+    const isEx = o.state === "exception";
+    const barColor = isEx ? "var(--signal)" : o.state === "delivered" ? "var(--moss)" : "var(--ink)";
+
+    const thumbs = o.items.slice(0, 3).map(function (it) {
+      const ad = DB.adapterById(it.adapter);
+      return '<div class="thumb mk">' + Art.mockup(ad.mockup, designSeed(it.design), {}) + '</div>';
+    }).join("") + (o.items.length > 3 ? '<div class="thumb-more">+' + (o.items.length - 3) + '</div>' : "");
+
+    const lines = o.items.map(function (it) {
+      const ad = DB.adapterById(it.adapter);
+      return '<div class="row gap-8 wrap" style="font-size:.8125rem">' +
+        '<span class="strong">' + it.design + '</span>' +
+        '<span class="faint">·</span><span class="muted">' + ad.name + ' · ' + it.variant + '</span>' +
+        '<span class="mono faint">×' + it.qty + '</span>' +
+      '</div>';
+    }).join("");
+
+    return '<article class="ord rv" data-state="' + o.state + '">' +
+      '<div class="ord-h">' +
+        '<div class="row gap-14 wrap">' +
+          '<a class="mono strong" href="order-detail.html" style="font-size:.8125rem;letter-spacing:.02em">' + o.id + '</a>' +
+          '<span class="badge ' + (TONE_CLASS[st.tone] || "") + '">' +
+            (o.state === "in_production" ? '<i class="dot dot-amber" style="width:5px;height:5px"></i> ' : "") + st.label +
+          '</span>' +
+          '<span class="tiny faint">Placed ' + o.date + '</span>' +
+          '<span class="tiny faint hide-sm">· ' + o.items.length + ' design' + (o.items.length > 1 ? "s" : "") + ', ' + units + ' units</span>' +
+        '</div>' +
+        '<div class="row gap-16">' +
+          '<span class="stack" style="align-items:flex-end">' +
+            '<span class="h4 tnum">' + DB.money(o.totalCents) + '</span>' +
+            '<span class="tiny faint">Paid · Visa •••• 4242</span>' +
+          '</span>' +
+          '<a class="btn btn-sm btn-outline" href="order-detail.html">View details</a>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="ord-b">' +
+        '<a class="thumbs" href="order-detail.html" aria-label="Order items">' + thumbs + '</a>' +
+        '<div class="stack gap-10" style="min-width:0">' +
+          lines +
+          '<div style="margin-top:6px">' +
+            '<div class="row-between" style="margin-bottom:6px">' +
+              '<span class="tiny faint">' + (isEx ? "Held at routing" : st.label) + '</span>' +
+              '<span class="tiny mono faint">' + pct + '%</span>' +
+            '</div>' +
+            '<div class="bar"><i style="width:' + pct + '%;background:' + barColor + '"></i></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="stack gap-12">' +
+          '<div class="stack gap-3"><span class="meta-k">Factory</span><span class="meta-v row gap-6"><i data-ic="factory" data-s="13"></i>' + o.factory + '</span></div>' +
+          '<div class="stack gap-3"><span class="meta-k">' + (o.state === "delivered" ? "Delivered" : "Estimated arrival") + '</span><span class="meta-v ' + (isEx ? "accent" : "") + '">' + o.eta + '</span></div>' +
+          (o.tracking
+            ? '<div class="stack gap-4"><span class="meta-k">Tracking</span><button class="track-strip"><i data-ic="truck" data-s="13"></i>' + o.tracking + '<i data-ic="copy" data-s="12"></i></button></div>'
+            : '<div class="stack gap-3"><span class="meta-k">Tracking</span><span class="tiny faint">Available once shipped</span></div>') +
+        '</div>' +
+      '</div>' +
+
+      '<div class="ord-f">' +
+        '<div class="row gap-8 wrap">' +
+          '<a class="btn btn-xs btn-outline" href="order-detail.html"><i data-ic="activity" data-s="12"></i> Track package</a>' +
+          '<button class="btn btn-xs btn-outline"><i data-ic="refresh" data-s="12"></i> Reorder</button>' +
+          '<button class="btn btn-xs btn-ghost faint"><i data-ic="download" data-s="12"></i> Invoice</button>' +
+          (isEx ? '<button class="btn btn-xs btn-signal"><i data-ic="alert" data-s="12"></i> Resolve issue</button>' : "") +
+          (o.state === "delivered" ? '<button class="btn btn-xs btn-ghost faint"><i data-ic="star" data-s="12"></i> Leave review</button>' : "") +
+        '</div>' +
+        '<span class="tiny faint">' +
+          (isEx ? "Support ticket #SUP-2291 open · replied 2 h ago"
+                : o.state === "delivered" ? "Return window closes 14 days after delivery"
+                : "Updated 12 min ago") +
+        '</span>' +
+      '</div>' +
+    '</article>';
+  }
+
+  document.getElementById("orderList").innerHTML = DB.ORDERS.map(orderCard).join("");
+
+  document.querySelectorAll("[data-ic]").forEach(function (el) {
+    el.outerHTML = UI.icon(el.dataset.ic, parseInt(el.dataset.s, 10) || 16);
+  });
+
+  // filter tabs
+  const MAP = { all: null, prod: "in_production", ship: "shipped", deliv: "delivered", attn: "exception" };
+  document.querySelector('[data-tabs="ordf"]').addEventListener("click", function (e) {
+    const t = e.target.closest("[data-tab]");
+    if (!t) return;
+    const want = MAP[t.dataset.tab];
+    document.querySelectorAll("#orderList .ord").forEach(function (card) {
+      card.classList.toggle("hide", !!want && card.dataset.state !== want);
+    });
+  });
+
+  UI.mount({ active: "orders.html" });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Studio — Desmake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  .studio { display: grid; grid-template-columns: minmax(0, 1fr) 380px; height: calc(100vh - var(--nav-h)); }
+  .canvas-area { position: relative; background: var(--paper-2); overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 40px; background-image: linear-gradient(rgba(12,12,13,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(12,12,13,.04) 1px, transparent 1px); background-size: 32px 32px; }
+  .canvas-inner { width: 100%; max-width: 560px; aspect-ratio: 4/5; border-radius: var(--r-lg); box-shadow: var(--sh-3); overflow: hidden; position: relative; background: var(--surface); }
+  .canvas-inner.regen { animation: regen-in .55s var(--e-out-expo); }
+  @keyframes regen-in { from { opacity: .2; transform: scale(.965); filter: blur(5px); } to { opacity: 1; transform: none; filter: none; } }
+  .canvas-inner.scanning::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 3px; top: -6%;
+    background: linear-gradient(90deg, transparent, var(--signal), transparent);
+    box-shadow: 0 0 20px var(--signal);
+    animation: scanline 1.7s ease-in-out infinite;
+    z-index: 5; pointer-events: none;
+  }
+  @keyframes scanline {
+    0% { top: -6%; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 106%; opacity: 0; }
+  }
+  .canvas-toolbar { position: absolute; left: 20px; top: 20px; display: flex; gap: 6px; z-index: 10; }
+  .ct-btn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: var(--r-sm); background: rgba(255,255,255,.86); backdrop-filter: blur(12px); border: 1px solid rgba(12,12,13,.08); color: var(--tx-2); transition: all .22s; cursor: pointer; }
+  .ct-btn:hover { color: var(--tx); transform: translateY(-1px); box-shadow: var(--sh-1); }
+  .zoom { position: absolute; right: 20px; bottom: 20px; display: flex; gap: 6px; z-index: 10; }
+  .side-panel { border-left: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto; background: var(--surface); }
+  .sp-head { padding: 18px 24px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); z-index: 5; }
+  .sp-body { padding: 20px 24px; flex: 1; }
+  .prompt-box { margin-bottom: 20px; }
+  .prompt-box textarea { font-size: .9375rem; line-height: 1.55; min-height: 88px; resize: none; }
+  .style-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+  .style-swatch {
+    aspect-ratio: 1; border-radius: var(--r-sm); border: 2px solid transparent;
+    cursor: pointer; transition: all .25s var(--e);
+    position: relative; overflow: hidden;
+  }
+  .style-swatch:hover { transform: scale(1.04); }
+  .style-swatch.is-active { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+  .tool-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tool-btn {
+    flex: 1; height: 42px; display: flex; align-items: center; justify-content: center; gap: 7px;
+    border-radius: var(--r-md); border: 1px solid var(--line-2);
+    font-size: .8125rem; font-weight: 500; color: var(--tx-2);
+    transition: all .25s var(--e); cursor: pointer;
+  }
+  .tool-btn:hover { border-color: var(--ink); color: var(--tx); background: rgba(12,12,13,.02); }
+  .tool-btn.is-active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .gen-status { padding: 14px 16px; border-radius: var(--r-md); background: var(--cobalt-soft); margin-bottom: 16px; display: none; }
+  .gen-status.on { display: block; animation: gen-in .35s var(--e-out-expo); }
+  @keyframes gen-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .gen-status .bar > i { background: linear-gradient(90deg, var(--ink), var(--signal), var(--ink)); background-size: 200% 100%; animation: bar-flow 1.5s linear infinite; }
+  @keyframes bar-flow { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  .history-item { display: flex; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .2s; border-radius: var(--r-sm); }
+  .history-item:hover { background: rgba(12,12,13,.03); }
+  .history-item:last-child { border-bottom: 0; }
+  .quota-bar { margin-top: 8px; }
+  @media (max-width: 900px) { .studio { grid-template-columns: minmax(0,1fr); } .side-panel { max-height: 60vh; } }
+</style>
+</head>
+<body>
+<div id="app-header"></div>
+
+<div class="studio">
+  <!-- Canvas -->
+  <div class="canvas-area">
+    <div class="canvas-toolbar">
+      <button class="ct-btn" title="Undo"><span data-ic="undo" data-s="17"></span></button>
+      <button class="ct-btn" title="Redo"><span data-ic="redo" data-s="17"></span></button>
+      <button class="ct-btn" title="Zoom to fit"><span data-ic="maximize" data-s="17"></span></button>
+      <button class="ct-btn" title="Download"><span data-ic="download" data-s="17"></span></button>
+    </div>
+    <div class="canvas-inner" id="canvas"></div>
+    <div class="zoom pill-glass">
+      <span class="mono" style="font-size:.72rem">100%</span>
+      <span data-ic="minus" data-s="12"></span> <span data-ic="plus" data-s="12"></span>
+    </div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side-panel">
+    <div class="sp-head">
+      <div class="row-between">
+        <span class="h4">Design Studio</span>
+        <a class="btn btn-signal btn-xs" href="publish.html">Publish →</a>
+      </div>
+    </div>
+
+    <div class="sp-body">
+      <!-- Prompt -->
+      <div class="prompt-box field">
+        <label class="label">Describe your design</label>
+        <textarea class="textarea" placeholder="A brutalist poster with bold geometric shapes in ember and cobalt. Swiss grid layout, high contrast..."></textarea>
+        <div class="row-between mt-8">
+          <span class="tiny faint">Press ⌘Enter to generate</span>
+          <span class="tiny mono faint">0 / 500</span>
+        </div>
+      </div>
+
+      <!-- Generate -->
+      <a class="btn btn-lg full" id="genBtn"><span data-ic="sparkles" data-s="16"></span> Generate</a>
+
+      <!-- Generation status -->
+      <div class="gen-status" id="genStatus">
+        <div class="row gap-10 mb-8">
+          <i class="dot dot-live"></i><span class="small strong">Generating...</span>
+          <span class="ml-auto mono tiny">~12s</span>
+        </div>
+        <div class="bar quota-bar"><i style="width:64%"></i></div>
+        <div class="tiny faint mt-8">ComfyUI · SDXL — queue position #1</div>
+      </div>
+
+      <!-- Style presets -->
+      <div class="field" style="margin-top:22px">
+        <label class="label">Style palette</label>
+        <div class="style-grid" data-chipgroup="single" id="styleGrid"></div>
+      </div>
+
+      <!-- Tools -->
+      <div class="field" style="margin-top:18px">
+        <label class="label">Tools</label>
+        <div class="tool-row">
+          <button class="tool-btn is-active"><span data-ic="wand" data-s="15"></span> Enhance</button>
+          <button class="tool-btn"><span data-ic="scissors" data-s="15"></span> Bg remove</button>
+          <button class="tool-btn"><span data-ic="image" data-s="15"></span> Upscale</button>
+        </div>
+        <div class="tool-row">
+          <button class="tool-btn"><span data-ic="refresh" data-s="15"></span> Variations</button>
+          <button class="tool-btn"><span data-ic="crop" data-s="15"></span> Crop</button>
+          <button class="tool-btn"><span data-ic="palette" data-s="15"></span> Colours</button>
+        </div>
+      </div>
+
+      <!-- Quota -->
+      <div class="card-flat rv" style="margin-top:20px;padding:16px;background:var(--paper-2)">
+        <div class="row-between mb-8">
+          <span class="small strong">Daily generations</span>
+          <span class="mono small">18 / 50 used</span>
+        </div>
+        <div class="bar"><i style="width:36%"></i></div>
+        <div class="tiny faint mt-8">Resets at midnight UTC. Upgrade to Pro for unlimited.</div>
+      </div>
+
+      <!-- History -->
+      <div class="field" style="margin-top:22px">
+        <label class="label row-between"><span>Versions</span><span class="tiny mono faint">6 versions</span></label>
+        <div id="histList"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="stack gap-10" style="margin-top:22px">
+        <a class="btn full" href="publish.html"><span data-ic="upload" data-s="15"></span> Save &amp; publish</a>
+        <button class="btn btn-outline full"><span data-ic="download" data-s="15"></span> Export PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+const I = UI.icon;
+document.getElementById("canvas").innerHTML = Art.svg("Signal Decay");
+document.getElementById("styleGrid").innerHTML = Art.PALETTES.map((p, i) =>
+  `<div class="style-swatch${i===0?' is-active':''}" title="${p.n}">${Art.svg("style-" + i)}</div>`
+).join("");
+
+const histSeeds = ["Signal Decay","Ember Field","Prism Ritual","Contour Map 09","Orbital Drift","Soft Machine"];
+document.getElementById("histList").innerHTML = histSeeds.map((s, i) =>
+  `<div class="history-item"${i===0?' style="opacity:.5"':''}>
+    <span style="width:36px;height:36px;border-radius:var(--r-xs);overflow:hidden;display:block;flex:none">${Art.avatar(s)}</span>
+    <div style="min-width:0;flex:1">
+      <div class="small strong">v${6-i}</div>
+      <div class="tiny faint">${["current","2h ago","yesterday","Jul 26","Jul 23","Jul 19"][i]}</div>
+    </div>
+    ${i===0?'<span class="badge badge-moss">Current</span>':''}
+  </div>`
+).join("");
+
+/* simulate generate */
+document.getElementById("genBtn").addEventListener("click", function() {
+  const s = document.getElementById("genStatus"); s.classList.add("on");
+  const c = document.getElementById("canvas");
+  c.classList.add("scanning");
+  setTimeout(() => {
+    c.classList.remove("scanning");
+    c.classList.add("regen");
+    c.innerHTML = Art.svg("Generated " + Date.now());
+    setTimeout(() => c.classList.remove("regen"), 600);
+    s.classList.remove("on");
+  }, 4000);
+});
+
+document.querySelectorAll("[data-ic]").forEach(el => { el.innerHTML = I(el.dataset.ic, +(el.dataset.s || 16)); });
+UI.mount({ active: "studio.html" });
+</script>
+</body>
+</html>

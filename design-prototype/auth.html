@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Desmake</title>
+<meta name="description" content="Sign in to Desmake, create an account, or apply to become a creator on the AI native design marketplace.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/desmake.css">
+<style>
+  i[data-ic] { display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  body { overflow-x: hidden; }
+
+  .auth { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr); min-height: 100vh; }
+
+  /* ---------- left: branding ---------- */
+  .auth-art {
+    position: relative; overflow: hidden;
+    background: var(--ink); color: var(--tx-inv);
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: clamp(30px, 3.4vw, 54px);
+  }
+  .art-bed { position: absolute; inset: -6%; opacity: .46; filter: saturate(1.05); z-index: 1; }
+  .art-bed svg { width: 100%; height: 100%; }
+  .art-veil {
+    position: absolute; inset: 0; z-index: 2;
+    background:
+      radial-gradient(120% 90% at 15% 10%, rgba(12,12,13,.32), rgba(12,12,13,.92) 68%),
+      linear-gradient(180deg, rgba(12,12,13,.55), rgba(12,12,13,.86));
+  }
+  .auth-art .spot { z-index: 3; }
+  .auth-art::before { z-index: 4; opacity: .55; }
+  .art-l { position: relative; z-index: 5; }
+
+  .wordmark { font-size: clamp(3.2rem, 6.6vw, 6.2rem); line-height: .84; letter-spacing: -.055em; font-weight: 600; }
+  .wordmark em { font-style: normal; color: var(--signal); }
+  .art-tag { font-family: var(--serif); font-style: italic; font-size: clamp(1.5rem, 2.4vw, 2.3rem); line-height: 1.12; letter-spacing: -.02em; color: var(--paper); }
+  .art-mid { max-width: 30ch; }
+  .auth-art .av-stack .av { box-shadow: 0 0 0 2px var(--ink); }
+  .art-stat { display: flex; flex-direction: column; gap: 3px; }
+  .art-stat b { font-size: 1.35rem; font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .art-stat span { font-family: var(--mono); font-size: .625rem; text-transform: uppercase; letter-spacing: .14em; color: var(--tx-inv-3); }
+
+  /* ---------- right: form ---------- */
+  .auth-form { display: flex; flex-direction: column; padding: clamp(24px, 3vw, 44px) clamp(22px, 4vw, 64px); background: var(--paper); }
+  .form-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-block: 26px; }
+  .form-box { width: 100%; max-width: 428px; margin-inline: auto; }
+
+  .auth-tabs { margin-bottom: 26px; }
+  .auth-tabs .tab { padding-bottom: 12px; font-size: .8438rem; }
+
+  .divider { display: flex; align-items: center; gap: 14px; margin: 20px 0; }
+  .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .divider span { font-family: var(--mono); font-size: .625rem; text-transform: uppercase; letter-spacing: .14em; color: var(--tx-3); }
+
+  .soc {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    height: 46px; border-radius: var(--r-sm);
+    border: 1px solid var(--line-2); background: var(--surface);
+    font-size: .8438rem; font-weight: 500;
+    transition: transform .3s var(--e), border-color .3s var(--e), box-shadow .3s var(--e);
+  }
+  .soc:hover { transform: translateY(-2px); border-color: var(--ink); box-shadow: var(--sh-2); }
+  .soc svg { width: 17px; height: 17px; }
+
+  .peek { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--r-xs); color: var(--tx-3); transition: color .2s, background .2s; }
+  .peek:hover { color: var(--tx); background: rgba(12,12,13,.05); }
+
+  .meter { display: flex; gap: 4px; margin-top: 8px; }
+  .meter i { flex: 1; height: 3px; border-radius: 99px; background: rgba(12,12,13,.1); transition: background .35s var(--e); }
+  .meter.s1 i:nth-child(1) { background: var(--signal); }
+  .meter.s2 i:nth-child(-n+2) { background: var(--amber); }
+  .meter.s3 i:nth-child(-n+3) { background: #7a9b2f; }
+  .meter.s4 i { background: var(--moss); }
+
+  .agree { display: flex; align-items: flex-start; gap: 11px; cursor: pointer; }
+  .agree p { font-size: .78rem; line-height: 1.5; color: var(--tx-2); }
+  .agree a { text-decoration: underline; text-underline-offset: 2px; }
+
+  .trust { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; padding-top: 22px; border-top: 1px solid var(--line); }
+  .trust-i { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; color: var(--tx-3); }
+
+  .cr-av { position: relative; width: 72px; height: 72px; flex: none; }
+  .cr-av .av { width: 72px; height: 72px; }
+  .cr-av button { position: absolute; right: -4px; bottom: -4px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); box-shadow: 0 0 0 3px var(--paper); transition: transform .3s var(--e); }
+  .cr-av button:hover { transform: rotate(-90deg); }
+
+  .switcher { font-size: .8125rem; color: var(--tx-2); text-align: center; margin-top: 18px; }
+  .switcher button { font-weight: 550; color: var(--tx); border-bottom: 1px solid var(--line-2); padding-bottom: 1px; transition: border-color .25s; }
+  .switcher button:hover { border-color: var(--ink); }
+
+  @media (max-width: 940px) {
+    .auth { grid-template-columns: minmax(0, 1fr); }
+    .auth-art { min-height: 300px; padding: 28px 24px; }
+    .art-mid { padding-block: 22px; }
+  }
+</style>
+</head>
+<body>
+<div class="hide"><div id="app-header"></div></div>
+
+<div class="auth">
+  <!-- ============ LEFT — branding ============ -->
+  <div class="auth-art grain">
+    <div class="art-bed" id="artBed"></div>
+    <div class="art-veil"></div>
+    <span class="spot" style="width:420px;height:420px;background:#ff4d18;left:-14%;bottom:-10%;opacity:.34"></span>
+    <span class="spot" style="width:340px;height:340px;background:#2244ff;right:-8%;top:6%;opacity:.26"></span>
+
+    <div class="row-between art-l">
+      <a class="brand" href="index.html" style="color:var(--paper)">
+        <span id="mark"></span><span class="brand-tx">DESMAKE</span>
+      </a>
+      <a class="btn btn-inv-outline btn-sm hide-sm" href="index.html"><i data-ic="arrowLeft" data-sz="14"></i> Back to marketplace</a>
+    </div>
+
+    <div class="art-mid art-l">
+      <div class="eyebrow eyebrow-dot" style="color:var(--tx-inv-3);margin-bottom:22px">AI native design marketplace</div>
+      <div class="wordmark">DES<em>MAKE</em></div>
+      <p class="art-tag" style="margin-top:26px">Design once.<br>Manufacture anywhere.</p>
+      <p class="body" style="color:var(--tx-inv-2);margin-top:20px;max-width:38ch">
+        One canvas, sixty-eight factories, forty-one countries. Publish a design and let the network print, cut, cure and ship it.
+      </p>
+      <div class="row gap-12" style="margin-top:26px">
+        <span class="av-stack" id="avStack"></span>
+        <span class="tiny" style="color:var(--tx-inv-2)">Joined by <b style="color:var(--paper)">24,800</b> creators this year</span>
+      </div>
+    </div>
+
+    <div class="art-l">
+      <div class="hr-ink" style="margin-bottom:22px"></div>
+      <div class="row gap-40 wrap">
+        <span class="art-stat"><b>2.4M</b><span>Designs live</span></span>
+        <span class="art-stat"><b>68</b><span>Factories</span></span>
+        <span class="art-stat"><b>41</b><span>Countries</span></span>
+        <span class="art-stat"><b>4.9</b><span>Avg rating</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT — form ============ -->
+  <div class="auth-form">
+    <div class="row-between">
+      <a class="row gap-8" href="index.html" style="color:var(--tx-3);font-size:.78rem">
+        <i data-ic="arrowLeft" data-sz="14"></i> Marketplace
+      </a>
+      <div class="row gap-8">
+        <span class="chip chip-sm"><i data-ic="globe" data-sz="13"></i> EN · USD</span>
+        <a class="chip chip-sm" href="#"><i data-ic="help" data-sz="13"></i> Help</a>
+      </div>
+    </div>
+
+    <div class="form-mid">
+      <div class="form-box">
+
+        <!-- tabs -->
+        <div class="tabs auth-tabs" data-tabs="auth">
+          <a class="tab is-active" data-tab="in" href="#">Sign in</a>
+          <a class="tab" data-tab="up" href="#">Create account</a>
+          <a class="tab" data-tab="cr" href="#">Become a Creator</a>
+        </div>
+
+        <div data-panels="auth">
+
+          <!-- ---------- Sign in ---------- -->
+          <div data-panel="in">
+            <h1 class="h2" style="margin-bottom:8px">Welcome back</h1>
+            <p class="body" style="margin-bottom:26px">Sign in to your studio, orders and agent keys.</p>
+
+            <div class="stack gap-16">
+              <div class="field">
+                <label class="label" for="si-em">Email</label>
+                <div class="input-wrap">
+                  <span class="ic"><i data-ic="message" data-sz="15"></i></span>
+                  <input class="input input-lg" id="si-em" type="email" placeholder="you@studio.com" autocomplete="email">
+                </div>
+              </div>
+
+              <div class="field">
+                <div class="row-between">
+                  <label class="label" for="si-pw">Password</label>
+                  <a class="tiny" href="#" style="color:var(--tx-3);border-bottom:1px solid var(--line-2)">Forgot password?</a>
+                </div>
+                <div class="input-wrap">
+                  <span class="ic"><i data-ic="lock" data-sz="15"></i></span>
+                  <input class="input input-lg" id="si-pw" type="password" placeholder="••••••••••" autocomplete="current-password" style="padding-right:44px">
+                  <button class="peek" data-peek="si-pw" aria-label="Show password"><i data-ic="eye" data-sz="16"></i></button>
+                </div>
+              </div>
+
+              <label class="row gap-10" style="cursor:pointer">
+                <span class="check is-on"></span>
+                <span class="small muted">Keep me signed in on this device</span>
+              </label>
+
+              <button class="btn btn-lg btn-block">Sign in <i data-ic="arrowRight" data-sz="15" class="arw"></i></button>
+            </div>
+
+            <div class="divider"><span>or continue with</span></div>
+            <div class="grid g-2" style="gap:10px">
+              <button class="soc" data-soc="google"></button>
+              <button class="soc" data-soc="github"></button>
+            </div>
+
+            <div class="switcher">Don't have an account? <button data-go="up">Create one</button></div>
+          </div>
+
+          <!-- ---------- Create account ---------- -->
+          <div data-panel="up" class="hide">
+            <h1 class="h2" style="margin-bottom:8px">Create your account</h1>
+            <p class="body" style="margin-bottom:26px">Free forever. Publish when you're ready — no card required.</p>
+
+            <div class="stack gap-16">
+              <div class="field">
+                <label class="label" for="su-nm">Full name</label>
+                <div class="input-wrap">
+                  <span class="ic"><i data-ic="user" data-sz="15"></i></span>
+                  <input class="input input-lg" id="su-nm" placeholder="Ava Lindqvist" autocomplete="name">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="su-em">Email</label>
+                <div class="input-wrap">
+                  <span class="ic"><i data-ic="message" data-sz="15"></i></span>
+                  <input class="input input-lg" id="su-em" type="email" placeholder="you@studio.com" autocomplete="email">
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="su-pw">Password</label>
+                <div class="input-wrap">
+                  <span class="ic"><i data-ic="lock" data-sz="15"></i></span>
+                  <input class="input input-lg" id="su-pw" type="password" placeholder="At least 10 characters" autocomplete="new-password" style="padding-right:44px">
+                  <button class="peek" data-peek="su-pw" aria-label="Show password"><i data-ic="eye" data-sz="16"></i></button>
+                </div>
+                <div class="meter" id="pwMeter"><i></i><i></i><i></i><i></i></div>
+                <span class="hint" id="pwHint">Use 10+ characters with a number and a symbol.</span>
+              </div>
+
+              <div class="field">
+                <label class="label" for="su-pw2">Confirm password</label>
+                <div class="input-wrap">
+                  <span class="ic"><i data-ic="check" data-sz="15"></i></span>
+                  <input class="input input-lg" id="su-pw2" type="password" placeholder="Repeat password" autocomplete="new-password" style="padding-right:44px">
+                  <button class="peek" data-peek="su-pw2" aria-label="Show password"><i data-ic="eye" data-sz="16"></i></button>
+                </div>
+                <span class="hint" id="pw2Hint"></span>
+              </div>
+
+              <label class="agree">
+                <span class="check"></span>
+                <p>I agree to the <a href="#">Terms of Service</a>, the <a href="#">Creator Licence</a> and acknowledge the <a href="#">Privacy Policy</a>.</p>
+              </label>
+
+              <button class="btn btn-lg btn-block">Create account <i data-ic="arrowRight" data-sz="15" class="arw"></i></button>
+            </div>
+
+            <div class="divider"><span>or sign up with</span></div>
+            <div class="grid g-2" style="gap:10px">
+              <button class="soc" data-soc="google"></button>
+              <button class="soc" data-soc="github"></button>
+            </div>
+
+            <div class="switcher">Already have an account? <button data-go="in">Sign in</button></div>
+          </div>
+
+          <!-- ---------- Become a Creator ---------- -->
+          <div data-panel="cr" class="hide">
+            <div class="steps" style="margin-bottom:26px">
+              <span class="step is-done"><span class="step-n"><i data-ic="check" data-sz="11" data-sw="3"></i></span><span class="step-t">Account</span></span>
+              <span class="step-line"></span>
+              <span class="step is-done"><span class="step-n"><i data-ic="check" data-sz="11" data-sw="3"></i></span><span class="step-t hide-sm">Verify</span></span>
+              <span class="step-line"></span>
+              <span class="step is-active"><span class="step-n">3</span><span class="step-t">Creator</span></span>
+            </div>
+
+            <h1 class="h2" style="margin-bottom:8px">Become a creator</h1>
+            <p class="body" style="margin-bottom:24px">Set up your storefront. Reviewed within 1–2 business days — you keep up to 82% of every sale.</p>
+
+            <div class="stack gap-16">
+              <div class="row gap-16">
+                <div class="cr-av">
+                  <span class="av" id="crAv"></span>
+                  <button id="crShuffle" aria-label="Generate another avatar"><i data-ic="refresh" data-sz="13"></i></button>
+                </div>
+                <div style="min-width:0">
+                  <div class="h5">Storefront avatar</div>
+                  <p class="tiny muted" style="margin-top:3px;line-height:1.5">Upload your own or roll a generated mark. You can change it later.</p>
+                  <button class="btn btn-outline btn-xs" style="margin-top:9px"><i data-ic="upload" data-sz="12"></i> Upload image</button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="cr-nm">Display name</label>
+                <input class="input input-lg" id="cr-nm" placeholder="Northlight Studio">
+              </div>
+
+              <div class="field">
+                <label class="label" for="cr-bio">Short bio</label>
+                <textarea class="textarea" id="cr-bio" maxlength="180" placeholder="What do you make, and for whom? One or two lines."></textarea>
+                <div class="row-between">
+                  <span class="hint">Shown at the top of your public profile.</span>
+                  <span class="hint mono tnum" id="crCount">0 / 180</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label" for="cr-url">Portfolio URL</label>
+                <div class="input-wrap">
+                  <span class="ic"><i data-ic="link" data-sz="15"></i></span>
+                  <input class="input input-lg" id="cr-url" placeholder="behance.net/you · yourdomain.com">
+                </div>
+                <span class="hint">Helps us verify authorship faster.</span>
+              </div>
+
+              <div class="field">
+                <label class="label">What do you make?</label>
+                <div class="row gap-8 wrap" data-chipgroup="multi" id="crChips"></div>
+              </div>
+
+              <div class="stack gap-10">
+                <label class="agree">
+                  <span class="check"></span>
+                  <p>I own or hold the rights to everything I publish, and I accept the <a href="#">Creator Agreement v4.2</a>.</p>
+                </label>
+                <label class="agree">
+                  <span class="check"></span>
+                  <p>I understand every listing passes automated and human content review before going live.</p>
+                </label>
+                <label class="agree">
+                  <span class="check"></span>
+                  <p>Send me manufacturing updates and payout notices by email.</p>
+                </label>
+              </div>
+
+              <button class="btn btn-lg btn-signal btn-block"><i data-ic="sparkles" data-sz="15"></i> Apply as Creator</button>
+
+              <div class="note note-moss">
+                <span style="color:var(--moss)"><i data-ic="shield" data-sz="16"></i></span>
+                <span>No listing fees, no subscription. Desmake takes a flat 18% of retail and handles manufacturing, fulfilment, tax and returns.</span>
+              </div>
+            </div>
+
+            <div class="switcher">Just browsing for now? <button data-go="in">Sign in instead</button></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- trust signals -->
+    <div class="form-box" style="max-width:520px">
+      <div class="trust">
+        <span class="trust-i"><i data-ic="lock" data-sz="13"></i> 256-bit TLS</span>
+        <span class="trust-i"><i data-ic="shield" data-sz="13"></i> SOC 2 Type II</span>
+        <span class="trust-i"><i data-ic="card" data-sz="13"></i> Payouts by Stripe</span>
+        <span class="trust-i"><i data-ic="globe" data-sz="13"></i> GDPR compliant</span>
+      </div>
+      <p class="tiny faint center" style="margin-top:14px">© 2026 Desmake Inc. · <a href="#" style="border-bottom:1px solid var(--line-2)">Privacy</a> · <a href="#" style="border-bottom:1px solid var(--line-2)">Terms</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="hide"><div id="app-footer"></div></div>
+
+<script src="assets/js/art.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/ui.js"></script>
+<script>
+/* ---------- brand + art ---------- */
+document.getElementById("mark").innerHTML = UI.MARK;
+document.getElementById("artBed").innerHTML = Art.svg("desmake-auth-gate");
+document.getElementById("avStack").innerHTML = DB.CREATORS.slice(0, 5)
+  .map(c => `<span class="av av-sm">${Art.avatar(c.handle)}</span>`).join("");
+
+/* ---------- creator avatar ---------- */
+let crSeed = "creator-apply-01";
+const crAv = document.getElementById("crAv");
+crAv.innerHTML = Art.avatar(crSeed);
+document.getElementById("crShuffle").addEventListener("click", () => {
+  crSeed = "creator-" + Math.random().toString(36).slice(2, 8);
+  crAv.innerHTML = Art.avatar(crSeed);
+});
+
+/* ---------- discipline chips ---------- */
+document.getElementById("crChips").innerHTML =
+  ["Graphic design", "Illustration", "3D & objects", "Typography", "Photography", "Pattern", "AI generated"]
+    .map((t, i) => `<button class="chip chip-sm${i === 0 ? " is-active" : ""}">${t}</button>`).join("");
+
+/* ---------- social buttons ---------- */
+const LOGO = {
+  google: '<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.27c0-.79-.07-1.54-.2-2.27H12v4.51h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.55-5.17 3.55-8.87z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.08 7.95-2.91l-3.88-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58V6.62H1.29a12 12 0 0 0 0 10.76z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/></svg>',
+  github: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>'
+};
+document.querySelectorAll("[data-soc]").forEach(b => {
+  const k = b.dataset.soc;
+  b.innerHTML = LOGO[k] + `<span>${k === "google" ? "Google" : "GitHub"}</span>`;
+});
+
+/* ---------- password peek ---------- */
+document.querySelectorAll("[data-peek]").forEach(b => {
+  b.addEventListener("click", e => {
+    e.preventDefault();
+    const inp = document.getElementById(b.dataset.peek);
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    b.innerHTML = UI.icon(show ? "x" : "eye", 16);
+    b.setAttribute("aria-label", show ? "Hide password" : "Show password");
+  });
+});
+
+/* ---------- password strength ---------- */
+const pw = document.getElementById("su-pw"), pw2 = document.getElementById("su-pw2");
+const meter = document.getElementById("pwMeter"), hint = document.getElementById("pwHint");
+const LABELS = ["Too short", "Weak — add a number", "Fair — add a symbol", "Strong", "Excellent"];
+function score(v) {
+  let s = 0;
+  if (v.length >= 8) s++;
+  if (v.length >= 12) s++;
+  if (/[0-9]/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v) && /[A-Z]/.test(v)) s++;
+  return Math.min(s, 4);
+}
+pw.addEventListener("input", () => {
+  const s = pw.value ? score(pw.value) : 0;
+  meter.className = "meter s" + s;
+  hint.textContent = pw.value ? LABELS[s] : "Use 10+ characters with a number and a symbol.";
+  hint.style.color = s >= 3 ? "var(--moss)" : s === 2 ? "var(--amber)" : "var(--tx-3)";
+  match();
+});
+const h2 = document.getElementById("pw2Hint");
+function match() {
+  if (!pw2.value) { h2.textContent = ""; return; }
+  const ok = pw2.value === pw.value;
+  h2.textContent = ok ? "Passwords match" : "Passwords don't match yet";
+  h2.style.color = ok ? "var(--moss)" : "var(--signal)";
+}
+pw2.addEventListener("input", match);
+
+/* ---------- bio counter ---------- */
+const crBio = document.getElementById("cr-bio"), crCount = document.getElementById("crCount");
+crBio.addEventListener("input", () => crCount.textContent = crBio.value.length + " / 180");
+
+/* ---------- tab switch links ---------- */
+document.querySelectorAll("[data-go]").forEach(b => {
+  b.addEventListener("click", () => {
+    const t = document.querySelector(`[data-tab="${b.dataset.go}"]`);
+    if (t) { t.click(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+  });
+});
+
+/* ---------- mount + icons ---------- */
+UI.mount({ active: "auth.html" });
+document.querySelectorAll("[data-ic]").forEach(el => {
+  el.innerHTML = UI.icon(el.dataset.ic, +el.dataset.sz || 16, el.dataset.sw ? +el.dataset.sw : 1.6);
+});
+</script>
+</body>
+</html>
