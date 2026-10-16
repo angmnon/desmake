@@ -87,8 +87,8 @@ export default function HomePage() {
                 key={d.id}
                 className="absolute overflow-hidden"
                 style={{
-                  borderRadius: 14,
-                  boxShadow: "0 4px 12px rgba(12,12,13,0.06), 0 30px 60px -24px rgba(12,12,13,0.26)",
+                  borderRadius: "var(--r-md)",
+                  boxShadow: "var(--sh-3)",
                   width: i === 0 ? "54%" : i === 1 ? "46%" : "42%",
                   left: i === 0 ? 0 : i === 1 ? "auto" : "auto",
                   right: i === 1 ? "2%" : i === 2 ? "8%" : "auto",
@@ -96,8 +96,8 @@ export default function HomePage() {
                   bottom: i === 2 ? "2%" : "auto",
                   zIndex: i === 2 ? 4 : i + 2,
                   animation: `fl ${9 + i * 2}s ease-in-out infinite ${i % 2 === 1 ? "reverse" : ""}`,
-                  background: "#fff",
-                  border: "1px solid rgba(12,12,13,0.08)",
+                  background: "var(--surface)",
+                  border: "1px solid var(--line)",
                 }}
               >
                 <Artwork seed={d.seed} palette={d.palette} shape={d.shape} rounded={false} className="!rounded-none" />
@@ -107,8 +107,8 @@ export default function HomePage() {
               style={{
                 position: "absolute", left: "4%", bottom: "6%", zIndex: 5,
                 background: "rgba(255,255,255,0.86)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-                border: "1px solid rgba(255,255,255,0.7)", borderRadius: 14, padding: "13px 15px",
-                boxShadow: "0 4px 12px rgba(12,12,13,0.06), 0 30px 60px -24px rgba(12,12,13,0.26)",
+                border: "1px solid rgba(255,255,255,0.7)", borderRadius: "var(--r-md)", padding: "13px 15px",
+                boxShadow: "var(--sh-3)",
                 minWidth: 232,
               }}
             >
@@ -175,7 +175,7 @@ export default function HomePage() {
               gap: 1,
               background: "rgba(247,246,243,0.14)",
               border: "1px solid rgba(247,246,243,0.14)",
-              borderRadius: 2,
+              borderRadius: "var(--r-lg)",
               overflow: "hidden",
             }}
           >
@@ -204,7 +204,7 @@ export default function HomePage() {
       <section className="section">
         <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,.85fr)", gap: "clamp(24px,4vw,56px)", alignItems: "start" }}>
           <div className="rv" style={{ position: "relative" }}>
-            <div className="card" style={{ borderRadius: 2, overflow: "hidden", padding: 0 }}>
+            <div className="card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", padding: 0 }}>
               <div style={{ aspectRatio: "4/3" }}>
                 <Artwork seed={featured.seed} palette={featured.palette} shape={featured.shape} rounded={false} className="!rounded-none" />
               </div>
@@ -260,10 +260,10 @@ export default function HomePage() {
             {ADAPTERS.map((a, i) => {
               const sampleDesign = DESIGNS[i * 3] || DESIGNS[0];
               return (
-                <Link key={a.id} href="/explore" className="adp block" style={{ border: "1px solid var(--color-silver-line)", borderRadius: 14, overflow: "hidden", background: "#fff", transition: "all 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
-                  <div style={{ background: "var(--color-paper-2)", aspectRatio: "4/3", position: "relative", overflow: "hidden" }}>
+                <Link key={a.id} href="/explore" className="adp block" style={{ border: "1px solid var(--line)", borderRadius: "var(--r-md)", overflow: "hidden", background: "var(--surface)", transition: "all 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
+                  <div style={{ background: "var(--paper-2)", aspectRatio: "4/3", position: "relative", overflow: "hidden" }}>
                     <Artwork seed={sampleDesign.seed} palette={sampleDesign.palette} shape={sampleDesign.shape} rounded={false} className="!rounded-none" />
-                    <span className="badge" style={{ position: "absolute", top: 12, left: 12, background: "#fff", fontSize: "0.6875rem", padding: "4px 10px", fontWeight: 500 }}>{a.method}</span>
+                    <span className="badge" style={{ position: "absolute", top: 12, left: 12, background: "var(--surface)", fontSize: "0.6875rem", padding: "4px 10px", fontWeight: 500 }}>{a.method}</span>
                   </div>
                   <div style={{ padding: "18px 20px 20px" }}>
                     <div className="row-between mb-2">
@@ -314,7 +314,7 @@ export default function HomePage() {
               style={{
                 background: "rgba(18,18,20,0.85)",
                 borderColor: "rgba(247,246,243,0.12)",
-                borderRadius: 14,
+                borderRadius: "var(--r-md)",
                 overflow: "hidden",
                 fontFamily: "var(--font-mono)",
               }}
@@ -365,7 +365,7 @@ export default function HomePage() {
       {/* ══════════ CREATOR CTA ══════════ */}
       <section className="section">
         <div className="container-wide">
-          <div className="card rv" style={{ padding: "clamp(32px,5vw,72px)", borderRadius: 2, position: "relative", overflow: "hidden", border: "1px solid var(--color-silver-line)" }}>
+          <div className="card rv" style={{ padding: "clamp(32px,5vw,72px)", borderRadius: "var(--r-lg)", position: "relative", overflow: "hidden", border: "1px solid var(--line)" }}>
             <div className="row-between wrap gap-10" style={{ position: "relative", alignItems: "flex-start" }}>
               <div style={{ maxWidth: "46ch" }}>
                 <div className="eyebrow eyebrow-dot">For creators</div>

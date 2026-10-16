@@ -692,11 +692,14 @@ ul, ol { padding: 0; list-style: none; }
 .rail::-webkit-scrollbar { display: none; }
 .rail > * { scroll-snap-align: start; flex: none; }
 
-/* Reveal animation */
-.rv { opacity: 0; transform: translateY(18px); transition: opacity 0.9s var(--e), transform 0.9s var(--e); }
-.rv.in { opacity: 1; transform: none; }
-.rv-blur { opacity: 0; transform: translateY(24px) scale(0.98); filter: blur(8px); transition: opacity 0.8s var(--e-out-expo), transform 0.8s var(--e-out-expo), filter 0.8s var(--e-out-expo); }
-.rv-blur.in { opacity: 1; transform: none; filter: none; }
+/* Reveal animation — CSS-only auto-reveal (SiteMotion does NOT add `.in`, so the
+   base state MUST animate to visible on its own; `.in` is an optional JS hook).
+   `both` keeps the start frame before/at delay and the end frame after. */
+.rv { opacity: 0; transform: translateY(18px); animation: rv 0.9s var(--e) both; }
+.rv.in { animation-delay: 0.08s; }
+.rv-blur { opacity: 0; transform: translateY(24px) scale(0.98); filter: blur(8px); animation: rv-blur 0.8s var(--e-out-expo) both; }
+@keyframes rv { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes rv-blur { from { opacity: 0; transform: translateY(24px) scale(0.98); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
 @media (prefers-reduced-motion: reduce) {
   .rv, .rv-blur { opacity: 1; transform: none; filter: none; transition: none; }
   * { animation-duration: 0.001ms !important; transition-duration: 0.05ms !important; }
