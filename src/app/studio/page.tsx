@@ -122,8 +122,8 @@ function ProductConfigPanel({
                         style={{
                           padding: "10px",
                           border: "1px solid",
-                          borderColor: on ? "var(--color-ink)" : "rgba(12,12,13,0.12)",
-                          borderRadius: 10,
+                          borderColor: on ? "var(--color-ink)" : "var(--color-line)",
+                          borderRadius: "var(--r-md)",
                           background: on ? "var(--color-ink)" : "var(--color-surface)",
                           color: on ? "var(--color-paper)" : "var(--color-tx)",
                         }}
@@ -497,13 +497,13 @@ export default function StudioPage() {
           <aside className="card" style={{ padding: 24, height: "fit-content", position: "sticky", top: 88 }}>
             <div className="stack gap-5">
               {/* Mode tabs */}
-              <div className="row gap-2" style={{ border: "1px solid rgba(12,12,13,0.12)", borderRadius: 12, padding: 4 }}>
+              <div className="row gap-2" style={{ border: "1px solid var(--color-line)", borderRadius: "var(--r-md)", padding: 4 }}>
                 <button
                   onClick={() => setMode("ai")}
                   className="btn btn-sm full"
                   style={{
                     background: mode === "ai" ? "var(--color-ink)" : "transparent",
-                    color: mode === "ai" ? "#fff" : "var(--color-tx)",
+                    color: mode === "ai" ? "var(--color-surface)" : "var(--color-tx)",
                     borderColor: "transparent",
                   }}
                 >
@@ -514,7 +514,7 @@ export default function StudioPage() {
                   className="btn btn-sm full"
                   style={{
                     background: mode === "upload" ? "var(--color-ink)" : "transparent",
-                    color: mode === "upload" ? "#fff" : "var(--color-tx)",
+                    color: mode === "upload" ? "var(--color-surface)" : "var(--color-tx)",
                     borderColor: "transparent",
                   }}
                 >
@@ -532,7 +532,7 @@ export default function StudioPage() {
                       placeholder="A brutalist grid poster, ember and charcoal palette, abstract geometry…"
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
-                      style={{ resize: "vertical", borderRadius: 12 }}
+                      style={{ resize: "vertical", borderRadius: "var(--r-md)" }}
                     />
                   </div>
 
@@ -546,15 +546,15 @@ export default function StudioPage() {
                           className="text-left"
                           style={{
                             padding: "10px", border: "1px solid",
-                            borderColor: style === s.id ? "var(--color-ink)" : "rgba(12,12,13,0.12)",
-                            borderRadius: 10, background: style === s.id ? "var(--color-ink)" : "#fff",
-                            color: style === s.id ? "#fff" : "var(--color-tx)",
+                            borderColor: style === s.id ? "var(--color-ink)" : "var(--color-line)",
+                            borderRadius: "var(--r-md)", background: style === s.id ? "var(--color-ink)" : "var(--color-surface)",
+                            color: style === s.id ? "var(--color-surface)" : "var(--color-tx)",
                             transition: "all 0.2s",
                           }}
                         >
                           <div className="row gap-1 mb-1.5">
                             {s.palette.map((c, i) => (
-                              <div key={i} style={{ width: 14, height: 14, borderRadius: 4, background: c, border: "1px solid rgba(0,0,0,0.1)" }} />
+                              <div key={i} style={{ width: 14, height: 14, borderRadius: "var(--r-xs)", background: c, border: "1px solid var(--color-line)" }} />
                             ))}
                           </div>
                           <div className="tiny font-medium">{s.name}</div>
@@ -572,9 +572,9 @@ export default function StudioPage() {
                           onClick={() => setAspect(r.id)}
                           className="chip"
                           style={{
-                            borderColor: aspect === r.id ? "var(--color-ink)" : "rgba(12,12,13,0.15)",
-                            background: aspect === r.id ? "var(--color-ink)" : "#fff",
-                            color: aspect === r.id ? "#fff" : "var(--color-tx)",
+                            borderColor: aspect === r.id ? "var(--color-ink)" : "var(--color-line-2)",
+                            background: aspect === r.id ? "var(--color-ink)" : "var(--color-surface)",
+                            color: aspect === r.id ? "var(--color-surface)" : "var(--color-tx)",
                           }}
                         >
                           {r.id}
@@ -680,7 +680,7 @@ export default function StudioPage() {
                       value={upTitle}
                       onChange={(e) => setUpTitle(e.target.value)}
                       placeholder="Name your design"
-                      style={{ borderRadius: 12 }}
+                      style={{ borderRadius: "var(--r-md)" }}
                     />
                   </div>
 
@@ -690,7 +690,7 @@ export default function StudioPage() {
                       className="input"
                       value={upCategory}
                       onChange={(e) => setUpCategory(e.target.value)}
-                      style={{ borderRadius: 12 }}
+                      style={{ borderRadius: "var(--r-md)" }}
                     >
                       {CATEGORIES.filter((c) => c.id !== "all").map((c) => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -708,7 +708,7 @@ export default function StudioPage() {
                       value={upDesc}
                       onChange={(e) => setUpDesc(e.target.value)}
                       placeholder="Tell buyers about this design…"
-                      style={{ resize: "vertical", borderRadius: 12 }}
+                      style={{ resize: "vertical", borderRadius: "var(--r-md)" }}
                     />
                   </div>
 
@@ -731,7 +731,7 @@ export default function StudioPage() {
           <div>
             {mode === "upload" ? (
               uploadDataUrl ? (
-                <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 2 }}>
+                <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: "var(--r-lg)" }}>
                   <div style={{ aspectRatio: "1", position: "relative" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={uploadDataUrl} alt={upTitle || "uploaded design"} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
@@ -837,7 +837,7 @@ export default function StudioPage() {
                             onClick={() => download(r, i)}
                             aria-label="Download SVG"
                             className="btn btn-sm"
-                            style={{ padding: "7px 14px", fontSize: "0.75rem", background: "#fff", color: "#0c0c0d", borderColor: "#fff" }}
+                            style={{ padding: "7px 14px", fontSize: "0.75rem", background: "var(--color-surface)", color: "var(--color-ink)", borderColor: "var(--color-surface)" }}
                           >
                             <Download size={13} strokeWidth={1.8} />
                           </button>
@@ -874,11 +874,11 @@ export default function StudioPage() {
                   </div>
                   <div className="row gap-2" style={{ overflowX: "auto", paddingBottom: 4 }}>
                     {results.slice(4).concat(results.slice(0, 4)).slice(0, 8).map((r, i) => (
-                      <div key={i} style={{ width: 72, height: 72, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(12,12,13,0.1)" }}>
+                      <div key={i} style={{ width: 72, height: 72, borderRadius: "var(--r-md)", overflow: "hidden", flexShrink: 0, border: "1px solid var(--color-line)" }}>
                         <Artwork seed={r.seed} palette={r.palette} shape={r.shape} rounded={false} className="!rounded-none" />
                       </div>
                     ))}
-                    <button className="row gap-1" style={{ width: 72, height: 72, borderRadius: 10, border: "1px dashed rgba(12,12,13,0.2)", color: "var(--color-tx-3)", fontSize: "0.75rem", flexShrink: 0 }}>
+                    <button className="row gap-1" style={{ width: 72, height: 72, borderRadius: "var(--r-md)", border: "1px dashed var(--color-line-2)", color: "var(--color-tx-3)", fontSize: "0.75rem", flexShrink: 0 }}>
                       <Plus size={14} /> New
                     </button>
                   </div>

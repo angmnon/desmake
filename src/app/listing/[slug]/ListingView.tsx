@@ -236,7 +236,7 @@ export default function ListingView({ design }: { design: Design }) {
         <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.1fr) minmax(0,0.9fr)", gap: "clamp(28px,4vw,64px)", paddingBottom: "clamp(48px,6vw,80px)" }}>
           {/* Artwork display */}
           <div className="rv in">
-            <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: 2 }}>
+            <div className="card" style={{ padding: 0, overflow: "hidden", borderRadius: "var(--r-lg)" }}>
               <div style={{ aspectRatio: "1", position: "relative" }}>
                 {design.imageUrl && !heroError ? (
                   <Image
@@ -255,12 +255,12 @@ export default function ListingView({ design }: { design: Design }) {
                 )}
                 <div className="absolute top-4 left-4 flex gap-2">
                   {design.aiGenerated && (
-                    <span className="badge" style={{ background: "rgba(12,12,13,0.75)", color: "#fff", backdropFilter: "blur(8px)" }}>
+                    <span className="badge" style={{ background: "rgba(12,12,13,0.75)", color: "var(--color-surface)", backdropFilter: "blur(8px)" }}>
                       <Sparkles size={11} /> AI Generated
                     </span>
                   )}
                   {!design.aiGenerated && design.imageUrl && (
-                    <span className="badge" style={{ background: "rgba(12,12,13,0.75)", color: "#fff", backdropFilter: "blur(8px)" }}>
+                    <span className="badge" style={{ background: "rgba(12,12,13,0.75)", color: "var(--color-surface)", backdropFilter: "blur(8px)" }}>
                       Uploaded
                     </span>
                   )}
@@ -316,7 +316,7 @@ export default function ListingView({ design }: { design: Design }) {
                       width: 32, height: 32, borderRadius: "50%",
                       background: `linear-gradient(135deg, ${design.palette[0]}, ${design.palette[2]})`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#fff", fontWeight: 600, fontSize: 12,
+                      color: "var(--color-surface)", fontWeight: 600, fontSize: 12,
                     }}
                   >
                     {creator.name.slice(0, 2).toUpperCase()}
@@ -331,7 +331,7 @@ export default function ListingView({ design }: { design: Design }) {
                       width: 32, height: 32, borderRadius: "50%",
                       background: `linear-gradient(135deg, ${design.palette[0]}, ${design.palette[2]})`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      color: "#fff", fontWeight: 600, fontSize: 12,
+                      color: "var(--color-surface)", fontWeight: 600, fontSize: 12,
                     }}
                   >
                     {creator.name.slice(0, 2).toUpperCase()}
@@ -388,8 +388,8 @@ export default function ListingView({ design }: { design: Design }) {
                       className="text-left"
                       style={{
                         padding: "12px", border: "1px solid",
-                        borderColor: activeSku === p.sku ? "var(--color-ink)" : "rgba(12,12,13,0.12)",
-                        borderRadius: 12, background: activeSku === p.sku ? "var(--color-ink)" : "var(--color-surface)",
+                        borderColor: activeSku === p.sku ? "var(--color-ink)" : "var(--color-line)",
+                        borderRadius: "var(--r-md)", background: activeSku === p.sku ? "var(--color-ink)" : "var(--color-surface)",
                         color: activeSku === p.sku ? "var(--color-paper)" : "var(--color-tx)",
                         transition: "all 0.2s",
                       }}
@@ -414,7 +414,7 @@ export default function ListingView({ design }: { design: Design }) {
                     onClick={() => setSelectedVariant(v)}
                     className="chip"
                     style={{
-                      borderColor: currentVariant === v ? "var(--color-ink)" : "rgba(12,12,13,0.15)",
+                      borderColor: currentVariant === v ? "var(--color-ink)" : "var(--color-line-2)",
                       background: currentVariant === v ? "var(--color-ink)" : "var(--color-surface)",
                       color: currentVariant === v ? "var(--color-paper)" : "var(--color-tx)",
                     }}
@@ -427,7 +427,7 @@ export default function ListingView({ design }: { design: Design }) {
 
             {/* Qty + Add to cart */}
             <div className="row gap-3 mb-6">
-              <div className="row" style={{ border: "1px solid rgba(12,12,13,0.15)", borderRadius: 12, height: 52 }}>
+              <div className="row" style={{ border: "1px solid var(--color-line-2)", borderRadius: "var(--r-md)", height: 52 }}>
                 <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-4 h-full font-medium" style={{ fontSize: 18 }}>−</button>
                 <span className="px-4 tnum font-medium">{qty}</span>
                 <button onClick={() => setQty(qty + 1)} className="px-4 h-full font-medium" style={{ fontSize: 18 }}>+</button>

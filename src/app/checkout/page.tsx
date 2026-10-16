@@ -292,11 +292,11 @@ export default function CheckoutPage() {
             <div key={s} className="row gap-2 items-center">
               <div className="center" style={{
                 width: 24, height: 24, borderRadius: "50%", fontSize: "0.75rem", fontWeight: 600,
-                background: (step === "info" && i === 0) || (step === "review" && i <= 1) ? "var(--color-ink)" : "rgba(12,12,13,0.1)",
-                color: (step === "info" && i === 0) || (step === "review" && i <= 1) ? "#fff" : "var(--color-tx-3)",
+                background: (step === "info" && i === 0) || (step === "review" && i <= 1) ? "var(--color-ink)" : "var(--color-line)",
+                color: (step === "info" && i === 0) || (step === "review" && i <= 1) ? "var(--color-surface)" : "var(--color-tx-3)",
               }}>{i + 1}</div>
               <span className="small" style={{ color: "var(--color-tx-2)" }}>{s}</span>
-              {i < STEPS.length - 1 && <div style={{ width: 24, height: 1, background: "rgba(12,12,13,0.1)" }} />}
+              {i < STEPS.length - 1 && <div style={{ width: 24, height: 1, background: "var(--color-line)" }} />}
             </div>
           ))}
         </div>
@@ -311,36 +311,36 @@ export default function CheckoutPage() {
                 <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="label small">Email</label>
-                    <input required type="email" autoComplete="email" inputMode="email" className="input mt-1" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" style={{ borderRadius: 10 }} />
+                    <input required type="email" autoComplete="email" inputMode="email" className="input mt-1" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="label small">Full name</label>
-                    <input required autoComplete="name" className="input mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Alex Design" style={{ borderRadius: 10 }} />
+                    <input required autoComplete="name" className="input mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Alex Design" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="label small">Address</label>
-                    <input required autoComplete="street-address" className="input mt-1" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Maker Lane" style={{ borderRadius: 10 }} />
+                    <input required autoComplete="street-address" className="input mt-1" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Maker Lane" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="label small">Apartment, suite, unit <span style={{ color: "var(--color-tx-3)" }}>(optional)</span></label>
-                    <input autoComplete="address-line2" className="input mt-1" value={form.apt} onChange={(e) => setForm({ ...form, apt: e.target.value })} placeholder="Apt 4B" style={{ borderRadius: 10 }} />
+                    <input autoComplete="address-line2" className="input mt-1" value={form.apt} onChange={(e) => setForm({ ...form, apt: e.target.value })} placeholder="Apt 4B" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                   <div>
                     <label className="label small">City</label>
-                    <input required autoComplete="address-level2" className="input mt-1" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Brooklyn" style={{ borderRadius: 10 }} />
+                    <input required autoComplete="address-level2" className="input mt-1" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="Brooklyn" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                   <div>
                     <label className="label small">State / Province</label>
-                    <input autoComplete="address-level1" className="input mt-1" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="NY" style={{ borderRadius: 10 }} />
+                    <input autoComplete="address-level1" className="input mt-1" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} placeholder="NY" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                   <div>
                     <label className="label small">ZIP / Postal code</label>
-                    <input required autoComplete="postal-code" className="input mt-1" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} placeholder="11201" style={{ borderRadius: 10 }} />
+                    <input required autoComplete="postal-code" className="input mt-1" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} placeholder="11201" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                   <div>
                     {/* H-4: country drives VAT — it must be selectable, not hard-coded. */}
                     <label className="label small">Country</label>
-                    <select required autoComplete="country" className="input mt-1" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} style={{ borderRadius: 10 }}>
+                    <select required autoComplete="country" className="input mt-1" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} style={{ borderRadius: "var(--r-md)" }}>
                       {COUNTRIES.map((c) => (
                         <option key={c.code} value={c.code}>{c.name}</option>
                       ))}
@@ -349,7 +349,7 @@ export default function CheckoutPage() {
                   <div style={{ gridColumn: "1 / -1" }}>
                     {/* H-6: carriers need a phone number for international delivery. */}
                     <label className="label small">Phone <span style={{ color: "var(--color-tx-3)" }}>(for delivery updates)</span></label>
-                    <input autoComplete="tel" inputMode="tel" className="input mt-1" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 0100" style={{ borderRadius: 10 }} />
+                    <input autoComplete="tel" inputMode="tel" className="input mt-1" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 555 0100" style={{ borderRadius: "var(--r-md)" }} />
                   </div>
                 </div>
               </div>
@@ -367,7 +367,7 @@ export default function CheckoutPage() {
                 <div className="stack gap-3">
                   {cart.items.map((it, i) => (
                     <div key={i} className="flex gap-3 items-center">
-                      <div style={{ width: 52, height: 52, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(12,12,13,0.08)" }}>
+                      <div style={{ width: 52, height: 52, borderRadius: "var(--r-sm)", overflow: "hidden", flexShrink: 0, border: "1px solid var(--color-line)" }}>
                         <Artwork seed={it.seed} palette={it.palette} shape={it.shape} rounded={false} className="!rounded-none" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -434,7 +434,7 @@ export default function CheckoutPage() {
             <div className="stack gap-3 mb-4" style={{ maxHeight: 320, overflowY: "auto" }}>
               {cart.items.map((it, i) => (
                 <div key={i} className="flex gap-3 items-center">
-                  <div style={{ width: 52, height: 52, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(12,12,13,0.08)" }}>
+                  <div style={{ width: 52, height: 52, borderRadius: "var(--r-sm)", overflow: "hidden", flexShrink: 0, border: "1px solid var(--color-line)" }}>
                     <Artwork seed={it.seed} palette={it.palette} shape={it.shape} rounded={false} className="!rounded-none" />
                   </div>
                   <div className="flex-1 min-w-0">

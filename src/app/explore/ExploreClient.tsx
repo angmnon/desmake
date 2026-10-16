@@ -160,7 +160,7 @@ export default function ExploreClient({
               <Search size={18} style={{ position: "absolute", left: 18, top: "50%", transform: "translateY(-50%)", color: "var(--color-tx-3)" }} strokeWidth={1.8} />
               <input
                 className="input"
-                style={{ paddingLeft: 48, paddingRight: 16, height: 52, borderRadius: 2 }}
+                style={{ paddingLeft: 48, paddingRight: 16, height: 52, borderRadius: "var(--r-lg)" }}
                 placeholder="Search designs, creators, tags…"
                 value={query}
                 onChange={(e) => onSearch(e.target.value)}

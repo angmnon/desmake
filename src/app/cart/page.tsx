@@ -62,7 +62,7 @@ export default function CartPage() {
           <div className="stack gap-3">
             {cart.items.map((it, i) => (
               <div key={i} className="card flex gap-4 items-center" style={{ padding: 16 }}>
-                <div style={{ width: 92, height: 92, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(12,12,13,0.08)" }}>
+                <div style={{ width: 92, height: 92, borderRadius: "var(--r-md)", overflow: "hidden", flexShrink: 0, border: "1px solid var(--color-line)" }}>
                   <Artwork seed={it.seed} palette={it.palette} shape={it.shape} rounded={false} className="!rounded-none" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -76,7 +76,7 @@ export default function CartPage() {
                 <div className="flex flex-col items-end gap-3">
                   <div className="h5 mono">{money(it.priceCents * it.qty)}</div>
                   <div className="row gap-3 items-center">
-                    <div className="row items-center" style={{ border: "1px solid rgba(12,12,13,0.12)", borderRadius: 8 }}>
+                    <div className="row items-center" style={{ border: "1px solid var(--color-line)", borderRadius: "var(--r-sm)" }}>
                       <button
                         onClick={() => cart.updateQty(i, it.qty - 1)}
                         className="center" style={{ width: 32, height: 32 }}
