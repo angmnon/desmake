@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
-const LINK_STYLE: CSSProperties = { color: "rgba(246,247,248,0.72)", transition: "color 0.2s" };
+const LINK_STYLE: CSSProperties = { color: "var(--tx-inv-2)", transition: "color 0.2s" };
 
 /**
  * `null` href = the destination does not exist in this build. It renders as a
@@ -21,28 +21,22 @@ const COLUMNS: readonly { h: string; items: readonly FooterItem[] }[] = [
 
 export function SiteFooter() {
   return (
-    <footer style={{ background: "var(--color-ink)", color: "#f6f7f8", paddingTop: "clamp(48px, 6vw, 80px)", paddingBottom: 40 }}>
+    <footer className="foot">
       <div className="container-wide">
-        <div className="grid" style={{ gridTemplateColumns: "1.4fr repeat(4, minmax(0, 1fr))", gap: "clamp(28px, 4vw, 64px)" }}>
+        <div className="grid grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,minmax(0,1fr))] gap-8 lg:gap-12">
           <div>
-            <div className="flex items-center gap-2.5" style={{ marginBottom: 18 }}>
-              <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="3" width="26" height="26" rx="2" stroke="#f6f7f8" strokeWidth="2"/>
-                <path d="M3 13c5-1.5 8-1 11 2s6 4 12 3" stroke="#9aa1ab" strokeWidth="2" strokeLinecap="round"/>
-                <circle cx="23.5" cy="8.5" r="2.5" fill="#9aa1ab"/>
-              </svg>
-              <span style={{ fontSize: 20, fontWeight: 500, letterSpacing: "0.12em" }}>Desmake</span>
+            <div className="row gap-2.5" style={{ marginBottom: 18 }}>
+              <img src="/logo.svg" width={28} height={28} alt="Desmake" />
+              <span style={{ fontSize: 20, fontWeight: 650, letterSpacing: "-0.03em" }}>Desmake</span>
             </div>
-            <p className="small" style={{ color: "rgba(246,247,248,0.5)", maxWidth: "30ch", lineHeight: 1.65 }}>
+            <p className="small" style={{ color: "var(--tx-inv-2)", maxWidth: "32ch", lineHeight: 1.65 }}>
               Design once. Manufacture anywhere. The AI-native marketplace connecting creators with a global on-demand manufacturing network.
             </p>
           </div>
 
           {COLUMNS.map((col) => (
             <div key={col.h}>
-              <div className="mono" style={{ fontSize: "0.75rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(246,247,248,0.9)", marginBottom: 18 }}>
-                {col.h}
-              </div>
+              <div className="foot-col-t">{col.h}</div>
               <ul className="stack gap-2.5">
                 {col.items.map(([label, href]) => (
                   <li key={label}>
@@ -60,17 +54,17 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div style={{ height: 1, background: "rgba(246,247,248,0.12)", margin: "clamp(40px,5vw,64px) 0 28px" }} />
+        <div className="foot-word" aria-hidden="true">Desmake</div>
 
-        <div className="row-between wrap gap-4">
-          <div className="tiny mono" style={{ color: "rgba(246,247,248,0.45)", letterSpacing: "0.15em" }}>
+        <div className="row-between wrap gap-4" style={{ marginTop: 8 }}>
+          <div className="tiny mono" style={{ color: "var(--tx-inv-3)", letterSpacing: "0.15em" }}>
             © 2026 Desmake, Inc. — Designed for makers. Manufactured worldwide.
           </div>
-          <div className="row gap-5 tiny mono" style={{ color: "rgba(246,247,248,0.45)", letterSpacing: "0.15em" }}>
-            <Link href="/privacy" className="dm-footer-link" style={{ color: "rgba(246,247,248,0.45)" }}>Privacy</Link>
-            <Link href="/terms" className="dm-footer-link" style={{ color: "rgba(246,247,248,0.45)" }}>Terms</Link>
-            <Link href="/refund-policy" className="dm-footer-link" style={{ color: "rgba(246,247,248,0.45)" }}>Refund Policy</Link>
-            <Link href="/cookies" className="dm-footer-link" style={{ color: "rgba(246,247,248,0.45)" }}>Cookies</Link>
+          <div className="row gap-5 tiny mono" style={{ color: "var(--tx-inv-3)", letterSpacing: "0.15em" }}>
+            <Link href="/privacy" className="dm-footer-link" style={{ color: "var(--tx-inv-3)" }}>Privacy</Link>
+            <Link href="/terms" className="dm-footer-link" style={{ color: "var(--tx-inv-3)" }}>Terms</Link>
+            <Link href="/refund-policy" className="dm-footer-link" style={{ color: "var(--tx-inv-3)" }}>Refund Policy</Link>
+            <Link href="/cookies" className="dm-footer-link" style={{ color: "var(--tx-inv-3)" }}>Cookies</Link>
             <span>v0.1.0-mvp</span>
           </div>
         </div>

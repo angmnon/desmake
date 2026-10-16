@@ -29,11 +29,32 @@ function CartBadge() {
     window.addEventListener("cart-updated", handler);
     return () => window.removeEventListener("cart-updated", handler);
   }, [count]);
-  if (n === 0) return <ShoppingBag size={20} strokeWidth={1.5} />;
+  if (n === 0) return <ShoppingBag size={18} strokeWidth={1.6} />;
   return (
     <div className="relative">
-      <ShoppingBag size={20} strokeWidth={1.5} />
-      <span className="absolute -top-1.5 -right-2 text-[10px] font-semibold rounded-sm bg-[var(--color-ink)] text-white w-[17px] h-[17px] flex items-center justify-center">{n}</span>
+      <ShoppingBag size={18} strokeWidth={1.6} />
+      <span
+        className="tiny"
+        style={{
+          position: "absolute",
+          top: -4,
+          right: -5,
+          minWidth: 17,
+          height: 17,
+          padding: "0 4px",
+          borderRadius: "999px",
+          background: "var(--signal)",
+          color: "#fff",
+          fontSize: "10px",
+          fontWeight: 600,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 0 0 2px var(--paper)",
+        }}
+      >
+        {n}
+      </span>
     </div>
   );
 }
@@ -51,20 +72,15 @@ export function SiteHeader() {
   const { user } = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Silver & Ink nav (§3.2): transparent at top; on scroll (>24px) collapses to
-  // 56px with paper/85 + backdrop blur + 1px hairline.
+  // Desmake DS v1.0 nav: fixed, paper/78 + backdrop blur, 1px hairline.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    // close menus on route change
+    setMobileOpen(false);
+    setMenuOpen(false);
+  }, [pathname]);
 
-  // `next` carries the current location so signing in returns the visitor to
-  // where they were. Never point it at /auth itself (would loop).
   const next = pathname.startsWith("/auth") ? "/" : pathname;
 
   useEffect(() => {
@@ -79,7 +95,6 @@ export function SiteHeader() {
   const signOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setMenuOpen(false);
-    // Hard nav clears in-memory session state everywhere and returns to home.
     window.location.assign("/");
   };
 
@@ -92,8 +107,6 @@ export function SiteHeader() {
     { href: "/agents", label: "Agents" },
   ];
 
-  const headerH = scrolled ? 56 : 72;
-
   const accountMenu = user ? (
     <div className="relative" ref={menuRef}>
       <button
@@ -101,10 +114,10 @@ export function SiteHeader() {
         className="row gap-2"
         aria-haspopup="menu"
         aria-expanded={menuOpen}
-        style={{ padding: "4px 6px 4px 4px", borderRadius: 2, border: `1px solid ${scrolled ? "rgba(216,220,225,1)" : "transparent"}` }}
+        style={{ padding: "4px 8px 4px 4px", borderRadius: "var(--r-full)", border: "1px solid var(--line)" }}
       >
         <span
-          style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--color-ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}
+          style={{ width: 30, height: 30, borderRadius: "50%", background: "var(--ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600 }}
         >
           {initialsOf(user.name, user.email)}
         </span>
@@ -114,10 +127,10 @@ export function SiteHeader() {
         <div
           className="card"
           role="menu"
-          style={{ position: "absolute", right: 0, top: "calc(100% + 10px)", width: 232, padding: 8, zIndex: 60 }}
+          style={{ position: "absolute", right: 0, top: "calc(100% + 10px)", width: 240, padding: 8, zIndex: 60, borderRadius: "var(--r-lg)" }}
         >
           <div className="row gap-3" style={{ padding: "10px 12px" }}>
-            <span style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--color-ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8125rem", fontWeight: 600, flexShrink: 0 }}>
+            <span style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--ink)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8125rem", fontWeight: 600, flexShrink: 0 }}>
               {initialsOf(user.name, user.email)}
             </span>
             <div style={{ minWidth: 0 }}>
@@ -125,11 +138,11 @@ export function SiteHeader() {
               <div className="tiny faint" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.email}</div>
             </div>
           </div>
-          <div style={{ height: 1, background: "var(--color-silver-line)", margin: "4px 0" }} />
+          <div style={{ height: 1, background: "var(--line)", margin: "4px 0" }} />
           <Link href="/account" onClick={() => setMenuOpen(false)} className="dm-menu-item" role="menuitem">My account</Link>
           <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="dm-menu-item" role="menuitem">Creator dashboard</Link>
           <Link href="/orders" onClick={() => setMenuOpen(false)} className="dm-menu-item" role="menuitem">My orders</Link>
-          <button onClick={signOut} className="dm-menu-item" role="menuitem" style={{ width: "100%", textAlign: "left", color: "var(--color-ink)" }}>
+          <button onClick={signOut} className="dm-menu-item" role="menuitem" style={{ width: "100%", textAlign: "left", color: "var(--ink)" }}>
             <LogOut size={15} strokeWidth={1.8} style={{ display: "inline", verticalAlign: "-2px", marginRight: 8 }} /> Sign out
           </button>
         </div>
@@ -137,10 +150,10 @@ export function SiteHeader() {
     </div>
   ) : (
     <>
-      <Link href={`/auth?mode=register&next=${encodeURIComponent(next)}`} className="btn btn-sm btn-outline" style={{ padding: "9px 16px", fontSize: "0.6875rem" }}>
+      <Link href={`/auth?mode=register&next=${encodeURIComponent(next)}`} className="btn btn-sm btn-outline">
         Create account
       </Link>
-      <Link href={`/auth?next=${encodeURIComponent(next)}`} className="btn btn-sm" style={{ padding: "9px 18px", fontSize: "0.6875rem" }}>
+      <Link href={`/auth?next=${encodeURIComponent(next)}`} className="btn btn-sm btn-signal">
         Sign in
       </Link>
     </>
@@ -151,26 +164,25 @@ export function SiteHeader() {
       <header
         className="fixed top-0 left-0 right-0 z-50"
         style={{
-          height: headerH,
-          background: scrolled ? "rgba(246,247,248,0.85)" : "transparent",
-          backdropFilter: scrolled ? "blur(14px)" : "none",
-          WebkitBackdropFilter: scrolled ? "blur(14px)" : "none",
-          borderBottom: scrolled ? "1px solid var(--color-silver-line)" : "1px solid transparent",
-          transition: "height 0.5s cubic-bezier(0.16,1,0.3,1), background 0.5s cubic-bezier(0.16,1,0.3,1), border-color 0.5s cubic-bezier(0.16,1,0.3,1)",
+          height: "var(--nav-h)",
+          background: "rgba(247, 246, 243, 0.78)",
+          backdropFilter: "saturate(180%) blur(20px)",
+          WebkitBackdropFilter: "saturate(180%) blur(20px)",
+          borderBottom: "1px solid var(--line)",
         }}
       >
-        <div className="container-wide h-full flex items-center justify-between gap-6">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2.5">
-              <img src="/logo.svg" alt="Desmake" width={32} height={32} />
-              <span className="text-lg font-medium tracking-[0.15em]">Desmake</span>
+        <div className="container-wide nav-inner">
+          <div className="row gap-8" style={{ gap: 28 }}>
+            <Link href="/" className="brand">
+              <img src="/logo.svg" className="brand-mark" alt="Desmake" width={22} height={22} />
+              <span className="brand-tx">Desmake</span>
             </Link>
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="nav-links">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`nav-link ${pathname.startsWith(item.href) ? "active" : ""}`}
+                  className={`nav-link ${pathname.startsWith(item.href) ? "is-active" : ""}`}
                 >
                   {item.label}
                 </Link>
@@ -178,24 +190,26 @@ export function SiteHeader() {
             </nav>
           </div>
 
-          <div className="hidden md:flex items-center gap-3">
-            <button className="w-10 h-10 rounded-sm flex items-center justify-center hover:bg-[rgba(21,23,26,0.05)] transition-colors" aria-label="Search">
-              <Search size={18} strokeWidth={1.5} />
-            </button>
-            <Link href="/account" className="w-10 h-10 rounded-sm flex items-center justify-center hover:bg-[rgba(21,23,26,0.05)] transition-colors relative" aria-label="Notifications">
-              <Bell size={18} strokeWidth={1.5} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-ink rounded-sm" />
+          <div className="nav-actions">
+            <Link href="/explore" className="nav-search" aria-label="Search the marketplace">
+              <Search size={16} strokeWidth={1.6} />
+              <span>Search the marketplace</span>
+              <kbd>/</kbd>
             </Link>
-            <Link href="/cart" className="w-10 h-10 rounded-sm flex items-center justify-center hover:bg-[rgba(21,23,26,0.05)] transition-colors" aria-label="Cart">
+            <Link href="/explore" className="icon-btn" aria-label="Wishlist">
+              <Heart size={18} strokeWidth={1.6} />
+            </Link>
+            <Link href="/account" className="icon-btn" aria-label="Notifications">
+              <Bell size={18} strokeWidth={1.6} />
+              <span className="nub" />
+            </Link>
+            <Link href="/cart" className="icon-btn" aria-label="Cart">
               <CartBadge />
-            </Link>
-            <Link href="/explore" className="w-10 h-10 rounded-sm flex items-center justify-center hover:bg-[rgba(21,23,26,0.05)] transition-colors" aria-label="Wishlist">
-              <Heart size={18} strokeWidth={1.5} />
             </Link>
             {accountMenu}
           </div>
 
-          <button className="md:hidden w-10 h-10 flex items-center justify-center" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
+          <button className="md:hidden icon-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu" style={{ marginLeft: 4 }}>
             {mobileOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
@@ -203,13 +217,13 @@ export function SiteHeader() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-paper md:hidden" style={{ top: headerH }} onClick={() => setMobileOpen(false)}>
+        <div className="fixed inset-0 z-40 bg-paper md:hidden" style={{ top: "var(--nav-h)" }} onClick={() => setMobileOpen(false)}>
           <nav className="container-wide py-8 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-2xl font-medium tracking-tight py-3 border-b border-[rgba(21,23,26,0.08)]"
+                className="text-2xl font-medium tracking-tight py-3 border-b border-[rgba(12,12,13,0.08)]"
                 onClick={() => setMobileOpen(false)}
               >
                 {item.label}
@@ -223,7 +237,7 @@ export function SiteHeader() {
                 </>
               ) : (
                 <>
-                  <Link href={`/auth?mode=register&next=${encodeURIComponent(next)}`} className="btn flex-1" onClick={() => setMobileOpen(false)}>Create account</Link>
+                  <Link href={`/auth?mode=register&next=${encodeURIComponent(next)}`} className="btn btn-signal flex-1" onClick={() => setMobileOpen(false)}>Create account</Link>
                   <Link href={`/auth?next=${encodeURIComponent(next)}`} className="btn btn-outline" onClick={() => setMobileOpen(false)}>Sign in</Link>
                 </>
               )}
@@ -236,7 +250,7 @@ export function SiteHeader() {
       )}
 
       {/* Spacer */}
-      <div style={{ height: headerH, transition: "height 0.5s cubic-bezier(0.16,1,0.3,1)" }} />
+      <div style={{ height: "var(--nav-h)" }} />
     </>
   );
 }

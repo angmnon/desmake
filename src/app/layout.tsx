@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Jost, Cormorant_Garamond } from 'next/font/google';
+import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -14,28 +14,33 @@ import CookieConsent from '@/components/CookieConsent';
 // every request hit the origin Worker (worst-case TTFB, needless load). With
 // `revalidate`, Next emits `Cache-Control: s-maxage=600, stale-while-revalidate`,
 // so Cloudflare's edge serves cached HTML for 10 min and revalidates in the
-// background. Routes that truly need a per-request render keep their own
-// `force-dynamic` (listing, explore, dashboard, cdn, robots, sitemap, llms). A
-// deploy still reflects immediately: we purge the CDN cache right after
-// `wrangler deploy`, so a stale page never survives a release.
+// background. A deploy still reflects immediately: we purge the CDN cache right
+// after `wrangler deploy`, so a stale page never survives a release.
 export const revalidate = 600;
 
-// Self-hosted webfonts (next/font/google). Downloaded at build time and served
-// same-origin from /_next/static — no render-blocking external @import, no
-// runtime dependency on fonts.googleapis.cn (slow/unreliable for an overseas
-// audience). Each font exposes a CSS variable consumed by globals.css
-// `--font-sans` / `--font-serif` (Silver & Ink Edition: Jost + Cormorant).
-const jost = Jost({
+// Desmake Design System v1.0 — Inter (sans) + Instrument Serif (display) +
+// JetBrains Mono (mono). Self-hosted via next/font (downloaded at build time,
+// served same-origin from /_next/static — no render-blocking external @import,
+// no runtime dependency on fonts.googleapis.cn for an overseas audience). Each
+// font exposes a CSS variable consumed by globals.css `--font-sans` /
+// `--font-serif` / `--font-mono`.
+const inter = Inter({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
-  variable: '--font-jost',
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-inter',
   display: 'swap',
 });
-const cormorant = Cormorant_Garamond({
+const serif = Instrument_Serif({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: ['400'],
   style: ['normal', 'italic'],
-  variable: '--font-cormorant',
+  variable: '--font-instrument',
+  display: 'swap',
+});
+const mono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500'],
+  variable: '--font-jetbrains',
   display: 'swap',
 });
 
@@ -116,7 +121,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jost.variable} ${cormorant.variable}`}>
+    <html lang="en" className={`${inter.variable} ${serif.variable} ${mono.variable}`}>
       <head>
         {/* P2-5: warm up connections to third-party origins the app loads after the
             user grants cookie consent (Stripe, GA, Meta). A preconnect is just a
