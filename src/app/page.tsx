@@ -5,6 +5,7 @@ import { Artwork } from "@/components/Artwork";
 import { CreatorCard } from "@/components/DesignCard";
 import { JsonLd, faqSchema } from "@/components/JsonLd";
 import HomeDiscover from "@/components/HomeDiscover";
+import { recommendHomepage } from "@/lib/recommend";
 
 // P1-1: this page is now a SERVER Component. The full seed catalog (`DESIGNS`,
 // `ADAPTERS`, `CATEGORIES`, `CREATORS`, `HERO_STATS`) plus the pricing engine it
@@ -36,16 +37,10 @@ const HOME_FAQ = faqSchema([
   },
 ]);
 
-// Pre-filtered design sets for the Discover grid (computed server-side, passed to
-// the client tab component as small props — not the full catalog).
-const trending = [...DESIGNS].sort((a, b) => b.likes - a.likes).slice(0, 8);
-const newDesigns = DESIGNS.slice(0, 8);
-const aiPicks = DESIGNS.filter((d) => d.aiGenerated).slice(0, 8);
-const editors = DESIGNS.slice(8, 16);
-
-// Hero floating cards selection
-const heroCards = DESIGNS.slice(0, 3);
-const featured = DESIGNS.find((d) => d.title === "Quiet Geometry") || DESIGNS[10];
+// Pre-filtered design sets for the Discover grid (computed server-side via the
+// recommendation engine, passed to the client tab component as small props — not
+// the full catalog). See `src/lib/recommend.ts` for the scoring + diversity logic.
+const { trending, newDesigns, aiPicks, editors, heroCards, featured } = recommendHomepage(DESIGNS);
 
 export default function HomePage() {
   return (
