@@ -7,7 +7,7 @@
 // Previously the homepage was "use client" and statically imported the entire
 // `@/lib/data` module (incl. pricing.ts), shipping it to every visitor's JS bundle.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { DesignCard } from "./DesignCard";
@@ -29,16 +29,45 @@ export default function HomeDiscover({
   categories: CategoryLike[];
 }) {
   const [activeTab, setActiveTab] = useState("Trending");
-  const tabs = ["Trending", "New", "AI Picks", "Editors"];
+  // null = 加载中（含未登录）；[] = 已确认无个性化内容
+  const [forYou, setForYou] = useState<Design[] | null>(null);
+
+  // 登录态渐进增强：挂载后拉取个性化 "For You"，仅当有内容才插入并置顶该标签。
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/recommend")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const fy = Array.isArray(data?.forYou) ? data.forYou : [];
+        if (fy.length > 0) {
+          setForYou(fy);
+          setActiveTab("For You");
+        } else {
+          setForYou([]);
+        }
+      })
+      .catch(() => !cancelled && setForYou([]));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasForYou = forYou !== null && forYou.length > 0;
+  const tabs = hasForYou
+    ? ["For You", "Trending", "New", "AI Picks", "Editors"]
+    : ["Trending", "New", "AI Picks", "Editors"];
 
   const activeDesigns =
-    activeTab === "Trending"
-      ? trending
-      : activeTab === "New"
-        ? newDesigns
-        : activeTab === "AI Picks"
-          ? aiPicks
-          : editors;
+    activeTab === "For You"
+      ? (forYou ?? [])
+      : activeTab === "Trending"
+        ? trending
+        : activeTab === "New"
+          ? newDesigns
+          : activeTab === "AI Picks"
+            ? aiPicks
+            : editors;
 
   return (
     <section className="section">
