@@ -20,7 +20,9 @@
 //  4. 确定性：打分带微小 hash tie-break，保证 ISR 每次重生成结果一致。
 //  5. 永不 blank：D1 不可用或池为空时降级回种子 SVG 占位图（`real: false`）。
 
-import { getDesignIndex, type PublishedDesign } from "@/lib/catalogIndex";
+import { getDesignIndex } from "@/lib/catalogIndex";
+// `PublishedDesign` 定义在 stores；catalogIndex 只是自己 import 它，并未 re-export。
+import type { PublishedDesign } from "@/lib/stores";
 import { publishedToDesign } from "@/lib/catalog";
 import { DESIGNS, type Design } from "@/lib/data";
 import { select, recommendHomepage, type Scored } from "@/lib/recommend";
