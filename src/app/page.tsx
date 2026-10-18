@@ -42,9 +42,16 @@ const HOME_FAQ = faqSchema([
   },
 ]);
 
-// ISR: 与 /explore 一致（600s）。首页读 D1 精品池，但边缘缓存 10 分钟，
-// 保证 TTFB；发布新设计时的 revalidatePath('/') 会让缓存立即重建。
-export const revalidate = 600;
+// 必须运行时渲染，不能用 ISR/静态预渲染。
+//
+// 实测根因：静态预渲染发生在**构建期**，那时没有 D1 binding，`getDesignIndex()`
+// 拿不到数据 → `curatedHomepage()` 静默降级成种子 SVG 占位图，而这个降级后的
+// HTML 会作为 prerender 产物被长期返回（x-nextjs-prerender: 1），首页永远看不到
+// 真实商品图。/explore 因为读 searchParams 走动态渲染（no-store），所以能正常出图。
+//
+// 代价是首页不再有边缘缓存，但 `getDesignIndex()` 有进程级索引缓存（每实例只扫
+// 一次 D1），单次渲染开销与 /explore 同级。正确性优先：首页必须展示真实精品图。
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   // 首页各展示位：优先用真实上传的精品商品图；D1 异常时降级为种子 SVG 占位图。
