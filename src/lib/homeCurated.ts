@@ -165,12 +165,20 @@ export async function curatedHomepage(): Promise<HomeCurated> {
   const heroCards = select(scored, { take: 3, groupBy: (d) => d.category, maxPerGroup: 1 });
 
   // Featured 主图：避开 Hero，避免首屏两张大图重复。
-  const heroIds = new Set(heroCards.map((d) => d.id));
-  const featuredScored = scored.filter((s) => !heroIds.has(s.design.id));
+  const usedIds = new Set(heroCards.map((d) => d.id));
+  const featuredScored = scored.filter((s) => !usedIds.has(s.design.id));
   const featured = (featuredScored[0] ?? scored[0])?.design ?? pool[0];
 
-  // 6 个适配器示例图。
-  const adapterSamples = select(scored, { take: 6, groupBy: (d) => d.category, maxPerGroup: 2 });
+  // 6 个适配器示例图：再避开 Featured 与 Discover 主榜单，
+  // 让首页一屏内 18 个图位尽量是 18 张互不相同的精品图。
+  usedIds.add(featured.id);
+  for (const d of trending) usedIds.add(d.id);
+  const adapterSamples = select(scored, {
+    take: 6,
+    groupBy: (d) => d.category,
+    maxPerGroup: 2,
+    exclude: usedIds,
+  });
 
   return { trending, newDesigns, aiPicks, editors, heroCards, featured, adapterSamples, real: true };
 }
