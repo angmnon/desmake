@@ -40,7 +40,7 @@
     "SITE_URL": "https://desmake.com",
     "REQUIRE_EMAIL_VERIFICATION": "true",
     "IMAGE_RESIZING_ENABLED": "true",
-    "BUILD_REV": "20261017"
+    "BUILD_REV": "20261018"
   },
   "observability": {
     "enabled": true

@@ -1,9 +1,27 @@
+import Image from "next/image";
+
 type ArtworkProps = {
   seed: string;
   palette: [string, string, string];
   shape: number;
   className?: string;
   rounded?: boolean;
+  /**
+   * 真实商品图（我们上传到 R2 的成品图，形如 `/cdn/uploads/...`）。
+   * 有值时渲染真实图片，不再现场生成 SVG 占位艺术图。
+   */
+  imageUrl?: string;
+  /** 真实图片的 alt 文案（可访问性）。 */
+  alt?: string;
+  /**
+   * 铺满父容器（父容器需 `position: relative` 且已确定尺寸，如 aspect-ratio）。
+   * false（默认）时保持 1:1 正方形，与 SVG 分支行为一致。
+   */
+  fill?: boolean;
+  /** 图片响应式尺寸提示，交给 next/image 生成 srcset。 */
+  sizes?: string;
+  /** 首屏图片跳过懒加载（LCP）。 */
+  priority?: boolean;
 };
 
 // Deterministic PRNG from seed string (no Math.random to avoid hydration mismatch)
@@ -166,7 +184,44 @@ function cachedArt(seed: string, palette: [string, string, string], shape: numbe
 }
 
 // Server/Client-safe deterministic component (no useMemo needed since function is pure)
-export function Artwork({ seed, palette, shape, className = "", rounded = true }: ArtworkProps) {
+export function Artwork({
+  seed,
+  palette,
+  shape,
+  className = "",
+  rounded = true,
+  imageUrl,
+  alt,
+  fill = false,
+  sizes,
+  priority = false,
+}: ArtworkProps) {
+  // 真实上传图优先：首页/详情页展示我们实际上传到 R2 的精品商品图，
+  // 只有在没有真实图（如纯种子/程序化设计）时才回退到 SVG 生成器。
+  if (imageUrl) {
+    return (
+      <div
+        className={`art-canvas ${rounded ? "rounded-[18px]" : ""} ${className}`}
+        style={
+          fill
+            ? { position: "absolute", inset: 0, overflow: "hidden", background: safeColor(palette[2]) }
+            : { position: "relative", background: safeColor(palette[2]), width: "100%", aspectRatio: "1/1", overflow: "hidden" }
+        }
+      >
+        <Image
+          src={imageUrl}
+          alt={alt || ""}
+          fill
+          sizes={sizes ?? "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"}
+          loading={priority ? "eager" : "lazy"}
+          priority={priority}
+          decoding="async"
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+
   const svg = cachedArt(seed, palette, shape);
   return (
     <div

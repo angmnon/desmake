@@ -5,7 +5,7 @@ import { Artwork } from "@/components/Artwork";
 import { CreatorCard } from "@/components/DesignCard";
 import { JsonLd, faqSchema } from "@/components/JsonLd";
 import HomeDiscover from "@/components/HomeDiscover";
-import { recommendHomepage } from "@/lib/recommend";
+import { curatedHomepage } from "@/lib/homeCurated";
 
 // P1-1: this page is now a SERVER Component. The full seed catalog (`DESIGNS`,
 // `ADAPTERS`, `CATEGORIES`, `CREATORS`, `HERO_STATS`) plus the pricing engine it
@@ -13,6 +13,11 @@ import { recommendHomepage } from "@/lib/recommend";
 // ships to the browser. The single piece of client interactivity (the Discover
 // tab switcher) lives in `HomeDiscover`, which receives only the 4 small
 // pre-filtered arrays (≤8 designs each) as props.
+//
+// P2: 首页图源已改为我们真实上传到 R2 的精品商品图（见 `src/lib/homeCurated.ts`）。
+// 种子 `DESIGNS` 没有任何 imageUrl，原本首页所有图都是 Artwork 现场生成的 SVG
+// 占位艺术图；现在从 D1 设计索引里筛出「内部运营账号 + 有真实图」的池来填充
+// Hero / Discover / Featured / 适配器 全部展示位。D1 不可用时自动降级回种子图。
 
 const HOME_FAQ = faqSchema([
   {
@@ -37,12 +42,15 @@ const HOME_FAQ = faqSchema([
   },
 ]);
 
-// Pre-filtered design sets for the Discover grid (computed server-side via the
-// recommendation engine, passed to the client tab component as small props — not
-// the full catalog). See `src/lib/recommend.ts` for the scoring + diversity logic.
-const { trending, newDesigns, aiPicks, editors, heroCards, featured } = recommendHomepage(DESIGNS);
+// ISR: 与 /explore 一致（600s）。首页读 D1 精品池，但边缘缓存 10 分钟，
+// 保证 TTFB；发布新设计时的 revalidatePath('/') 会让缓存立即重建。
+export const revalidate = 600;
 
-export default function HomePage() {
+export default async function HomePage() {
+  // 首页各展示位：优先用真实上传的精品商品图；D1 异常时降级为种子 SVG 占位图。
+  const home = await curatedHomepage();
+  const { trending, newDesigns, aiPicks, editors, heroCards, featured, adapterSamples } = home;
+
   return (
     <div>
       <JsonLd data={HOME_FAQ} />
@@ -95,7 +103,17 @@ export default function HomePage() {
                   border: "1px solid var(--line)",
                 }}
               >
-                <Artwork seed={d.seed} palette={d.palette} shape={d.shape} rounded={false} className="!rounded-none" />
+                <Artwork
+                  seed={d.seed}
+                  palette={d.palette}
+                  shape={d.shape}
+                  rounded={false}
+                  className="!rounded-none"
+                  imageUrl={d.imageUrl}
+                  alt={d.title}
+                  sizes="(max-width: 768px) 60vw, 30vw"
+                  priority={i === 0}
+                />
               </div>
             ))}
             <div
@@ -200,8 +218,18 @@ export default function HomePage() {
         <div className="container-wide" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,.85fr)", gap: "clamp(24px,4vw,56px)", alignItems: "start" }}>
           <div className="rv" style={{ position: "relative" }}>
             <div className="card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", padding: 0 }}>
-              <div style={{ aspectRatio: "4/3" }}>
-                <Artwork seed={featured.seed} palette={featured.palette} shape={featured.shape} rounded={false} className="!rounded-none" />
+              <div style={{ aspectRatio: "4/3", position: "relative" }}>
+                <Artwork
+                  seed={featured.seed}
+                  palette={featured.palette}
+                  shape={featured.shape}
+                  rounded={false}
+                  className="!rounded-none"
+                  imageUrl={featured.imageUrl}
+                  alt={featured.title}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                />
               </div>
             </div>
             <div className="pill-glass" style={{ position: "absolute", left: 18, top: 18 }}>Featured collection</div>
@@ -253,11 +281,22 @@ export default function HomePage() {
           {/* ══════════ ADAPTERS ══════════ */}
           <div className="grid g-3">
             {ADAPTERS.map((a, i) => {
-              const sampleDesign = DESIGNS[i * 3] || DESIGNS[0];
+              // 示例图优先取真实上传的精品图；池不足时回退种子设计（无图 → SVG 占位）。
+              const sampleDesign = adapterSamples[i] ?? DESIGNS[i * 3] ?? DESIGNS[0];
               return (
                 <Link key={a.id} href="/explore" className="adp block" style={{ border: "1px solid var(--line)", borderRadius: "var(--r-md)", overflow: "hidden", background: "var(--surface)", transition: "all 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
                   <div style={{ background: "var(--paper-2)", aspectRatio: "4/3", position: "relative", overflow: "hidden" }}>
-                    <Artwork seed={sampleDesign.seed} palette={sampleDesign.palette} shape={sampleDesign.shape} rounded={false} className="!rounded-none" />
+                    <Artwork
+                      seed={sampleDesign.seed}
+                      palette={sampleDesign.palette}
+                      shape={sampleDesign.shape}
+                      rounded={false}
+                      className="!rounded-none"
+                      imageUrl={sampleDesign.imageUrl}
+                      alt={sampleDesign.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
                     <span className="badge" style={{ position: "absolute", top: 12, left: 12, background: "var(--surface)", fontSize: "0.6875rem", padding: "4px 10px", fontWeight: 500 }}>{a.method}</span>
                   </div>
                   <div style={{ padding: "18px 20px 20px" }}>
