@@ -23,7 +23,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ key: st
   if (!ALLOWED_PREFIXES.some((p) => objectKey.startsWith(p))) {
     return new Response("Not found", { status: 404 });
   }
-  const obj = await getFromR2(objectKey).catch(() => null);
+  let obj = await getFromR2(objectKey).catch(() => null);
+  // P1 Images (free-plan): a "<key>/v<width>" variant is requested but not (yet)
+  // backfilled for a legacy image — fall back to the original so images never
+  // break. No transform cost, just full-resolution.
+  if (!obj && /\/v\d+$/.test(objectKey)) {
+    const originalKey = objectKey.replace(/\/v\d+$/, "");
+    if (ALLOWED_PREFIXES.some((p) => originalKey.startsWith(p))) {
+      obj = await getFromR2(originalKey).catch(() => null);
+    }
+  }
   if (!obj) return new Response("Not found", { status: 404 });
   return new Response(obj.body, {
     headers: {

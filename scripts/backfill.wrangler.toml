@@ -1,0 +1,15 @@
+# Temporary backfill Worker — see scripts/backfill-image-variants.mjs.
+# Deploy, run, then DELETE this worker when done.
+name = "backfill-desmake"
+main = "scripts/backfill-image-variants.mjs"
+compatibility_date = "2026-08-20"
+compatibility_flags = ["nodejs_compat"]
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "desmake-assets"
+
+[images]
+binding = "IMAGES"
+
+# Set via: wrangler secret put BACKFILL_SECRET --name backfill-desmake

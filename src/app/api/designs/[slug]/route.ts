@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { deleteDesignForUserAsync, getDesignBySlugForUser, updateDesignForUserAsync } from "@/lib/stores";
 import { getSessionAsync, SESSION_COOKIE } from "@/lib/session";
-import { deleteFromR2 } from "@/lib/r2";
+import { deleteImageWithVariants } from "@/lib/r2";
 import { rateLimit } from "@/lib/ratelimit";
 import { recordError } from "@/lib/monitor";
 import { ADAPTERS, adapterDefaultSku, type SelectedProduct } from "@/lib/data";
@@ -48,7 +48,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const key = r2KeyFromUrl(removed.imageUrl);
   if (key) {
     try {
-      imageDeleted = await deleteFromR2(key);
+      // P1 Images: also remove pre-generated variants so they don't orphan.
+      imageDeleted = await deleteImageWithVariants(key);
     } catch (e) {
       recordError("designs/[slug].r2", e);
     }

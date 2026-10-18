@@ -1,24 +1,22 @@
 import type { ImageLoaderProps } from "next/image";
+import { cdnVariantUrl } from "@/lib/r2";
 
-// B1 migration: replace the in-container sharp/next-image optimizer with Cloudflare
-// Image Resizing (transform-on-the-fly). Images live in R2 (served same-origin via
-// /cdn); Cloudflare resizes them at the edge via /cdn-cgi/image/<options>/<src>.
-// This removes the dependency on a 1 GiB container instance for image transcoding.
-// Enable "Transformations" on the desmake.com zone and allow the R2 bucket as a source.
-const normalizeSrc = (src: string) => (src.startsWith("/") ? src.slice(1) : src);
-
+// P1 Images — FREE-PLAN: serve a pre-generated static variant from R2. No on-the-fly
+// Cloudflare Image Resizing / Images-product transform => zero per-view cost. If the
+// variant hasn't been backfilled yet (legacy image), the /cdn route transparently
+// falls back to the original, so images never break.
 export default function cloudflareLoader({ src, width, quality }: ImageLoaderProps) {
-  const params = [`width=${width}`];
-  if (quality) params.push(`quality=${quality}`);
   if (process.env.NODE_ENV === "development") {
     // Serve the original during `next dev` (no edge image pipeline locally).
-    return `${src}?${params.join("&")}`;
+    return `${src}?width=${width}${quality ? `&quality=${quality}` : ""}`;
   }
-  // H-12: if Cloudflare Image Resizing is not enabled on the zone, the /cdn-cgi/image/
-  // path returns 404 for every image and the site goes blank. Degrade gracefully to the
-  // original same-origin /cdn/<key> asset (still served via the cdn route above).
+  // H-12: if resizing/optimization is disabled, or the image isn't an R2 /cdn asset,
+  // serve the original as-is — no transform, no cost.
   if (process.env.IMAGE_RESIZING_ENABLED !== "true") {
-    return `${src}?${params.join("&")}`;
+    return src;
   }
-  return `/cdn-cgi/image/${params.join(",")}/${normalizeSrc(src)}`;
+  if (!src.startsWith("/cdn/")) {
+    return src;
+  }
+  return cdnVariantUrl(src, width);
 }

@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
   images: {
     loader: "custom",
     loaderFile: "./image-loader.ts",
+    // P1 Images — FREE-PLAN: the loader now serves pre-generated STATIC variants
+    // (/cdn/<key>/v<width>) instead of per-view Cloudflare Image Resizing. These
+    // sizes MUST match IMAGE_VARIANT_SIZES in src/lib/r2.ts so next/image's
+    // srcset widths map 1:1 to an existing variant (no wasted/404 transforms).
+    deviceSizes: [256, 640, 1080, 1920],
+    imageSizes: [48, 96, 256],
+    disableStaticImages: false,
   },
   // H7 / P2: baseline security response headers.
   async headers() {

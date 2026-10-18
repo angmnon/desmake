@@ -129,8 +129,12 @@ async function loadFont(
 // Transcode bytes to JPEG via the Cloudflare Images binding.
 // API (this wrangler/runtime version): IMAGES.input(buf).transform(...).output(opts)
 // returns a Promise<TransformationResultImpl>; awaiting it gives a result whose
-// .response() returns a Response. (Calling .response() on the Promise itself is a
-// no-op/error — that was the original bug.)
+// .response() returns a Response.
+//
+// NOTE: this is ONLY used to shrink the *generated* OG card PNG below the
+// ~300KB WhatsApp/Telegram cliff, and it runs behind the R2 cache (once per
+// slug per ~24h, not per view). It is NOT part of the per-view image hot path
+// that the free-plan migration eliminated — see loadArtDataUrl below.
 async function transcodeToJpeg(
   env: any,
   input: ArrayBuffer,
@@ -148,13 +152,12 @@ async function transcodeToJpeg(
   }
 }
 
-// Read the product art from R2 (binding) and transcode it to a cover JPEG via the
-// Images binding. This neutralizes WebP (Satori can't decode it) and keeps the
-// embedded payload small — and, critically, makes zero external HTTP requests.
+// Read the product art from R2 (binding). P1 Images — FREE-PLAN: use the
+// pre-generated 1080 variant (static, no on-the-fly Cloudflare Images transform),
+// which neutralizes WebP (Satori can't decode it) and keeps the embedded payload
+// small, with ZERO per-view transformation cost. Falls back to the original.
 //
-// design.imageUrl is either "/cdn/<key>" or, most often, a Cloudflare Image
-// Resizing URL like "/cdn-cgi/image/width=3840/cdn/<key>". The actual R2 key is
-// the segment after the real "/cdn/" (note: "/cdn-cgi/" does NOT match).
+// design.imageUrl is a "/cdn/<key>" path; the 1080 variant key is "<key>/v1080".
 async function loadArtDataUrl(env: any, design: Design): Promise<string | null> {
   const url = design.imageUrl;
   if (!url) return null;
@@ -162,15 +165,11 @@ async function loadArtDataUrl(env: any, design: Design): Promise<string | null> 
   const key = m ? m[1] : null;
   if (!key) return null;
   try {
-    const obj = await getFromR2(key);
-    if (!obj) return null;
-    const jpeg = await transcodeToJpeg(env, obj.body, {
-      width: 1200,
-      height: 630,
-      fit: "cover",
-    });
-    if (jpeg) return `data:image/jpeg;base64,${toBase64(jpeg)}`;
-    return `data:${obj.contentType};base64,${toBase64(obj.body)}`;
+    const variant = await getFromR2(`${key}/v1080`);
+    if (variant) return `data:${variant.contentType};base64,${toBase64(variant.body)}`;
+    const orig = await getFromR2(key);
+    if (orig) return `data:${orig.contentType};base64,${toBase64(orig.body)}`;
+    return null;
   } catch {
     return null;
   }

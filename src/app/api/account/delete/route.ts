@@ -11,7 +11,7 @@ import {
   sessionCookieOptions,
 } from "@/lib/session";
 import { rateLimit } from "@/lib/ratelimit";
-import { deleteFromR2 } from "@/lib/r2";
+import { deleteImageWithVariants } from "@/lib/r2";
 import { notifyAlert, recordError } from "@/lib/monitor";
 import { randomBytes } from "node:crypto";
 
@@ -150,10 +150,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 2) Best-effort R2 image cleanup (never fails the deletion).
+  // 2) Best-effort R2 image cleanup (never fails the deletion). P1 Images:
+  // also remove pre-generated variants.
   for (const key of r2Keys) {
     try {
-      await deleteFromR2(key);
+      await deleteImageWithVariants(key);
     } catch (e) {
       recordError("account/delete.r2", e);
     }
