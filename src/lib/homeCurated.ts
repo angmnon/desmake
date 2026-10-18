@@ -144,35 +144,40 @@ export async function curatedHomepage(): Promise<HomeCurated> {
     CURATED_WEIGHTS,
   );
 
-  // 主榜单：完整度优先，同类目最多 2 个。
-  const trending = select(scored, { take: 8, groupBy: (d) => d.category, maxPerGroup: 2 });
+  // ── 首屏可见位先占位，后续榜单依次避开，保证一屏 18 个图位互不重复 ──
+  // Hero 3 张：最高分且强制 3 个不同类目（真图场景下 palette 多为默认值，改用类目做多样性）。
+  const heroCards = select(scored, { take: 3, groupBy: (d) => d.category, maxPerGroup: 1 });
+  const usedIds = new Set(heroCards.map((d) => d.id));
 
-  // 编辑精选：高质量但避开主榜单，保证两个 tab 不重复。
+  // Featured 主图：避开 Hero。
+  const featuredScored = scored.filter((s) => !usedIds.has(s.design.id));
+  const featured = (featuredScored[0] ?? scored[0])?.design ?? pool[0];
+  usedIds.add(featured.id);
+
+  // 主榜单：完整度优先，同类目最多 2 个，并避开首屏已用的图。
+  const trending = select(scored, {
+    take: 8,
+    groupBy: (d) => d.category,
+    maxPerGroup: 2,
+    exclude: usedIds,
+  });
+  for (const d of trending) usedIds.add(d.id);
+
+  // 编辑精选：高质量且避开主榜单与首屏，保证切换 tab 时不重复。
   const editors = select(scored, {
     take: 8,
     groupBy: (d) => d.category,
     maxPerGroup: 2,
-    exclude: new Set(trending.map((d) => d.id)),
+    exclude: usedIds,
   });
 
-  // AI 作品（内部账号的 AI 生成图）。
+  // AI 作品（内部账号的 AI 生成图）—— 独立 tab，无需避开主榜单。
   const aiPicks = select(aiScored, { take: 8, groupBy: (d) => d.category, maxPerGroup: 2 });
 
-  // 上新：按发布时间排序。
+  // 上新：按发布时间排序 —— 独立 tab。
   const newDesigns = select(freshScored, { take: 8, groupBy: (d) => d.category, maxPerGroup: 2 });
 
-  // Hero 3 张：强制 3 个不同类目（真图场景下 palette 多为默认值，改用类目做多样性）。
-  const heroCards = select(scored, { take: 3, groupBy: (d) => d.category, maxPerGroup: 1 });
-
-  // Featured 主图：避开 Hero，避免首屏两张大图重复。
-  const usedIds = new Set(heroCards.map((d) => d.id));
-  const featuredScored = scored.filter((s) => !usedIds.has(s.design.id));
-  const featured = (featuredScored[0] ?? scored[0])?.design ?? pool[0];
-
-  // 6 个适配器示例图：再避开 Featured 与 Discover 主榜单，
-  // 让首页一屏内 18 个图位尽量是 18 张互不相同的精品图。
-  usedIds.add(featured.id);
-  for (const d of trending) usedIds.add(d.id);
+  // 6 个适配器示例图：避开首屏与主榜单。
   const adapterSamples = select(scored, {
     take: 6,
     groupBy: (d) => d.category,
